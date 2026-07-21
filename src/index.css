@@ -1,0 +1,51 @@
+:root {
+  --surface-0: #f4f4f5;
+  --surface-1: #ffffff;
+  --surface-2: #ffffff;
+  --border: #e4e4e7;
+  --border-danger: #fecaca;
+  --bg-danger: #fef2f2;
+  --radius: 8px;
+
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  --text-muted: #a1a1aa;
+  --text-accent: #4f46e5;
+  --text-success: #16a34a;
+  --text-danger: #dc2626;
+
+  --c-teal: color-mix(in srgb, #16a34a 15%, transparent);
+  --c-amber: color-mix(in srgb, #d97706 15%, transparent);
+  --c-red: color-mix(in srgb, #dc2626 15%, transparent);
+
+  font: 15px/145% system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--text-primary);
+  background: var(--surface-0);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--surface-0);
+}
+
+.c-teal {
+  color: #16a34a;
+  background: color-mix(in srgb, #16a34a 15%, transparent);
+}
+.c-amber {
+  color: #d97706;
+  background: color-mix(in srgb, #d97706 15%, transparent);
+}
+.c-red {
+  color: #dc2626;
+  background: color-mix(in srgb, #dc2626 15%, transparent);
+}
+
+button {
+  font-family: inherit;
+}
