@@ -38,6 +38,8 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   const [newItemLabel, setNewItemLabel] = useState("");
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editRoomName, setEditRoomName] = useState("");
+  const [editingSiteId, setEditingSiteId] = useState(null);
+  const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [importingPdf, setImportingPdf] = useState(false);
   const [importPreview, setImportPreview] = useState(null); // { siteId, rooms: [{name, tasks: [string]}] }
@@ -276,6 +278,35 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  function startEditSite(site) {
+    setEditingSiteId(site.id);
+    setEditSiteForm({
+      name: site.name || "",
+      client_id: site.client_id || "",
+      address: site.address || "",
+      room_count: site.room_count ?? "",
+    });
+  }
+
+  async function saveEditSite(e, siteId) {
+    e.preventDefault();
+    setError("");
+    try {
+      await apiFetch(`/sites/${siteId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({
+          name: editSiteForm.name, client_id: Number(editSiteForm.client_id), address: editSiteForm.address || null,
+          room_count: editSiteForm.room_count ? Number(editSiteForm.room_count) : 0,
+        }),
+      });
+      setEditingSiteId(null);
+      loadAll();
+      refreshSummary?.();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function deleteSite(id) {
     try {
       await apiFetch(`/sites/${id}`, { token, method: "DELETE" });
@@ -346,45 +377,64 @@ export default function LokasjonerPage({ token, refreshSummary }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {sites.map((site) => (
           <Card key={site.id}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-                background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))", color: "white",
-              }}>
-                <Building2 size={20} />
-              </div>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                {isScheduledToday(site.id) && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-success)", background: "var(--c-teal)", padding: "3px 8px", borderRadius: 999 }}>
-                    I DAG
-                  </span>
-                )}
-                <button onClick={() => setConfirmDelete(site.id)} style={iconBtnStyle}><Trash2 size={15} /></button>
-              </div>
-            </div>
+            {editingSiteId === site.id ? (
+              <form onSubmit={(e) => saveEditSite(e, site.id)} style={{ display: "grid", gap: 8 }}>
+                <input required placeholder="Navn" value={editSiteForm.name} onChange={(e) => setEditSiteForm({ ...editSiteForm, name: e.target.value })} style={inputStyle} />
+                <select required value={editSiteForm.client_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, client_id: e.target.value })} style={inputStyle}>
+                  <option value="">Velg kunde</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <input placeholder="Adresse" value={editSiteForm.address} onChange={(e) => setEditSiteForm({ ...editSiteForm, address: e.target.value })} style={inputStyle} />
+                <input type="number" min="0" placeholder="Antall rom" value={editSiteForm.room_count} onChange={(e) => setEditSiteForm({ ...editSiteForm, room_count: e.target.value })} style={inputStyle} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="submit" style={primaryBtnStyle}>Lagre</button>
+                  <button type="button" onClick={() => setEditingSiteId(null)} style={linkBtnStyle}>Avbryt</button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))", color: "white",
+                  }}>
+                    <Building2 size={20} />
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {isScheduledToday(site.id) && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-success)", background: "var(--c-teal)", padding: "3px 8px", borderRadius: 999 }}>
+                        I DAG
+                      </span>
+                    )}
+                    <button onClick={() => startEditSite(site)} style={iconBtnStyle}><Pencil size={15} /></button>
+                    <button onClick={() => setConfirmDelete(site.id)} style={iconBtnStyle}><Trash2 size={15} /></button>
+                  </div>
+                </div>
 
-            <div style={{ fontWeight: 600, marginTop: 12 }}>{site.name}</div>
-            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{clientName(site.client_id)}</div>
-            {site.address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{site.address}</div>}
+                <div style={{ fontWeight: 600, marginTop: 12 }}>{site.name}</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{clientName(site.client_id)}</div>
+                {site.address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{site.address}</div>}
 
-            <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
-                <QrCode size={14} /> {rooms[site.id]?.length ?? site.room_count ?? 0} rom
-              </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  onClick={() => setExpandedRoomsSite(expandedRoomsSite === site.id ? null : site.id)}
-                  style={linkBtnStyle}
-                >
-                  {expandedRoomsSite === site.id ? "Skjul rom" : "Administrer rom"}
-                </button>
-                <button data-site-id={site.id} data-action="toggle-schedule" onClick={() => setExpandedSite(expandedSite === site.id ? null : site.id)} style={linkBtnStyle}>
-                  {expandedSite === site.id ? "Skjul plan" : "Ukeplan"}
-                </button>
-              </div>
-            </div>
+                <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <QrCode size={14} /> {rooms[site.id]?.length ?? site.room_count ?? 0} rom
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      onClick={() => setExpandedRoomsSite(expandedRoomsSite === site.id ? null : site.id)}
+                      style={linkBtnStyle}
+                    >
+                      {expandedRoomsSite === site.id ? "Skjul rom" : "Administrer rom"}
+                    </button>
+                    <button data-site-id={site.id} data-action="toggle-schedule" onClick={() => setExpandedSite(expandedSite === site.id ? null : site.id)} style={linkBtnStyle}>
+                      {expandedSite === site.id ? "Skjul plan" : "Ukeplan"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
-            {confirmDelete === site.id && (
+            {editingSiteId !== site.id && confirmDelete === site.id && (
               <div style={{ marginTop: 10, fontSize: 13, background: "var(--bg-danger)", padding: 10, borderRadius: "var(--radius)" }}>
                 Slette denne lokasjonen? Dette fjerner også historikk og avvik.
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
