@@ -15,6 +15,26 @@ export function StatusBadge({ status }) {
   );
 }
 
+const ROLE_BADGE = {
+  admin: { label: "ADMIN", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  manager: { label: "MANAGER", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  cleaner: { label: "RENHOLDER", bg: "var(--c-teal)", color: "var(--text-success)" },
+  customer: { label: "KUNDE", bg: "var(--surface-0)", color: "var(--text-secondary)" },
+};
+
+export function RoleBadge({ role }) {
+  const r = ROLE_BADGE[role] || ROLE_BADGE.customer;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center",
+      padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
+      background: r.bg, color: r.color,
+    }}>
+      {r.label}
+    </span>
+  );
+}
+
 export function Card({ children, style }) {
   return (
     <div style={{

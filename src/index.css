@@ -18,6 +18,16 @@
   --c-amber: color-mix(in srgb, #d97706 15%, transparent);
   --c-red: color-mix(in srgb, #dc2626 15%, transparent);
 
+  /* Admin/manager sidebar panel theme (CleanLog-style) */
+  --page-bg: #fdfbf7;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #f0e4d4;
+  --sidebar-active-bg: #fff1e6;
+  --accent-orange: #f97316;
+  --accent-orange-dark: #ea580c;
+  --accent-orange-bg: #fff1e6;
+  --banner-gradient: linear-gradient(90deg, #ffede0, #fff6ee);
+
   font: 15px/145% system-ui, "Segoe UI", Roboto, sans-serif;
   color: var(--text-primary);
   background: var(--surface-0);

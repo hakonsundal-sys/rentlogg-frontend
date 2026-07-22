@@ -19,11 +19,11 @@ export async function apiFetch(path, { token, ...options } = {}) {
   return data;
 }
 
-export async function downloadPdf(path, token, filename) {
+async function downloadBlob(path, token, filename) {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error("Kunne ikke laste ned rapport");
+  if (!res.ok) throw new Error("Kunne ikke laste ned filen");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -31,6 +31,14 @@ export async function downloadPdf(path, token, filename) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function downloadPdf(path, token, filename) {
+  return downloadBlob(path, token, filename);
+}
+
+export function downloadCsv(path, token, filename) {
+  return downloadBlob(path, token, filename);
 }
 
 export { API_URL };

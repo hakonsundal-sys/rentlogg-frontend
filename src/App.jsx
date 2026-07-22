@@ -1,24 +1,46 @@
 import { useState } from "react";
 import LoginView from "./components/LoginView";
-import AdminView from "./components/AdminView";
+import AcceptInvitePage from "./components/AcceptInvitePage";
+import AdminLayout from "./components/admin/AdminLayout";
 import CleanerView from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
 
 const ROLE_LABELS = {
-  admin: "Renholdsbedrift",
-  manager: "Renholdsbedrift",
   cleaner: "Renholder",
   customer: "Kunde",
 };
 
+function inviteTokenFromUrl() {
+  return new URLSearchParams(window.location.search).get("invite");
+}
+
 export default function App() {
   const [auth, setAuth] = useState(null); // { token, user }
+  const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
+
+  function clearInviteParam() {
+    window.history.replaceState(null, "", window.location.pathname);
+    setInviteToken(null);
+  }
+
+  function handleAuthenticated(token, user) {
+    clearInviteParam();
+    setAuth({ token, user });
+  }
+
+  if (inviteToken) {
+    return <Shell><AcceptInvitePage token={inviteToken} onLogin={handleAuthenticated} onCancel={clearInviteParam} /></Shell>;
+  }
 
   if (!auth) {
-    return <Shell><LoginView onLogin={(token, user) => setAuth({ token, user })} /></Shell>;
+    return <Shell><LoginView onLogin={handleAuthenticated} /></Shell>;
   }
 
   const { token, user } = auth;
+
+  if (user.role === "admin" || user.role === "manager") {
+    return <AdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
+  }
 
   return (
     <Shell>
@@ -33,7 +55,6 @@ export default function App() {
           Logg ut
         </button>
       </div>
-      {(user.role === "admin" || user.role === "manager") && <AdminView token={token} />}
       {user.role === "cleaner" && <CleanerView token={token} />}
       {user.role === "customer" && <CustomerView token={token} />}
     </Shell>
