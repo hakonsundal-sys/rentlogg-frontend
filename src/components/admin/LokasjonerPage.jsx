@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Building2, Trash2, QrCode, Pencil } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Building2, Trash2, QrCode, Pencil, FileUp } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card } from "../shared";
 
@@ -39,6 +39,10 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editRoomName, setEditRoomName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [importingPdf, setImportingPdf] = useState(false);
+  const [importPreview, setImportPreview] = useState(null); // { siteId, rooms: [{name, tasks: [string]}] }
+  const pdfInputRef = useRef(null);
+  const pdfImportSiteIdRef = useRef(null);
 
   function loadAll() {
     Promise.all([
@@ -181,6 +185,74 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  function triggerPdfImport(siteId) {
+    pdfImportSiteIdRef.current = siteId;
+    pdfInputRef.current.click();
+  }
+
+  async function handlePdfSelected(e) {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const siteId = pdfImportSiteIdRef.current;
+    setError("");
+    setImportingPdf(true);
+    try {
+      const form = new FormData();
+      form.append("pdf", file);
+      const data = await apiFetch(`/sites/${siteId}/rooms/import-pdf`, { token, method: "POST", body: form });
+      setImportPreview({ siteId, rooms: data.rooms.map((r) => ({ name: r.name, tasks: [...r.tasks] })) });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setImportingPdf(false);
+    }
+  }
+
+  function updateImportRoomName(idx, name) {
+    setImportPreview((p) => ({ ...p, rooms: p.rooms.map((r, i) => (i === idx ? { ...r, name } : r)) }));
+  }
+
+  function updateImportTask(roomIdx, taskIdx, value) {
+    setImportPreview((p) => ({
+      ...p,
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, tasks: r.tasks.map((t, j) => (j === taskIdx ? value : t)) } : r)),
+    }));
+  }
+
+  function removeImportTask(roomIdx, taskIdx) {
+    setImportPreview((p) => ({
+      ...p,
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, tasks: r.tasks.filter((_, j) => j !== taskIdx) } : r)),
+    }));
+  }
+
+  function addImportTask(roomIdx) {
+    setImportPreview((p) => ({
+      ...p,
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, tasks: [...r.tasks, ""] } : r)),
+    }));
+  }
+
+  function removeImportRoom(idx) {
+    setImportPreview((p) => ({ ...p, rooms: p.rooms.filter((_, i) => i !== idx) }));
+  }
+
+  async function confirmImport() {
+    try {
+      const rooms = importPreview.rooms
+        .map((r) => ({ name: r.name.trim(), tasks: r.tasks.map((t) => t.trim()).filter(Boolean) }))
+        .filter((r) => r.name);
+      await apiFetch(`/sites/${importPreview.siteId}/rooms/import-confirm`, {
+        token, method: "POST", body: JSON.stringify({ rooms }),
+      });
+      refreshRoomsForSite(importPreview.siteId);
+      setImportPreview(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   const clientName = (id) => clients.find((c) => c.id === id)?.name || "—";
   const isScheduledToday = (siteId) => (schedules[siteId] || []).some((s) => s.weekday === todayWeekday());
 
@@ -245,6 +317,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
 
   return (
     <div>
+      <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfSelected} style={{ display: "none" }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Lokasjoner</h1>
@@ -354,7 +427,47 @@ export default function LokasjonerPage({ token, refreshSummary }) {
               </div>
             )}
 
-            {expandedRoomsSite === site.id && (
+            {expandedRoomsSite === site.id && importPreview?.siteId === site.id && (
+              <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>
+                  Forslag fra PDF-import — se over og bekreft
+                </div>
+                {importPreview.rooms.map((room, roomIdx) => (
+                  <div key={roomIdx} style={{ marginBottom: 10, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <input
+                        value={room.name} onChange={(e) => updateImportRoomName(roomIdx, e.target.value)}
+                        style={{ ...inputStyle, padding: "4px 6px", fontSize: 12, fontWeight: 600 }}
+                      />
+                      <button onClick={() => removeImportRoom(roomIdx)} style={iconBtnStyle}><Trash2 size={13} /></button>
+                    </div>
+                    {room.tasks.map((task, taskIdx) => (
+                      <div key={taskIdx} style={{ display: "flex", gap: 4, marginTop: 4, marginLeft: 8 }}>
+                        <input
+                          value={task} onChange={(e) => updateImportTask(roomIdx, taskIdx, e.target.value)}
+                          style={{ ...inputStyle, padding: "3px 6px", fontSize: 12 }}
+                        />
+                        <button onClick={() => removeImportTask(roomIdx, taskIdx)} style={iconBtnStyle}><Trash2 size={11} /></button>
+                      </div>
+                    ))}
+                    <button onClick={() => addImportTask(roomIdx)} style={{ ...linkBtnStyle, marginLeft: 8, marginTop: 4 }}>
+                      + Legg til oppgave
+                    </button>
+                  </div>
+                ))}
+                {importPreview.rooms.length === 0 && (
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Ingen rom igjen å importere.</div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button onClick={confirmImport} style={primaryBtnStyle} disabled={importPreview.rooms.length === 0}>
+                    Bekreft import ({importPreview.rooms.length} rom)
+                  </button>
+                  <button onClick={() => setImportPreview(null)} style={linkBtnStyle}>Avbryt</button>
+                </div>
+              </div>
+            )}
+
+            {expandedRoomsSite === site.id && !importPreview && (
               <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
                 {(rooms[site.id] || []).map((room) => (
                   <div key={room.id} style={{ marginBottom: 6 }}>
@@ -451,12 +564,20 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                   </div>
                 ))}
 
-                <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
                   <input
                     value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)}
-                    placeholder="Nytt rom" style={{ ...inputStyle, padding: "5px 8px", fontSize: 12 }}
+                    placeholder="Nytt rom" style={{ ...inputStyle, padding: "5px 8px", fontSize: 12, width: 120 }}
                   />
                   <button onClick={() => createRoom(site.id)} style={linkBtnStyle}>+ Legg til rom</button>
+                  <button
+                    onClick={() => triggerPdfImport(site.id)}
+                    disabled={importingPdf}
+                    style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    <FileUp size={13} />
+                    {importingPdf && pdfImportSiteIdRef.current === site.id ? "Analyserer PDF..." : "Importer PDF"}
+                  </button>
                 </div>
               </div>
             )}
