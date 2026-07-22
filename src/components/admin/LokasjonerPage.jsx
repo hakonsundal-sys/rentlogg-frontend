@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Trash2, QrCode } from "lucide-react";
+import { Building2, Trash2, QrCode, Pencil } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card } from "../shared";
 
@@ -36,6 +36,8 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   const [roomSchedules, setRoomSchedules] = useState({}); // roomId -> [{id, weekday, assigned_cleaner_id, assigned_cleaner_name}]
   const [newRoomName, setNewRoomName] = useState("");
   const [newItemLabel, setNewItemLabel] = useState("");
+  const [editingRoomId, setEditingRoomId] = useState(null);
+  const [editRoomName, setEditRoomName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   function loadAll() {
@@ -79,6 +81,22 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     try {
       await apiFetch(`/sites/${siteId}/rooms`, { token, method: "POST", body: JSON.stringify({ name: newRoomName }) });
       setNewRoomName("");
+      refreshRoomsForSite(siteId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditRoom(room) {
+    setEditingRoomId(room.id);
+    setEditRoomName(room.name);
+  }
+
+  async function saveRoomName(siteId, roomId) {
+    if (!editRoomName.trim()) return;
+    try {
+      await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ name: editRoomName }) });
+      setEditingRoomId(null);
       refreshRoomsForSite(siteId);
     } catch (err) {
       setError(err.message);
@@ -341,10 +359,26 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                 {(rooms[site.id] || []).map((room) => (
                   <div key={room.id} style={{ marginBottom: 6 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-                      <button onClick={() => toggleRoomExpand(room.id)} style={{ ...linkBtnStyle, color: "var(--text-primary)", fontWeight: 500, textAlign: "left" }}>
-                        {room.name} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>({room.itemCount} oppgaver)</span>
-                      </button>
-                      <button onClick={() => deleteRoom(site.id, room.id)} style={iconBtnStyle}><Trash2 size={13} /></button>
+                      {editingRoomId === room.id ? (
+                        <div style={{ display: "flex", gap: 4, flex: 1 }}>
+                          <input
+                            value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)}
+                            autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12 }}
+                          />
+                          <button onClick={() => saveRoomName(site.id, room.id)} style={linkBtnStyle}>Lagre</button>
+                          <button onClick={() => setEditingRoomId(null)} style={linkBtnStyle}>Avbryt</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => toggleRoomExpand(room.id)} style={{ ...linkBtnStyle, color: "var(--text-primary)", fontWeight: 500, textAlign: "left" }}>
+                          {room.name} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>({room.itemCount} oppgaver)</span>
+                        </button>
+                      )}
+                      {editingRoomId !== room.id && (
+                        <div style={{ display: "flex", gap: 2 }}>
+                          <button onClick={() => startEditRoom(room)} style={iconBtnStyle}><Pencil size={13} /></button>
+                          <button onClick={() => deleteRoom(site.id, room.id)} style={iconBtnStyle}><Trash2 size={13} /></button>
+                        </div>
+                      )}
                     </div>
 
                     {expandedRoomId === room.id && (
