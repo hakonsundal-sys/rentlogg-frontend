@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Users, Trash2, Mail, Phone } from "lucide-react";
+import { Users, Trash2, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card } from "../shared";
 
-const emptyForm = { name: "", contact_name: "", contact_email: "", phone: "" };
+const emptyForm = { name: "", contact_name: "", contact_email: "", phone: "", address: "" };
 
 export default function KunderPage({ token, refreshSummary }) {
   const [clients, setClients] = useState([]);
@@ -12,6 +12,8 @@ export default function KunderPage({ token, refreshSummary }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [editForm, setEditForm] = useState(emptyForm);
 
   function loadAll() {
     Promise.all([apiFetch("/clients", { token }), apiFetch("/sites", { token })])
@@ -53,6 +55,30 @@ export default function KunderPage({ token, refreshSummary }) {
     }
   }
 
+  function startEditClient(client) {
+    setEditingClientId(client.id);
+    setEditForm({
+      name: client.name || "",
+      contact_name: client.contact_name || "",
+      contact_email: client.contact_email || "",
+      phone: client.phone || "",
+      address: client.address || "",
+    });
+  }
+
+  async function saveEditClient(e, id) {
+    e.preventDefault();
+    setError("");
+    try {
+      await apiFetch(`/clients/${id}`, { token, method: "PATCH", body: JSON.stringify(editForm) });
+      setEditingClientId(null);
+      loadAll();
+      refreshSummary?.();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
@@ -72,6 +98,7 @@ export default function KunderPage({ token, refreshSummary }) {
             <input placeholder="Kontaktperson" value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} style={inputStyle} />
             <input type="email" placeholder="E-post" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} style={inputStyle} />
             <input placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
+            <input placeholder="Adresse" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ ...inputStyle, gridColumn: "span 2" }} />
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett kunde</button>
           </form>
         </Card>
@@ -80,41 +107,65 @@ export default function KunderPage({ token, refreshSummary }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {clients.map((client) => (
           <Card key={client.id}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-                background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))", color: "white",
-              }}>
-                <Users size={20} />
-              </div>
-              <button onClick={() => setConfirmDelete(client.id)} style={iconBtnStyle}><Trash2 size={15} /></button>
-            </div>
-
-            <div style={{ fontWeight: 600, marginTop: 12 }}>{client.name}</div>
-            {client.contact_name && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{client.contact_name}</div>}
-            {client.contact_email && (
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-                <Mail size={13} /> {client.contact_email}
-              </div>
-            )}
-            {client.phone && (
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
-                <Phone size={13} /> {client.phone}
-              </div>
-            )}
-
-            <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
-              {siteCount(client.id)} lokasjoner
-            </div>
-
-            {confirmDelete === client.id && (
-              <div style={{ marginTop: 10, fontSize: 13, background: "var(--bg-danger)", padding: 10, borderRadius: "var(--radius)" }}>
-                Slette denne kunden?
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button onClick={() => deleteClient(client.id)} style={{ ...primaryBtnStyle, background: "var(--text-danger)" }}>Ja, slett</button>
-                  <button onClick={() => setConfirmDelete(null)} style={linkBtnStyle}>Avbryt</button>
+            {editingClientId === client.id ? (
+              <form onSubmit={(e) => saveEditClient(e, client.id)} style={{ display: "grid", gap: 8 }}>
+                <input required placeholder="Firmanavn" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} style={inputStyle} />
+                <input placeholder="Kontaktperson" value={editForm.contact_name} onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })} style={inputStyle} />
+                <input type="email" placeholder="E-post" value={editForm.contact_email} onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })} style={inputStyle} />
+                <input placeholder="Telefon" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputStyle} />
+                <input placeholder="Adresse" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} style={inputStyle} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="submit" style={primaryBtnStyle}>Lagre</button>
+                  <button type="button" onClick={() => setEditingClientId(null)} style={linkBtnStyle}>Avbryt</button>
                 </div>
-              </div>
+              </form>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))", color: "white",
+                  }}>
+                    <Users size={20} />
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => startEditClient(client)} style={iconBtnStyle}><Pencil size={15} /></button>
+                    <button onClick={() => setConfirmDelete(client.id)} style={iconBtnStyle}><Trash2 size={15} /></button>
+                  </div>
+                </div>
+
+                <div style={{ fontWeight: 600, marginTop: 12 }}>{client.name}</div>
+                {client.contact_name && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{client.contact_name}</div>}
+                {client.contact_email && (
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                    <Mail size={13} /> {client.contact_email}
+                  </div>
+                )}
+                {client.phone && (
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <Phone size={13} /> {client.phone}
+                  </div>
+                )}
+                {client.address && (
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <MapPin size={13} /> {client.address}
+                  </div>
+                )}
+
+                <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
+                  {siteCount(client.id)} lokasjoner
+                </div>
+
+                {confirmDelete === client.id && (
+                  <div style={{ marginTop: 10, fontSize: 13, background: "var(--bg-danger)", padding: 10, borderRadius: "var(--radius)" }}>
+                    Slette denne kunden?
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <button onClick={() => deleteClient(client.id)} style={{ ...primaryBtnStyle, background: "var(--text-danger)" }}>Ja, slett</button>
+                      <button onClick={() => setConfirmDelete(null)} style={linkBtnStyle}>Avbryt</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </Card>
         ))}
