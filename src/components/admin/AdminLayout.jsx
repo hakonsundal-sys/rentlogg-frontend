@@ -38,7 +38,8 @@ export default function AdminLayout({ token, user, onLogout }) {
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--page-bg)" }}>
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} user={user} onLogout={onLogout} />
       <div style={{ flex: 1, padding: "24px 32px", boxSizing: "border-box", minWidth: 0 }}>
-        <TopBanner trial={summary?.trial} />
+        {/* Trial/pricing banner hidden until a working payment flow exists — re-enable by restoring this line. */}
+        {/* <TopBanner trial={summary?.trial} /> */}
         <PageComponent token={token} user={user} summary={summary} refreshSummary={refreshSummary} />
       </div>
     </div>
