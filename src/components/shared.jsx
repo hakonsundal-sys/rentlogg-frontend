@@ -10,7 +10,7 @@ export function StatusBadge({ status }) {
   return (
     <span className={s.cls} style={{
       display: "inline-flex", alignItems: "center", gap: 4,
-      padding: "2px 10px", borderRadius: 999, fontSize: 12, fontWeight: 500,
+      padding: "2px 10px", borderRadius: "var(--radius-pill)", fontSize: 12, fontWeight: 500,
     }}>
       {s.label}
     </span>
@@ -29,7 +29,7 @@ export function RoleBadge({ role }) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center",
-      padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
+      padding: "2px 8px", borderRadius: "var(--radius-sm)", fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
       background: r.bg, color: r.color,
     }}>
       {r.label}
@@ -41,7 +41,7 @@ export function Card({ children, style }) {
   return (
     <div style={{
       background: "var(--surface-1)", border: "1px solid var(--border)",
-      borderRadius: 12, padding: 16, ...style,
+      borderRadius: "var(--radius-lg)", padding: 16, ...style,
     }}>
       {children}
     </div>

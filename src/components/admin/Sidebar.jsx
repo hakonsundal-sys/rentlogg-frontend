@@ -21,7 +21,7 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout })
       <div style={{ marginBottom: 28, paddingLeft: 4 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 700 }}>
           <span style={{
-            width: 26, height: 26, borderRadius: 7, background: "var(--accent-orange)",
+            width: 26, height: 26, borderRadius: "var(--radius-sm)", background: "var(--brand-gradient)",
             color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14,
           }}>
             R

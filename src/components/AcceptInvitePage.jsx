@@ -48,7 +48,7 @@ export default function AcceptInvitePage({ token: inviteToken, onLogin, onCancel
         <Card style={{ textAlign: "center" }}>
           <div style={{ marginBottom: 12 }}>Denne invitasjonen er ikke lenger gyldig.</div>
           <button onClick={onCancel} style={{
-            background: "var(--text-accent)", color: "var(--surface-2)", border: "none",
+            background: "var(--accent-orange)", color: "white", border: "none",
             padding: "10px 20px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
             Gå til innlogging
@@ -74,7 +74,7 @@ export default function AcceptInvitePage({ token: inviteToken, onLogin, onCancel
           <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
           {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 10 }}>{error}</div>}
           <button type="submit" disabled={submitting} style={{
-            marginTop: 16, width: "100%", background: "var(--text-accent)", color: "var(--surface-2)",
+            marginTop: 16, width: "100%", background: "var(--accent-orange)", color: "white",
             border: "none", padding: "10px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
             {submitting ? "Oppretter..." : "Opprett konto"}

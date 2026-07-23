@@ -41,7 +41,7 @@ export default function LoginView({ onLogin }) {
           />
           {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 10 }}>{error}</div>}
           <button type="submit" disabled={loading} style={{
-            marginTop: 16, width: "100%", background: "var(--text-accent)", color: "var(--surface-2)",
+            marginTop: 16, width: "100%", background: "var(--accent-orange)", color: "white",
             border: "none", padding: "10px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
             {loading ? "Logger inn..." : "Logg inn"}

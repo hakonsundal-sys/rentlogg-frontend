@@ -5,12 +5,15 @@
   --border: #e4e4e7;
   --border-danger: #fecaca;
   --bg-danger: #fef2f2;
-  --radius: 8px;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
 
   --text-primary: #18181b;
   --text-secondary: #71717a;
   --text-muted: #a1a1aa;
-  --text-accent: #4f46e5;
   --text-success: #16a34a;
   --text-danger: #dc2626;
 
@@ -18,7 +21,7 @@
   --c-amber: color-mix(in srgb, #d97706 15%, transparent);
   --c-red: color-mix(in srgb, #dc2626 15%, transparent);
 
-  /* Admin/manager sidebar panel theme (CleanLog-style) */
+  /* Rentlogg brand theme — shared across the admin panel, cleaner, and customer views */
   --page-bg: #fdfbf7;
   --sidebar-bg: #ffffff;
   --sidebar-border: #f0e4d4;
@@ -26,11 +29,12 @@
   --accent-orange: #f97316;
   --accent-orange-dark: #ea580c;
   --accent-orange-bg: #fff1e6;
+  --brand-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark));
   --banner-gradient: linear-gradient(90deg, #ffede0, #fff6ee);
 
   font: 15px/145% system-ui, "Segoe UI", Roboto, sans-serif;
   color: var(--text-primary);
-  background: var(--surface-0);
+  background: var(--page-bg);
 }
 
 * {
@@ -40,7 +44,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--surface-0);
+  background: var(--page-bg);
 }
 
 .c-teal {

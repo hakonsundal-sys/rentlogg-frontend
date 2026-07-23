@@ -182,7 +182,7 @@ export default function CleanerView({ token }) {
         <div style={{ marginBottom: 16, color: "var(--text-secondary)" }}>Skann QR-koden ved lokasjonen for å starte oppdraget</div>
         {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
         <button onClick={scan} disabled={scanning} style={{
-          background: "var(--text-accent)", color: "var(--surface-2)", border: "none",
+          background: "var(--accent-orange)", color: "white", border: "none",
           padding: "10px 20px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
         }}>
           {scanning ? "Skanner..." : "Simuler QR-skann"}
@@ -343,7 +343,7 @@ export default function CleanerView({ token }) {
                 }}
               />
               <button onClick={submitDeviation} style={{
-                marginTop: 8, background: "var(--text-accent)", color: "var(--surface-2)",
+                marginTop: 8, background: "var(--accent-orange)", color: "white",
                 border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
               }}>
                 Send avvik
@@ -375,7 +375,7 @@ export default function CleanerView({ token }) {
             }}
           />
           <button onClick={submitDeviation} style={{
-            marginTop: 8, background: "var(--text-accent)", color: "var(--surface-2)",
+            marginTop: 8, background: "var(--accent-orange)", color: "white",
             border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
           }}>
             Send avvik

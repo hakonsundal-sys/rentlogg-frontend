@@ -1,14 +1,11 @@
 import { useState } from "react";
+import { LogOut } from "lucide-react";
 import LoginView from "./components/LoginView";
 import AcceptInvitePage from "./components/AcceptInvitePage";
 import AdminLayout from "./components/admin/AdminLayout";
 import CleanerView from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
-
-const ROLE_LABELS = {
-  cleaner: "Renholder",
-  customer: "Kunde",
-};
+import { RoleBadge } from "./components/shared";
 
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
@@ -45,14 +42,15 @@ export default function App() {
   return (
     <Shell>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-          {user.name} · {ROLE_LABELS[user.role]}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>{user.name}</span>
+          <RoleBadge role={user.role} />
         </div>
         <button onClick={() => setAuth(null)} style={{
-          background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-          padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "var(--text-secondary)",
+          display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--border)",
+          borderRadius: "var(--radius)", padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "var(--text-secondary)",
         }}>
-          Logg ut
+          <LogOut size={14} /> Logg ut
         </button>
       </div>
       {user.role === "cleaner" && <CleanerView token={token} />}
@@ -64,9 +62,18 @@ export default function App() {
 function Shell({ children }) {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 500 }}>Rentlogg</div>
-        <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Dokumentasjon for renholdsoppdrag</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
+        <span style={{
+          width: 30, height: 30, borderRadius: "var(--radius-sm)", background: "var(--brand-gradient)",
+          color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center",
+          fontSize: 16, fontWeight: 700,
+        }}>
+          R
+        </span>
+        <div style={{ fontSize: 19, fontWeight: 700 }}>Rentlogg</div>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 40, marginBottom: 20 }}>
+        Scan. Verify. Trust.
       </div>
       {children}
     </div>
