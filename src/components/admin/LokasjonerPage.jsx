@@ -18,7 +18,7 @@ function todayWeekday() {
   return new Date(`${todayStr}T00:00:00`).getDay();
 }
 
-const emptyForm = { name: "", client_id: "", address: "", room_count: "" };
+const emptyForm = { name: "", client_id: "", address: "" };
 
 export default function LokasjonerPage({ token, refreshSummary }) {
   const [sites, setSites] = useState([]);
@@ -266,7 +266,6 @@ export default function LokasjonerPage({ token, refreshSummary }) {
         token, method: "POST",
         body: JSON.stringify({
           name: form.name, client_id: Number(form.client_id), address: form.address || null,
-          room_count: form.room_count ? Number(form.room_count) : 0,
         }),
       });
       setForm(emptyForm);
@@ -284,7 +283,6 @@ export default function LokasjonerPage({ token, refreshSummary }) {
       name: site.name || "",
       client_id: site.client_id || "",
       address: site.address || "",
-      room_count: site.room_count ?? "",
     });
   }
 
@@ -296,7 +294,6 @@ export default function LokasjonerPage({ token, refreshSummary }) {
         token, method: "PATCH",
         body: JSON.stringify({
           name: editSiteForm.name, client_id: Number(editSiteForm.client_id), address: editSiteForm.address || null,
-          room_count: editSiteForm.room_count ? Number(editSiteForm.room_count) : 0,
         }),
       });
       setEditingSiteId(null);
@@ -367,8 +364,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
               <option value="">Velg kunde</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <input placeholder="Adresse" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={inputStyle} />
-            <input type="number" min="0" placeholder="Antall rom" value={form.room_count} onChange={(e) => setForm({ ...form, room_count: e.target.value })} style={inputStyle} />
+            <input placeholder="Adresse" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ ...inputStyle, gridColumn: "span 2" }} />
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett lokasjon</button>
           </form>
         </Card>
@@ -385,7 +381,6 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <input placeholder="Adresse" value={editSiteForm.address} onChange={(e) => setEditSiteForm({ ...editSiteForm, address: e.target.value })} style={inputStyle} />
-                <input type="number" min="0" placeholder="Antall rom" value={editSiteForm.room_count} onChange={(e) => setEditSiteForm({ ...editSiteForm, room_count: e.target.value })} style={inputStyle} />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingSiteId(null)} style={linkBtnStyle}>Avbryt</button>
