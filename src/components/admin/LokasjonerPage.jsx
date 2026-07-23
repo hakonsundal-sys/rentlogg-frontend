@@ -203,7 +203,14 @@ export default function LokasjonerPage({ token, refreshSummary }) {
       const form = new FormData();
       form.append("pdf", file);
       const data = await apiFetch(`/sites/${siteId}/rooms/import-pdf`, { token, method: "POST", body: form });
-      setImportPreview({ siteId, rooms: data.rooms.map((r) => ({ name: r.name, tasks: [...r.tasks] })) });
+      setImportPreview({
+        siteId,
+        rooms: data.rooms.map((r) => ({
+          name: r.name,
+          tasks: [...r.tasks],
+          schedule: { weekdays: r.schedule?.weekdays ? [...r.schedule.weekdays] : [], interval_days: r.schedule?.interval_days ?? null },
+        })),
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -240,10 +247,45 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     setImportPreview((p) => ({ ...p, rooms: p.rooms.filter((_, i) => i !== idx) }));
   }
 
+  function toggleImportWeekday(roomIdx, weekday) {
+    setImportPreview((p) => ({
+      ...p,
+      rooms: p.rooms.map((r, i) => {
+        if (i !== roomIdx) return r;
+        const weekdays = r.schedule.weekdays.includes(weekday)
+          ? r.schedule.weekdays.filter((w) => w !== weekday)
+          : [...r.schedule.weekdays, weekday];
+        return { ...r, schedule: { weekdays, interval_days: null } };
+      }),
+    }));
+  }
+
+  function setImportIntervalMode(roomIdx, days) {
+    setImportPreview((p) => ({
+      ...p,
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], interval_days: days } } : r)),
+    }));
+  }
+
+  function setImportWeekdayMode(roomIdx) {
+    setImportPreview((p) => ({
+      ...p,
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], interval_days: null } } : r)),
+    }));
+  }
+
   async function confirmImport() {
     try {
       const rooms = importPreview.rooms
-        .map((r) => ({ name: r.name.trim(), tasks: r.tasks.map((t) => t.trim()).filter(Boolean) }))
+        .map((r) => ({
+          name: r.name.trim(),
+          tasks: r.tasks.map((t) => t.trim()).filter(Boolean),
+          schedule: r.schedule.weekdays.length > 0
+            ? { weekdays: r.schedule.weekdays }
+            : r.schedule.interval_days
+            ? { interval_days: r.schedule.interval_days }
+            : null,
+        }))
         .filter((r) => r.name);
       await apiFetch(`/sites/${importPreview.siteId}/rooms/import-confirm`, {
         token, method: "POST", body: JSON.stringify({ rooms }),
@@ -498,6 +540,44 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                     <button onClick={() => addImportTask(roomIdx)} style={{ ...linkBtnStyle, marginLeft: 8, marginTop: 4 }}>
                       + Legg til oppgave
                     </button>
+
+                    <div style={{ marginLeft: 8, marginTop: 6 }}>
+                      {room.schedule.interval_days == null ? (
+                        <>
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            {WEEKDAYS.map((wd) => {
+                              const active = room.schedule.weekdays.includes(wd.value);
+                              return (
+                                <button key={wd.value} onClick={() => toggleImportWeekday(roomIdx, wd.value)} style={{
+                                  padding: "3px 7px", borderRadius: 6, fontSize: 11, cursor: "pointer",
+                                  border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+                                  background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
+                                  color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                                }}>
+                                  {wd.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button onClick={() => setImportIntervalMode(roomIdx, 7)} style={{ ...linkBtnStyle, marginTop: 4, fontSize: 11 }}>
+                            Bruk intervall i stedet
+                          </button>
+                        </>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 11 }}>Hver</span>
+                          <input
+                            type="number" min="1" value={room.schedule.interval_days}
+                            onChange={(e) => setImportIntervalMode(roomIdx, Number(e.target.value) || 1)}
+                            style={{ ...inputStyle, width: 44, padding: "2px 4px", fontSize: 11 }}
+                          />
+                          <span style={{ fontSize: 11 }}>dag(er)</span>
+                          <button onClick={() => setImportWeekdayMode(roomIdx)} style={{ ...linkBtnStyle, fontSize: 11 }}>
+                            Bruk ukedager i stedet
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {importPreview.rooms.length === 0 && (
