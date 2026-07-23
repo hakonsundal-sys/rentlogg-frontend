@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Users, Trash2, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card } from "../shared";
+import { Card, AddressAutocomplete } from "../shared";
 
 const emptyForm = { name: "", contact_name: "", contact_email: "", phone: "", address: "" };
 
@@ -98,7 +98,7 @@ export default function KunderPage({ token, refreshSummary }) {
             <input placeholder="Kontaktperson" value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} style={inputStyle} />
             <input type="email" placeholder="E-post" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} style={inputStyle} />
             <input placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
-            <input placeholder="Adresse" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ ...inputStyle, gridColumn: "span 2" }} />
+            <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} style={{ gridColumn: "span 2" }} />
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett kunde</button>
           </form>
         </Card>
@@ -113,7 +113,7 @@ export default function KunderPage({ token, refreshSummary }) {
                 <input placeholder="Kontaktperson" value={editForm.contact_name} onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })} style={inputStyle} />
                 <input type="email" placeholder="E-post" value={editForm.contact_email} onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })} style={inputStyle} />
                 <input placeholder="Telefon" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputStyle} />
-                <input placeholder="Adresse" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} style={inputStyle} />
+                <AddressAutocomplete value={editForm.address} onChange={(v) => setEditForm({ ...editForm, address: v })} inputStyle={inputStyle} />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingClientId(null)} style={linkBtnStyle}>Avbryt</button>

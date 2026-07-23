@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Building2, Trash2, QrCode, Pencil, FileUp } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card } from "../shared";
+import { Card, AddressAutocomplete } from "../shared";
 
 const WEEKDAYS = [
   { value: 1, label: "Man" },
@@ -364,7 +364,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
               <option value="">Velg kunde</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <input placeholder="Adresse" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ ...inputStyle, gridColumn: "span 2" }} />
+            <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} style={{ gridColumn: "span 2" }} />
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett lokasjon</button>
           </form>
         </Card>
@@ -380,7 +380,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                   <option value="">Velg kunde</option>
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <input placeholder="Adresse" value={editSiteForm.address} onChange={(e) => setEditSiteForm({ ...editSiteForm, address: e.target.value })} style={inputStyle} />
+                <AddressAutocomplete value={editSiteForm.address} onChange={(v) => setEditSiteForm({ ...editSiteForm, address: v })} inputStyle={inputStyle} />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingSiteId(null)} style={linkBtnStyle}>Avbryt</button>
