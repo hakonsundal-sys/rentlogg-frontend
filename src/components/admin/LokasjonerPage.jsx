@@ -13,6 +13,14 @@ const WEEKDAYS = [
   { value: 0, label: "Søn" },
 ];
 
+const OCCURRENCES = [
+  { value: 1, label: "Første" },
+  { value: 2, label: "Andre" },
+  { value: 3, label: "Tredje" },
+  { value: 4, label: "Fjerde" },
+  { value: -1, label: "Siste" },
+];
+
 function todayWeekday() {
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
   return new Date(`${todayStr}T00:00:00`).getDay();
@@ -160,6 +168,19 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  async function setRoomMonthlyMode(siteId, roomId, weekday, occurrence) {
+    try {
+      await apiFetch(`/rooms/${roomId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({ monthly_weekday: weekday, monthly_occurrence: occurrence }),
+      });
+      refreshRoomsForSite(siteId);
+      refreshRoomSchedule(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function toggleRoomWeekday(siteId, roomId, weekday) {
     const existing = (roomSchedules[roomId] || []).find((s) => s.weekday === weekday);
     try {
@@ -208,7 +229,11 @@ export default function LokasjonerPage({ token, refreshSummary }) {
         rooms: data.rooms.map((r) => ({
           name: r.name,
           tasks: [...r.tasks],
-          schedule: { weekdays: r.schedule?.weekdays ? [...r.schedule.weekdays] : [], interval_days: r.schedule?.interval_days ?? null },
+          schedule: {
+            weekdays: r.schedule?.weekdays ? [...r.schedule.weekdays] : [],
+            monthly: r.schedule?.monthly ? { ...r.schedule.monthly } : null,
+            interval_days: r.schedule?.interval_days ?? null,
+          },
         })),
       });
     } catch (err) {
@@ -255,7 +280,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
         const weekdays = r.schedule.weekdays.includes(weekday)
           ? r.schedule.weekdays.filter((w) => w !== weekday)
           : [...r.schedule.weekdays, weekday];
-        return { ...r, schedule: { weekdays, interval_days: null } };
+        return { ...r, schedule: { weekdays, monthly: null, interval_days: null } };
       }),
     }));
   }
@@ -263,14 +288,21 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   function setImportIntervalMode(roomIdx, days) {
     setImportPreview((p) => ({
       ...p,
-      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], interval_days: days } } : r)),
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], monthly: null, interval_days: days } } : r)),
     }));
   }
 
   function setImportWeekdayMode(roomIdx) {
     setImportPreview((p) => ({
       ...p,
-      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], interval_days: null } } : r)),
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], monthly: null, interval_days: null } } : r)),
+    }));
+  }
+
+  function setImportMonthlyMode(roomIdx, weekday, occurrence) {
+    setImportPreview((p) => ({
+      ...p,
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], monthly: { weekday, occurrence }, interval_days: null } } : r)),
     }));
   }
 
@@ -282,6 +314,8 @@ export default function LokasjonerPage({ token, refreshSummary }) {
           tasks: r.tasks.map((t) => t.trim()).filter(Boolean),
           schedule: r.schedule.weekdays.length > 0
             ? { weekdays: r.schedule.weekdays }
+            : r.schedule.monthly
+            ? { monthly: r.schedule.monthly }
             : r.schedule.interval_days
             ? { interval_days: r.schedule.interval_days }
             : null,
@@ -542,7 +576,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                     </button>
 
                     <div style={{ marginLeft: 8, marginTop: 6 }}>
-                      {room.schedule.interval_days == null ? (
+                      {room.schedule.interval_days == null && !room.schedule.monthly && (
                         <>
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             {WEEKDAYS.map((wd) => {
@@ -559,12 +593,18 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                               );
                             })}
                           </div>
-                          <button onClick={() => setImportIntervalMode(roomIdx, 7)} style={{ ...linkBtnStyle, marginTop: 4, fontSize: 11 }}>
-                            Bruk intervall i stedet
-                          </button>
+                          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                            <button onClick={() => setImportIntervalMode(roomIdx, 7)} style={{ ...linkBtnStyle, fontSize: 11 }}>
+                              Bruk intervall i stedet
+                            </button>
+                            <button onClick={() => setImportMonthlyMode(roomIdx, 1, 1)} style={{ ...linkBtnStyle, fontSize: 11 }}>
+                              Bruk månedlig i stedet
+                            </button>
+                          </div>
                         </>
-                      ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      )}
+                      {room.schedule.interval_days != null && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 11 }}>Hver</span>
                           <input
                             type="number" min="1" value={room.schedule.interval_days}
@@ -574,6 +614,34 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                           <span style={{ fontSize: 11 }}>dag(er)</span>
                           <button onClick={() => setImportWeekdayMode(roomIdx)} style={{ ...linkBtnStyle, fontSize: 11 }}>
                             Bruk ukedager i stedet
+                          </button>
+                          <button onClick={() => setImportMonthlyMode(roomIdx, 1, 1)} style={{ ...linkBtnStyle, fontSize: 11 }}>
+                            Bruk månedlig i stedet
+                          </button>
+                        </div>
+                      )}
+                      {room.schedule.monthly && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <select
+                            value={room.schedule.monthly.occurrence}
+                            onChange={(e) => setImportMonthlyMode(roomIdx, room.schedule.monthly.weekday, Number(e.target.value))}
+                            style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 80 }}
+                          >
+                            {OCCURRENCES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                          <select
+                            value={room.schedule.monthly.weekday}
+                            onChange={(e) => setImportMonthlyMode(roomIdx, Number(e.target.value), room.schedule.monthly.occurrence)}
+                            style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 80 }}
+                          >
+                            {WEEKDAYS.map((wd) => <option key={wd.value} value={wd.value}>{wd.label}</option>)}
+                          </select>
+                          <span style={{ fontSize: 11 }}>i måneden</span>
+                          <button onClick={() => setImportWeekdayMode(roomIdx)} style={{ ...linkBtnStyle, fontSize: 11 }}>
+                            Bruk ukedager i stedet
+                          </button>
+                          <button onClick={() => setImportIntervalMode(roomIdx, 7)} style={{ ...linkBtnStyle, fontSize: 11 }}>
+                            Bruk intervall i stedet
                           </button>
                         </div>
                       )}
@@ -636,7 +704,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                         </div>
 
                         <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Renholdsplan</div>
-                        {room.interval_days == null ? (
+                        {room.interval_days == null && room.monthly_weekday == null && (
                           <>
                             <div style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "6px 0" }}>
                               {WEEKDAYS.map((wd) => {
@@ -666,12 +734,18 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                                 </select>
                               </div>
                             ))}
-                            <button onClick={() => setRoomIntervalMode(site.id, room.id, 7)} style={{ ...linkBtnStyle, marginTop: 4 }}>
-                              Bruk intervall i stedet
-                            </button>
+                            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                              <button onClick={() => setRoomIntervalMode(site.id, room.id, 7)} style={linkBtnStyle}>
+                                Bruk intervall i stedet
+                              </button>
+                              <button onClick={() => setRoomMonthlyMode(site.id, room.id, todayWeekday(), 1)} style={linkBtnStyle}>
+                                Bruk månedlig i stedet
+                              </button>
+                            </div>
                           </>
-                        ) : (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                        )}
+                        {room.interval_days != null && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 12 }}>Hver</span>
                             <input
                               type="number" min="1" defaultValue={room.interval_days}
@@ -681,6 +755,34 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                             <span style={{ fontSize: 12 }}>dag(er)</span>
                             <button onClick={() => toggleRoomWeekday(site.id, room.id, todayWeekday())} style={linkBtnStyle}>
                               Bruk ukedager i stedet
+                            </button>
+                            <button onClick={() => setRoomMonthlyMode(site.id, room.id, todayWeekday(), 1)} style={linkBtnStyle}>
+                              Bruk månedlig i stedet
+                            </button>
+                          </div>
+                        )}
+                        {room.monthly_weekday != null && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                            <select
+                              value={room.monthly_occurrence ?? 1}
+                              onChange={(e) => setRoomMonthlyMode(site.id, room.id, room.monthly_weekday, Number(e.target.value))}
+                              style={{ ...inputStyle, padding: "3px 5px", fontSize: 12, width: 90 }}
+                            >
+                              {OCCURRENCES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                            <select
+                              value={room.monthly_weekday}
+                              onChange={(e) => setRoomMonthlyMode(site.id, room.id, Number(e.target.value), room.monthly_occurrence ?? 1)}
+                              style={{ ...inputStyle, padding: "3px 5px", fontSize: 12, width: 90 }}
+                            >
+                              {WEEKDAYS.map((wd) => <option key={wd.value} value={wd.value}>{wd.label}</option>)}
+                            </select>
+                            <span style={{ fontSize: 12 }}>i måneden</span>
+                            <button onClick={() => toggleRoomWeekday(site.id, room.id, todayWeekday())} style={linkBtnStyle}>
+                              Bruk ukedager i stedet
+                            </button>
+                            <button onClick={() => setRoomIntervalMode(site.id, room.id, 7)} style={linkBtnStyle}>
+                              Bruk intervall i stedet
                             </button>
                           </div>
                         )}
