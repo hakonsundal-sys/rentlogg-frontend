@@ -29,8 +29,28 @@ export default function CleanerView({ token }) {
   const [deviationText, setDeviationText] = useState("");
   const [photoCount, setPhotoCount] = useState(0);
   const [error, setError] = useState("");
+  const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
+  const undoTimeoutRef = useRef(null);
+
+  function showUndo(label, onUndo) {
+    clearTimeout(undoTimeoutRef.current);
+    setUndoAction({ label, onUndo });
+    undoTimeoutRef.current = setTimeout(() => setUndoAction(null), 8000);
+  }
+
+  async function performUndo() {
+    if (!undoAction) return;
+    clearTimeout(undoTimeoutRef.current);
+    const { onUndo } = undoAction;
+    setUndoAction(null);
+    try {
+      await onUndo();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   useEffect(() => {
     apiFetch("/sites", { token }).then(setSites).catch((err) => setError(err.message));
@@ -55,6 +75,8 @@ export default function CleanerView({ token }) {
       setShowDeviationForm(false);
       setExpandedRoomId(null);
       setRoomRun(null);
+      clearTimeout(undoTimeoutRef.current);
+      setUndoAction(null);
 
       const siteRooms = await apiFetch(`/sites/${checkin.site.id}/rooms`, { token });
       setRooms(siteRooms);
@@ -107,20 +129,33 @@ export default function CleanerView({ token }) {
   }
 
   async function completeRoom() {
+    const roomId = expandedRoomId;
+    const roomName = rooms.find((r) => r.id === roomId)?.name || "Rom";
     try {
       await apiFetch(`/rooms/runs/${roomRun.id}/complete`, { token, method: "POST" });
       setExpandedRoomId(null);
       setRoomRun(null);
       refreshRooms();
+      showUndo(`${roomName} fullført`, async () => {
+        await apiFetch(`/rooms/${roomId}/reopen`, { token, method: "POST" });
+        refreshRooms();
+      });
     } catch (err) {
       setError(err.message);
     }
   }
 
   async function bulkCompleteAllDue() {
+    const roomIds = rooms.filter((r) => r.dueToday && r.status !== "completed").map((r) => r.id);
     try {
       await apiFetch(`/sites/${run.site.id}/rooms/complete-all-due`, { token, method: "POST" });
       refreshRooms();
+      showUndo(`${roomIds.length} rom fullført`, async () => {
+        await Promise.all(
+          roomIds.map((id) => apiFetch(`/rooms/${id}/reopen`, { token, method: "POST", body: JSON.stringify({ resetItems: true }) }))
+        );
+        refreshRooms();
+      });
     } catch (err) {
       setError(err.message);
     }
@@ -136,6 +171,16 @@ export default function CleanerView({ token }) {
       setDeviationText("");
       setShowDeviationForm(false);
       setRun((r) => ({ ...r, site: { ...r.site, status: "deviation" } }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function toggleItem(item) {
+    const done = !item.done;
+    setRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
+    try {
+      await apiFetch(`/checklists/runs/${run.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
     } catch (err) {
       setError(err.message);
     }
@@ -169,6 +214,8 @@ export default function CleanerView({ token }) {
       await apiFetch(`/checklists/runs/${run.id}/complete`, { token, method: "POST" });
       setRun(null);
       setRooms(null);
+      clearTimeout(undoTimeoutRef.current);
+      setUndoAction(null);
       apiFetch("/sites", { token }).then(setSites).catch(() => {});
     } catch (err) {
       setError(err.message);
@@ -200,7 +247,7 @@ export default function CleanerView({ token }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <button onClick={() => { setRun(null); setRooms(null); }} style={{
+        <button onClick={() => { setRun(null); setRooms(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
           display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
           color: "var(--text-secondary)", fontSize: 13, cursor: "pointer",
         }}>
@@ -210,6 +257,22 @@ export default function CleanerView({ token }) {
       </div>
 
       {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+
+      {undoAction && (
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          background: "var(--sidebar-active-bg)", border: "1px solid var(--accent-orange-bg)",
+          borderRadius: "var(--radius)", padding: "10px 14px", marginBottom: 16, fontSize: 13,
+        }}>
+          <span>{undoAction.label}</span>
+          <button onClick={performUndo} style={{
+            background: "none", border: "none", color: "var(--accent-orange-dark)",
+            fontWeight: 600, cursor: "pointer", fontSize: 13,
+          }}>
+            Angre
+          </button>
+        </div>
+      )}
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ fontWeight: 500, fontSize: 16, marginBottom: 2 }}>{run.site.name}</div>
