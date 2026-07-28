@@ -53,7 +53,7 @@ export default function App() {
           <LogOut size={14} /> Logg ut
         </button>
       </div>
-      {user.role === "cleaner" && <CleanerView token={token} />}
+      {user.role === "cleaner" && <CleanerView token={token} user={user} />}
       {user.role === "customer" && <CustomerView token={token} />}
     </Shell>
   );

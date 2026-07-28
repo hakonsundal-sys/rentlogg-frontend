@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard,
 } from "lucide-react";
 import { apiFetch } from "../api";
 import { Card, StatusBadge } from "./shared";
+import QrScanner from "./QrScanner";
 
 function getPosition() {
   return new Promise((resolve) => {
@@ -16,20 +17,44 @@ function getPosition() {
   });
 }
 
+// "Kari Renholder" -> "KR", used to prefill the sign-off field for the common case
+// (the logged-in cleaner is the one actually doing the work), while staying editable
+// for the shared-access case where someone else picks up and finishes the visit.
+function suggestInitials(name) {
+  if (!name) return "";
+  return name.trim().split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 3);
+}
+
+// The QR image encodes a full check-in URL (.../checkin/<token>); accept either that or a
+// bare token typed into the manual-entry fallback.
+function extractQrToken(scannedText) {
+  const text = (scannedText || "").trim();
+  try {
+    const url = new URL(text);
+    const parts = url.pathname.split("/").filter(Boolean);
+    return parts[parts.length - 1] || null;
+  } catch {
+    return text || null;
+  }
+}
+
 const ROOM_STATUS_LABEL = { missing: "IKKE STARTET", in_progress: "PÅGÅR", completed: "FERDIG" };
 
-export default function CleanerView({ token }) {
-  const [sites, setSites] = useState([]);
+export default function CleanerView({ token, user }) {
   const [run, setRun] = useState(null);
   const [rooms, setRooms] = useState(null); // null = not room-enabled site (or not yet loaded)
   const [expandedRoomId, setExpandedRoomId] = useState(null);
   const [roomRun, setRoomRun] = useState(null);
   const [scanning, setScanning] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualCode, setManualCode] = useState("");
   const [showDeviationForm, setShowDeviationForm] = useState(false);
   const [deviationText, setDeviationText] = useState("");
   const [photoCount, setPhotoCount] = useState(0);
   const [error, setError] = useState("");
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
+  const [initials, setInitials] = useState(() => suggestInitials(user?.name));
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const undoTimeoutRef = useRef(null);
@@ -52,21 +77,12 @@ export default function CleanerView({ token }) {
     }
   }
 
-  useEffect(() => {
-    apiFetch("/sites", { token }).then(setSites).catch((err) => setError(err.message));
-  }, [token]);
-
-  async function scan() {
+  async function checkInWithToken(qrToken) {
     setError("");
     setScanning(true);
     try {
-      const unfinished = sites.filter((s) => s.status !== "ok");
-      const pool = unfinished.length ? unfinished : sites;
-      if (!pool.length) throw new Error("Ingen lokasjoner tilgjengelig");
-      const site = pool[Math.floor(Math.random() * pool.length)];
-
       const position = await getPosition();
-      const checkin = await apiFetch(`/sites/checkin/${site.qr_token}`, {
+      const checkin = await apiFetch(`/sites/checkin/${qrToken}`, {
         token, method: "POST", body: JSON.stringify(position || {}),
       });
       const fullRun = await apiFetch(`/checklists/runs/${checkin.runId}`, { token });
@@ -85,6 +101,24 @@ export default function CleanerView({ token }) {
     } finally {
       setScanning(false);
     }
+  }
+
+  function handleQrScanned(scannedText) {
+    setShowScanner(false);
+    const qrToken = extractQrToken(scannedText);
+    if (!qrToken) {
+      setError("Kunne ikke lese QR-koden. Prøv igjen.");
+      return;
+    }
+    checkInWithToken(qrToken);
+  }
+
+  function submitManualCode(e) {
+    e.preventDefault();
+    if (!manualCode.trim()) return;
+    setShowManualEntry(false);
+    checkInWithToken(extractQrToken(manualCode));
+    setManualCode("");
   }
 
   function refreshRooms() {
@@ -129,10 +163,15 @@ export default function CleanerView({ token }) {
   }
 
   async function completeRoom() {
+    setError("");
+    if (!initials.trim()) {
+      setError("Skriv inn initialene dine for å fullføre rommet.");
+      return;
+    }
     const roomId = expandedRoomId;
     const roomName = rooms.find((r) => r.id === roomId)?.name || "Rom";
     try {
-      await apiFetch(`/rooms/runs/${roomRun.id}/complete`, { token, method: "POST" });
+      await apiFetch(`/rooms/runs/${roomRun.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       setExpandedRoomId(null);
       setRoomRun(null);
       refreshRooms();
@@ -146,9 +185,14 @@ export default function CleanerView({ token }) {
   }
 
   async function bulkCompleteAllDue() {
+    setError("");
+    if (!initials.trim()) {
+      setError("Skriv inn initialene dine for å fullføre oppgavene.");
+      return;
+    }
     const roomIds = rooms.filter((r) => r.dueToday && r.status !== "completed").map((r) => r.id);
     try {
-      await apiFetch(`/sites/${run.site.id}/rooms/complete-all-due`, { token, method: "POST" });
+      await apiFetch(`/sites/${run.site.id}/rooms/complete-all-due`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       refreshRooms();
       showUndo(`${roomIds.length} rom fullført`, async () => {
         await Promise.all(
@@ -203,6 +247,11 @@ export default function CleanerView({ token }) {
   }
 
   async function complete() {
+    setError("");
+    if (!initials.trim()) {
+      setError("Skriv inn initialene dine for å fullføre besøket.");
+      return;
+    }
     if (rooms && rooms.length > 0) {
       const incompleteDue = rooms.filter((r) => r.dueToday && r.status !== "completed");
       if (incompleteDue.length > 0) {
@@ -211,29 +260,62 @@ export default function CleanerView({ token }) {
       }
     }
     try {
-      await apiFetch(`/checklists/runs/${run.id}/complete`, { token, method: "POST" });
+      await apiFetch(`/checklists/runs/${run.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       setRun(null);
       setRooms(null);
       clearTimeout(undoTimeoutRef.current);
       setUndoAction(null);
-      apiFetch("/sites", { token }).then(setSites).catch(() => {});
     } catch (err) {
       setError(err.message);
     }
   }
 
   if (!run) {
+    if (showScanner) {
+      return (
+        <div>
+          <QrScanner onScan={handleQrScanned} onCancel={() => setShowScanner(false)} />
+          {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 12 }}>{error}</div>}
+        </div>
+      );
+    }
     return (
       <Card style={{ textAlign: "center", padding: 40 }}>
         <QrCode size={40} style={{ margin: "0 auto 12px", color: "var(--text-secondary)" }} />
         <div style={{ marginBottom: 16, color: "var(--text-secondary)" }}>Skann QR-koden ved lokasjonen for å starte oppdraget</div>
         {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
-        <button onClick={scan} disabled={scanning} style={{
+        <button onClick={() => { setError(""); setShowScanner(true); }} disabled={scanning} style={{
           background: "var(--accent-orange)", color: "white", border: "none",
           padding: "10px 20px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
         }}>
-          {scanning ? "Skanner..." : "Simuler QR-skann"}
+          {scanning ? "Sjekker inn..." : "Skann QR-kode"}
         </button>
+        <div style={{ marginTop: 14 }}>
+          <button onClick={() => setShowManualEntry((v) => !v)} style={{
+            display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none",
+            color: "var(--text-secondary)", fontSize: 13, cursor: "pointer",
+          }}>
+            <Keyboard size={14} /> Skriv inn kode manuelt
+          </button>
+        </div>
+        {showManualEntry && (
+          <form onSubmit={submitManualCode} style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "center" }}>
+            <input
+              value={manualCode} onChange={(e) => setManualCode(e.target.value)}
+              placeholder="QR-kode" autoFocus
+              style={{
+                padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13, width: 180,
+              }}
+            />
+            <button type="submit" disabled={scanning} style={{
+              background: "var(--accent-orange)", color: "white", border: "none",
+              padding: "8px 14px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
+            }}>
+              Sjekk inn
+            </button>
+          </form>
+        )}
       </Card>
     );
   }
@@ -286,6 +368,18 @@ export default function CleanerView({ token }) {
             <MapPin size={15} /> Posisjon ikke bekreftet
           </div>
         )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+          <label style={{ fontSize: 13, color: "var(--text-secondary)" }}>Signatur (initialer)</label>
+          <input
+            value={initials} onChange={(e) => setInitials(e.target.value)}
+            placeholder="F.eks. KR" maxLength={4}
+            style={{
+              padding: "5px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+              background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13, width: 70,
+              textTransform: "uppercase",
+            }}
+          />
+        </div>
       </Card>
 
       {isRoomEnabled ? (
@@ -476,13 +570,18 @@ function RoomRow({ room, expanded, onOpen, muted }) {
         </div>
       </div>
       {!muted && (
-        <span style={{
-          fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap",
-          background: room.status === "completed" ? "var(--c-teal)" : "var(--accent-orange-bg)",
-          color: room.status === "completed" ? "var(--text-success)" : "var(--accent-orange-dark)",
-        }}>
-          {ROOM_STATUS_LABEL[room.status]}
-        </span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap",
+            background: room.status === "completed" ? "var(--c-teal)" : "var(--accent-orange-bg)",
+            color: room.status === "completed" ? "var(--text-success)" : "var(--accent-orange-dark)",
+          }}>
+            {ROOM_STATUS_LABEL[room.status]}
+          </span>
+          {room.status === "completed" && room.signedInitials && (
+            <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>Signert {room.signedInitials}</span>
+          )}
+        </div>
       )}
     </div>
   );

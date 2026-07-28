@@ -13,7 +13,7 @@ export default function DashboardPage({ user, summary }) {
     ...summary.recentActivity.map((a) => ({
       key: `run-${a.id}`,
       title: a.siteName,
-      subtitle: `${a.cleanerName} · ${a.status === "completed" ? "Fullført" : "Pågår"}`,
+      subtitle: `${a.cleanerName} · ${a.status === "completed" ? "Fullført" : "Pågår"}${a.signedInitials ? ` · signert ${a.signedInitials}` : ""}`,
       badge: a.status === "completed" ? "FULLFØRT" : "PÅGÅR",
       badgeColor: a.status === "completed" ? "var(--text-success)" : "var(--accent-orange-dark)",
       badgeBg: a.status === "completed" ? "var(--c-teal)" : "var(--accent-orange-bg)",

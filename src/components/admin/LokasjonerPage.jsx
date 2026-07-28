@@ -49,6 +49,8 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [qrPreview, setQrPreview] = useState(null); // { siteId, siteName, checkInUrl, qrImage }
+  const [loadingQrSiteId, setLoadingQrSiteId] = useState(null);
   const [importingPdf, setImportingPdf] = useState(false);
   const [importPreview, setImportPreview] = useState(null); // { siteId, rooms: [{name, tasks: [string]}] }
   const pdfInputRef = useRef(null);
@@ -391,6 +393,19 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  async function showQrCode(site) {
+    setError("");
+    setLoadingQrSiteId(site.id);
+    try {
+      const data = await apiFetch(`/sites/${site.id}/qr`, { token });
+      setQrPreview({ siteId: site.id, siteName: site.name, ...data });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingQrSiteId(null);
+    }
+  }
+
   async function toggleWeekday(siteId, weekday) {
     const existing = (schedules[siteId] || []).find((s) => s.weekday === weekday);
     try {
@@ -490,7 +505,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                   <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
                     <QrCode size={14} /> {rooms[site.id]?.length ?? site.room_count ?? 0} rom
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
                     <button
                       onClick={() => setExpandedRoomsSite(expandedRoomsSite === site.id ? null : site.id)}
                       style={linkBtnStyle}
@@ -499,6 +514,9 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                     </button>
                     <button data-site-id={site.id} data-action="toggle-schedule" onClick={() => setExpandedSite(expandedSite === site.id ? null : site.id)} style={linkBtnStyle}>
                       {expandedSite === site.id ? "Skjul plan" : "Ukeplan"}
+                    </button>
+                    <button onClick={() => showQrCode(site)} disabled={loadingQrSiteId === site.id} style={linkBtnStyle}>
+                      {loadingQrSiteId === site.id ? "Laster..." : "QR-kode"}
                     </button>
                   </div>
                 </div>
@@ -812,6 +830,33 @@ export default function LokasjonerPage({ token, refreshSummary }) {
         ))}
       </div>
       {sites.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen lokasjoner ennå.</Card>}
+
+      {qrPreview && (
+        <div
+          onClick={() => setQrPreview(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 24, maxWidth: 320, textAlign: "center" }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>{qrPreview.siteName}</div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 16 }}>
+              Skriv ut og heng opp ved lokasjonen — renholdere skanner denne for å sjekke inn.
+            </div>
+            <img src={qrPreview.qrImage} alt="QR-kode" style={{ width: "100%", borderRadius: "var(--radius)" }} />
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <a
+                href={qrPreview.qrImage} download={`qr-${qrPreview.siteName.replace(/\s+/g, "-").toLowerCase()}.png`}
+                style={{ ...primaryBtnStyle, flex: 1, textAlign: "center", textDecoration: "none", display: "inline-block" }}
+              >
+                Last ned
+              </a>
+              <button onClick={() => setQrPreview(null)} style={{ ...linkBtnStyle, flex: 1 }}>Lukk</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
