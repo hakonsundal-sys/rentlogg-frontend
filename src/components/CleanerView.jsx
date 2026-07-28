@@ -17,13 +17,6 @@ function getPosition() {
   });
 }
 
-// "Kari Renholder" -> "KR", used to prefill the sign-off field for the common case
-// (the logged-in cleaner is the one actually doing the work), while staying editable
-// for the shared-access case where someone else picks up and finishes the visit.
-function suggestInitials(name) {
-  if (!name) return "";
-  return name.trim().split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 3);
-}
 
 // The QR image encodes a full check-in URL (.../checkin/<token>); accept either that or a
 // bare token typed into the manual-entry fallback.
@@ -54,7 +47,7 @@ export default function CleanerView({ token, user }) {
   const [photoCount, setPhotoCount] = useState(0);
   const [error, setError] = useState("");
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
-  const [initials, setInitials] = useState(() => suggestInitials(user?.name));
+  const [initials, setInitials] = useState(() => user?.name || "");
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const undoTimeoutRef = useRef(null);
@@ -165,7 +158,7 @@ export default function CleanerView({ token, user }) {
   async function completeRoom() {
     setError("");
     if (!initials.trim()) {
-      setError("Skriv inn initialene dine for å fullføre rommet.");
+      setError("Skriv inn navnet ditt for å fullføre rommet.");
       return;
     }
     const roomId = expandedRoomId;
@@ -187,7 +180,7 @@ export default function CleanerView({ token, user }) {
   async function bulkCompleteAllDue() {
     setError("");
     if (!initials.trim()) {
-      setError("Skriv inn initialene dine for å fullføre oppgavene.");
+      setError("Skriv inn navnet ditt for å fullføre oppgavene.");
       return;
     }
     const roomIds = rooms.filter((r) => r.dueToday && r.status !== "completed").map((r) => r.id);
@@ -249,7 +242,7 @@ export default function CleanerView({ token, user }) {
   async function complete() {
     setError("");
     if (!initials.trim()) {
-      setError("Skriv inn initialene dine for å fullføre besøket.");
+      setError("Skriv inn navnet ditt for å fullføre besøket.");
       return;
     }
     if (rooms && rooms.length > 0) {
@@ -369,14 +362,13 @@ export default function CleanerView({ token, user }) {
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
-          <label style={{ fontSize: 13, color: "var(--text-secondary)" }}>Signatur (initialer)</label>
+          <label style={{ fontSize: 13, color: "var(--text-secondary)" }}>Signatur (navn)</label>
           <input
             value={initials} onChange={(e) => setInitials(e.target.value)}
-            placeholder="F.eks. KR" maxLength={4}
+            placeholder="Fullt navn" maxLength={60}
             style={{
               padding: "5px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
-              background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13, width: 70,
-              textTransform: "uppercase",
+              background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13, width: 160,
             }}
           />
         </div>

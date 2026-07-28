@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Trash2, QrCode, Pencil, FileUp } from "lucide-react";
+import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, AddressAutocomplete } from "../shared";
 
@@ -32,6 +32,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
   const [cleaners, setCleaners] = useState([]);
+  const [templates, setTemplates] = useState([]); // [{id, name, items: [{id, label}]}]
   const [schedules, setSchedules] = useState({}); // siteId -> [{id, weekday, assigned_cleaner_id, assigned_cleaner_name}]
   const [rooms, setRooms] = useState({}); // siteId -> [{id, name, interval_days, dueToday, status, lastCleanedAt, itemCount}]
   const [error, setError] = useState("");
@@ -61,11 +62,13 @@ export default function LokasjonerPage({ token, refreshSummary }) {
       apiFetch("/sites", { token }),
       apiFetch("/clients", { token }),
       apiFetch("/auth/users?role=cleaner", { token }),
+      apiFetch("/checklists/templates", { token }),
     ])
-      .then(async ([sitesData, clientsData, cleanersData]) => {
+      .then(async ([sitesData, clientsData, cleanersData, templatesData]) => {
         setSites(sitesData);
         setClients(clientsData);
         setCleaners(cleanersData);
+        setTemplates(templatesData);
         const scheduleEntries = await Promise.all(
           sitesData.map((s) => apiFetch(`/sites/${s.id}/schedule`, { token }).then((rows) => [s.id, rows]))
         );
@@ -406,6 +409,17 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  async function removeChecklist(site) {
+    const template = templates.find((t) => t.id === site.checklist_template_id);
+    if (!window.confirm(`Fjerne sjekklisten «${template?.name || ""}» fra ${site.name}?`)) return;
+    try {
+      await apiFetch(`/sites/${site.id}`, { token, method: "PATCH", body: JSON.stringify({ checklist_template_id: null }) });
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function toggleWeekday(siteId, weekday) {
     const existing = (schedules[siteId] || []).find((s) => s.weekday === weekday);
     try {
@@ -500,6 +514,16 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                 <div style={{ fontWeight: 600, marginTop: 12 }}>{site.name}</div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{clientName(site.client_id)}</div>
                 {site.address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{site.address}</div>}
+                {site.checklist_template_id && (
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                    <ClipboardList size={13} />
+                    Sjekkliste: {templates.find((t) => t.id === site.checklist_template_id)?.name || "Ukjent"}
+                    {" "}({templates.find((t) => t.id === site.checklist_template_id)?.items?.length ?? 0} oppgaver)
+                    <button onClick={() => removeChecklist(site)} style={{ ...iconBtnStyle, padding: 2 }} title="Fjern sjekkliste">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )}
 
                 <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
