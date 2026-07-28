@@ -390,14 +390,8 @@ export default function CleanerView({ token, user }) {
             </button>
           )}
 
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Rom å gjøre i dag</div>
-          {dueRooms.map((room) => (
-            <RoomRow key={room.id} room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} />
-          ))}
-          {dueRooms.length === 0 && <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>Ingen rom planlagt i dag.</div>}
-
           {expandedRoomId && roomRun && (
-            <Card style={{ margin: "12px 0" }}>
+            <Card style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ fontWeight: 500 }}>{rooms.find((r) => r.id === expandedRoomId)?.name}</div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
@@ -433,6 +427,12 @@ export default function CleanerView({ token, user }) {
               </div>
             </Card>
           )}
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Rom å gjøre i dag</div>
+          {dueRooms.map((room) => (
+            <RoomRow key={room.id} room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} />
+          ))}
+          {dueRooms.length === 0 && <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>Ingen rom planlagt i dag.</div>}
 
           {notPlannedRooms.length > 0 && (
             <>
