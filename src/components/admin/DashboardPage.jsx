@@ -1,13 +1,62 @@
-import { useState } from "react";
-import { Sparkles, X, ClipboardList, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, X, ClipboardList, CheckCircle2, Circle, Clock, AlertTriangle } from "lucide-react";
+import { apiFetch, API_URL } from "../../api";
 import { Card } from "../shared";
 
 const ROLE_CHIP = { admin: "Administrator", manager: "Driftsleder" };
 
-export default function DashboardPage({ user, summary }) {
+const RUN_FILTERS = [
+  { key: "all", label: "Alle" },
+  { key: "in_progress", label: "Pågående" },
+  { key: "completed", label: "Fullført" },
+];
+
+function photoUrl(filePath) {
+  const filename = filePath.split(/[\\/]/).pop();
+  return `${API_URL}/uploads/${filename}`;
+}
+
+export default function DashboardPage({ token, user, summary }) {
   const [showOnboarding, setShowOnboarding] = useState(true);
+  const [runs, setRuns] = useState([]);
+  const [deviations, setDeviations] = useState([]);
+  const [runFilter, setRunFilter] = useState("all");
+  const [selectedRunId, setSelectedRunId] = useState(null);
+  const [runDetail, setRunDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    apiFetch("/checklists/runs", { token }).then(setRuns).catch((err) => setError(err.message));
+    apiFetch("/deviations", { token }).then(setDeviations).catch(() => {});
+  }, [token]);
+
+  async function openRunDetail(runId) {
+    setSelectedRunId(runId);
+    setLoadingDetail(true);
+    try {
+      const data = await apiFetch(`/checklists/runs/${runId}`, { token });
+      setRunDetail(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
+
+  function closeRunDetail() {
+    setSelectedRunId(null);
+    setRunDetail(null);
+  }
 
   if (!summary) return <div style={{ color: "var(--text-secondary)" }}>Laster...</div>;
+
+  const filteredRuns = runs.filter((r) => {
+    if (runFilter === "completed") return !!r.completed_at;
+    if (runFilter === "in_progress") return !r.completed_at;
+    return true;
+  });
+  const runDeviations = runDetail ? deviations.filter((d) => d.run_id === runDetail.id) : [];
 
   const activity = [
     ...summary.recentActivity.map((a) => ({
@@ -94,6 +143,126 @@ export default function DashboardPage({ user, summary }) {
           <div style={{ fontSize: 12, opacity: 0.85 }}>Oversikt over alle dine lokasjoner.</div>
         </div>
       </div>
+
+      {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 16 }}>{error}</div>}
+
+      <Card style={{ marginTop: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontWeight: 600 }}>Alle oppdrag</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {RUN_FILTERS.map((f) => (
+              <button key={f.key} onClick={() => setRunFilter(f.key)} style={{
+                padding: "4px 10px", borderRadius: 999, fontSize: 12, cursor: "pointer",
+                border: runFilter === f.key ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+                background: runFilter === f.key ? "var(--accent-orange-bg)" : "var(--surface-0)",
+                color: runFilter === f.key ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+              }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {filteredRuns.length === 0 && <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>Ingen oppdrag ennå.</div>}
+        {filteredRuns.map((r) => (
+          <div key={r.id} onClick={() => openRunDetail(r.id)} style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "10px 0", borderTop: "1px solid var(--border)", cursor: "pointer",
+          }}>
+            <div>
+              <div style={{ fontWeight: 500, fontSize: 14 }}>{r.site_name}</div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                {r.cleaner_name} · {r.started_at.slice(0, 16)}
+              </div>
+            </div>
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 999,
+              background: r.completed_at ? "var(--c-teal)" : "var(--accent-orange-bg)",
+              color: r.completed_at ? "var(--text-success)" : "var(--accent-orange-dark)",
+            }}>
+              {r.completed_at ? "FULLFØRT" : "PÅGÅR"}
+            </span>
+          </div>
+        ))}
+      </Card>
+
+      {selectedRunId && (
+        <div
+          onClick={closeRunDetail}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 24,
+            maxWidth: 480, width: "100%", maxHeight: "85vh", overflowY: "auto",
+          }}>
+            {loadingDetail && <div style={{ color: "var(--text-secondary)" }}>Laster...</div>}
+            {runDetail && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 16 }}>{runDetail.site_name}</div>
+                    {runDetail.site_address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{runDetail.site_address}</div>}
+                  </div>
+                  <button onClick={closeRunDetail} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)", display: "grid", gap: 4 }}>
+                  <div>Renholder: <strong style={{ color: "var(--text-primary)" }}>{runDetail.cleaner_name}</strong></div>
+                  <div>Startet: {runDetail.started_at.slice(0, 16)}</div>
+                  {runDetail.completed_at && <div>Fullført: {runDetail.completed_at.slice(0, 16)}</div>}
+                  {runDetail.signed_initials && (
+                    <div>Signert: <strong style={{ color: "var(--text-primary)" }}>{runDetail.signed_initials}</strong></div>
+                  )}
+                  <div>{runDetail.gps_verified ? "Posisjon bekreftet" : "Posisjon ikke bekreftet"}</div>
+                </div>
+
+                <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Sjekkliste</div>
+                {runDetail.items.map((item) => (
+                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
+                    {item.done
+                      ? <CheckCircle2 size={15} style={{ color: "var(--text-success)" }} />
+                      : <Circle size={15} style={{ color: "var(--text-muted)" }} />}
+                    <span style={{
+                      fontSize: 13, textDecoration: item.done ? "line-through" : "none",
+                      color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
+                    }}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+
+                {runDetail.photos.length > 0 && (
+                  <>
+                    <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Bilder</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                      {runDetail.photos.map((p) => (
+                        <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
+                          <img src={photoUrl(p.file_path)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                        </a>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {runDeviations.length > 0 && (
+                  <>
+                    <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13, color: "var(--text-danger)" }}>Avvik</div>
+                    {runDeviations.map((d) => (
+                      <div key={d.id} style={{ fontSize: 13, color: "var(--text-danger)", padding: "6px 0", borderTop: "1px solid var(--border)" }}>
+                        {d.description}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
