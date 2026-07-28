@@ -252,8 +252,18 @@ export default function DashboardPage({ token, user, summary }) {
                   <>
                     <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13, color: "var(--text-danger)" }}>Avvik</div>
                     {runDeviations.map((d) => (
-                      <div key={d.id} style={{ fontSize: 13, color: "var(--text-danger)", padding: "6px 0", borderTop: "1px solid var(--border)" }}>
-                        {d.description}
+                      <div key={d.id} style={{ padding: "6px 0", borderTop: "1px solid var(--border)" }}>
+                        {d.title && <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-danger)" }}>{d.title}</div>}
+                        <div style={{ fontSize: 13, color: "var(--text-danger)" }}>{d.description}</div>
+                        {d.photos?.length > 0 && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                            {d.photos.map((ph) => (
+                              <a key={ph.id} href={photoUrl(ph.file_path)} target="_blank" rel="noreferrer">
+                                <img src={photoUrl(ph.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </>

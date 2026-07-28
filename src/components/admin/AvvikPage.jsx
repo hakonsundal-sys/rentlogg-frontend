@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { Info, AlertTriangle, CircleAlert, MapPin, Clock } from "lucide-react";
-import { apiFetch } from "../../api";
+import { apiFetch, API_URL } from "../../api";
 import { Card } from "../shared";
+
+function photoUrl(filePath) {
+  const filename = filePath.split(/[\\/]/).pop();
+  return `${API_URL}/uploads/${filename}`;
+}
 
 const PRIORITY = {
   low: { label: "Lav", icon: Info, color: "var(--text-secondary)" },
@@ -114,11 +119,20 @@ export default function AvvikPage({ token, refreshSummary }) {
                   <div>
                     <div style={{ fontWeight: 600 }}>{dev.title || dev.description.slice(0, 40)}</div>
                     {dev.title && <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>{dev.description}</div>}
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", gap: 10, marginTop: 6 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPin size={12} /> {siteName(dev.site_id)}</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Clock size={12} /> {dev.created_at}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Clock size={12} /> {(dev.run_started_at || dev.created_at).slice(0, 16)}</span>
                       <span style={{ fontWeight: 600, color: p.color }}>{p.label}</span>
                     </div>
+                    {dev.photos?.length > 0 && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                        {dev.photos.map((ph) => (
+                          <a key={ph.id} href={photoUrl(ph.file_path)} target="_blank" rel="noreferrer">
+                            <img src={photoUrl(ph.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <span style={{

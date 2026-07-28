@@ -44,12 +44,14 @@ export default function CleanerView({ token, user }) {
   const [manualCode, setManualCode] = useState("");
   const [showDeviationForm, setShowDeviationForm] = useState(false);
   const [deviationText, setDeviationText] = useState("");
+  const [deviationPhoto, setDeviationPhoto] = useState(null);
   const [photoCount, setPhotoCount] = useState(0);
   const [error, setError] = useState("");
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
   const [initials, setInitials] = useState(() => user?.name || "");
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
+  const deviationFileInputRef = useRef(null);
   const undoTimeoutRef = useRef(null);
 
   function showUndo(label, onUndo) {
@@ -201,11 +203,17 @@ export default function CleanerView({ token, user }) {
   async function submitDeviation() {
     if (!deviationText.trim()) return;
     try {
-      await apiFetch("/deviations", {
+      const deviation = await apiFetch("/deviations", {
         token, method: "POST",
         body: JSON.stringify({ site_id: run.site.id, run_id: run.id, description: deviationText, priority: "medium" }),
       });
+      if (deviationPhoto) {
+        const form = new FormData();
+        form.append("photo", deviationPhoto);
+        await apiFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
+      }
       setDeviationText("");
+      setDeviationPhoto(null);
       setShowDeviationForm(false);
       setRun((r) => ({ ...r, site: { ...r.site, status: "deviation" } }));
     } catch (err) {
@@ -491,12 +499,21 @@ export default function CleanerView({ token, user }) {
                   color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box",
                 }}
               />
-              <button onClick={submitDeviation} style={{
-                marginTop: 8, background: "var(--accent-orange)", color: "white",
-                border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
-              }}>
-                Send avvik
-              </button>
+              <input ref={deviationFileInputRef} type="file" accept="image/*" capture="environment" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button type="button" onClick={() => deviationFileInputRef.current.click()} style={{
+                  display: "flex", alignItems: "center", gap: 6, background: "var(--surface-0)", border: "1px solid var(--border)",
+                  padding: "8px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                }}>
+                  <Camera size={13} /> {deviationPhoto ? deviationPhoto.name : "Legg ved bilde"}
+                </button>
+                <button onClick={submitDeviation} style={{
+                  background: "var(--accent-orange)", color: "white",
+                  border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
+                }}>
+                  Send avvik
+                </button>
+              </div>
             </div>
           )}
         </Card>
@@ -523,12 +540,21 @@ export default function CleanerView({ token, user }) {
               color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box",
             }}
           />
-          <button onClick={submitDeviation} style={{
-            marginTop: 8, background: "var(--accent-orange)", color: "white",
-            border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
-          }}>
-            Send avvik
-          </button>
+          <input ref={deviationFileInputRef} type="file" accept="image/*" capture="environment" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={() => deviationFileInputRef.current.click()} style={{
+              display: "flex", alignItems: "center", gap: 6, background: "var(--surface-0)", border: "1px solid var(--border)",
+              padding: "8px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+            }}>
+              <Camera size={13} /> {deviationPhoto ? deviationPhoto.name : "Legg ved bilde"}
+            </button>
+            <button onClick={submitDeviation} style={{
+              background: "var(--accent-orange)", color: "white",
+              border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
+            }}>
+              Send avvik
+            </button>
+          </div>
         </Card>
       )}
 
