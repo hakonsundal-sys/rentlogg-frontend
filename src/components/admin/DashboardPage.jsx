@@ -260,6 +260,15 @@ export default function DashboardPage({ token, user, summary }) {
                               </span>
                             </div>
                           ))}
+                          {room.photos.length > 0 && (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, paddingLeft: 4 }}>
+                              {room.photos.map((p) => (
+                                <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
+                                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
