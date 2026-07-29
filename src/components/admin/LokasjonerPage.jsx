@@ -28,6 +28,10 @@ function todayWeekday() {
 
 const emptyForm = { name: "", client_id: "", address: "" };
 
+// Flat (non-room) checklists are hidden for now — locations use only the room-based setup.
+// Flip back to true to re-enable; nothing else needs to change.
+const SHOW_FLAT_CHECKLIST = false;
+
 export default function LokasjonerPage({ token, refreshSummary }) {
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
@@ -552,44 +556,48 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                 <div style={{ fontWeight: 600, marginTop: 12 }}>{site.name}</div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{clientName(site.client_id)}</div>
                 {site.address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{site.address}</div>}
-                {site.checklist_template_id ? (
-                  <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                    <ClipboardList size={13} />
-                    Sjekkliste: {templates.find((t) => t.id === site.checklist_template_id)?.name || "Ukjent"}
-                    {" "}({templates.find((t) => t.id === site.checklist_template_id)?.items?.length ?? 0} oppgaver)
-                    <button onClick={() => removeChecklist(site)} style={{ ...iconBtnStyle, padding: 2 }} title="Fjern sjekkliste">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ) : creatingChecklistSiteId !== site.id && (
-                  <button onClick={() => startCreateChecklist(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4, marginTop: 6, fontSize: 12 }}>
-                    <ClipboardList size={13} /> Opprett sjekkliste
-                  </button>
-                )}
-
-                {creatingChecklistSiteId === site.id && (
-                  <form onSubmit={(e) => submitNewChecklist(e, site)} style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-                    <input
-                      required value={newChecklistName} onChange={(e) => setNewChecklistName(e.target.value)}
-                      placeholder="Navn på sjekkliste" style={{ ...inputStyle, padding: "5px 8px", fontSize: 12, marginBottom: 6 }}
-                    />
-                    {newChecklistTasks.map((task, i) => (
-                      <div key={i} style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-                        <input
-                          value={task} onChange={(e) => updateNewChecklistTask(i, e.target.value)}
-                          placeholder="Oppgave" style={{ ...inputStyle, padding: "4px 6px", fontSize: 12 }}
-                        />
-                        {newChecklistTasks.length > 1 && (
-                          <button type="button" onClick={() => removeNewChecklistTaskField(i)} style={iconBtnStyle}><Trash2 size={12} /></button>
-                        )}
+                {SHOW_FLAT_CHECKLIST && (
+                  <>
+                    {site.checklist_template_id ? (
+                      <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                        <ClipboardList size={13} />
+                        Sjekkliste: {templates.find((t) => t.id === site.checklist_template_id)?.name || "Ukjent"}
+                        {" "}({templates.find((t) => t.id === site.checklist_template_id)?.items?.length ?? 0} oppgaver)
+                        <button onClick={() => removeChecklist(site)} style={{ ...iconBtnStyle, padding: 2 }} title="Fjern sjekkliste">
+                          <Trash2 size={12} />
+                        </button>
                       </div>
-                    ))}
-                    <button type="button" onClick={addNewChecklistTaskField} style={{ ...linkBtnStyle, fontSize: 11 }}>+ Legg til oppgave</button>
-                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      <button type="submit" style={{ ...primaryBtnStyle, padding: "5px 12px", fontSize: 12 }}>Opprett</button>
-                      <button type="button" onClick={() => setCreatingChecklistSiteId(null)} style={linkBtnStyle}>Avbryt</button>
-                    </div>
-                  </form>
+                    ) : creatingChecklistSiteId !== site.id && (
+                      <button onClick={() => startCreateChecklist(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4, marginTop: 6, fontSize: 12 }}>
+                        <ClipboardList size={13} /> Opprett sjekkliste
+                      </button>
+                    )}
+
+                    {creatingChecklistSiteId === site.id && (
+                      <form onSubmit={(e) => submitNewChecklist(e, site)} style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                        <input
+                          required value={newChecklistName} onChange={(e) => setNewChecklistName(e.target.value)}
+                          placeholder="Navn på sjekkliste" style={{ ...inputStyle, padding: "5px 8px", fontSize: 12, marginBottom: 6 }}
+                        />
+                        {newChecklistTasks.map((task, i) => (
+                          <div key={i} style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                            <input
+                              value={task} onChange={(e) => updateNewChecklistTask(i, e.target.value)}
+                              placeholder="Oppgave" style={{ ...inputStyle, padding: "4px 6px", fontSize: 12 }}
+                            />
+                            {newChecklistTasks.length > 1 && (
+                              <button type="button" onClick={() => removeNewChecklistTaskField(i)} style={iconBtnStyle}><Trash2 size={12} /></button>
+                            )}
+                          </div>
+                        ))}
+                        <button type="button" onClick={addNewChecklistTaskField} style={{ ...linkBtnStyle, fontSize: 11 }}>+ Legg til oppgave</button>
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <button type="submit" style={{ ...primaryBtnStyle, padding: "5px 12px", fontSize: 12 }}>Opprett</button>
+                          <button type="button" onClick={() => setCreatingChecklistSiteId(null)} style={linkBtnStyle}>Avbryt</button>
+                        </div>
+                      </form>
+                    )}
+                  </>
                 )}
 
                 <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
