@@ -206,6 +206,13 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           <div style={{ marginTop: 2 }}>
             {deviation.status === "resolved" ? "Lukket" : ASSIGNED_LABEL[deviation.assigned_to] || ""}
           </div>
+          {deviation.status === "resolved" && (
+            <div style={{ marginTop: 2, color: deviation.customer_approved_at ? "var(--text-success)" : "var(--text-secondary)" }}>
+              {deviation.customer_approved_at
+                ? `Godkjent av kunde (${deviation.customer_approved_by_initials})`
+                : "Venter på kundegodkjenning"}
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ marginTop: 8, marginLeft: 22 }}>

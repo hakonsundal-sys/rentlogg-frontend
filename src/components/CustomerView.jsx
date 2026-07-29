@@ -1,9 +1,76 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Clock, Download } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Download } from "lucide-react";
 import { apiFetch, downloadPdf, downloadZip } from "../api";
 import { Card, StatusBadge } from "./shared";
 
 const ASSIGNED_LABEL = { manager: "sendt til driftsleder", customer: "sendt til deg" };
+
+function DeviationItem({ token, user, deviation: d, onApproved, setError }) {
+  const [approveInitials, setApproveInitials] = useState(user?.name || "");
+  const [approving, setApproving] = useState(false);
+  const needsApproval = d.status === "resolved" && !d.customer_approved_at;
+
+  async function approve() {
+    if (!approveInitials.trim()) {
+      setError("Skriv inn navnet ditt for å godkjenne.");
+      return;
+    }
+    setApproving(true);
+    try {
+      const updated = await apiFetch(`/deviations/${d.id}/approve`, {
+        token, method: "PATCH", body: JSON.stringify({ initials: approveInitials.trim() }),
+      });
+      onApproved(updated);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setApproving(false);
+    }
+  }
+
+  return (
+    <div style={{ fontSize: 13, padding: "6px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-danger)" }}>
+        <AlertTriangle size={14} /> {d.description} ({d.priority})
+      </div>
+      {(d.room_name || d.room_task_label) && (
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20 }}>
+          {d.room_name}{d.room_task_label ? ` · ${d.room_task_label}` : ""}
+        </div>
+      )}
+      {d.reported_by_initials && (
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 20 }}>Meldt av: {d.reported_by_initials}</div>
+      )}
+      {d.reply_text && (
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20, marginTop: 4 }}>
+          Svar: {d.reply_text} — {d.replied_by_initials}
+          {d.assigned_to && ` (${ASSIGNED_LABEL[d.assigned_to] || d.assigned_to})`}
+        </div>
+      )}
+      {needsApproval && (
+        <div style={{ marginLeft: 20, marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "var(--text-success)", display: "flex", alignItems: "center", gap: 4 }}>
+            <CheckCircle2 size={13} /> Merket som utbedret
+          </span>
+          <input
+            value={approveInitials} onChange={(e) => setApproveInitials(e.target.value)}
+            placeholder="Fullt navn" maxLength={60}
+            style={{
+              padding: "5px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+              background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 12, width: 140,
+            }}
+          />
+          <button onClick={approve} disabled={approving} style={{
+            background: "var(--text-success)", color: "white", border: "none",
+            padding: "6px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
+          }}>
+            Godkjenn utbedring
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CustomerView({ token, user }) {
   const [sites, setSites] = useState([]);
@@ -88,7 +155,12 @@ export default function CustomerView({ token, user }) {
   return (
     <div>
       {sites.map((s) => {
-        const siteDeviations = deviations.filter((d) => d.site_id === s.id && d.status !== "resolved");
+        // A resolved avvik keeps showing until the customer actively approves it — that
+        // signed confirmation is the point, not just letting it quietly disappear once the
+        // cleaner says it's done.
+        const siteDeviations = deviations.filter(
+          (d) => d.site_id === s.id && (d.status !== "resolved" || !d.customer_approved_at)
+        );
         return (
           <Card key={s.id} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -104,25 +176,11 @@ export default function CustomerView({ token, user }) {
             {siteDeviations.length > 0 && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
                 {siteDeviations.map((d) => (
-                  <div key={d.id} style={{ fontSize: 13, padding: "6px 0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-danger)" }}>
-                      <AlertTriangle size={14} /> {d.description} ({d.priority})
-                    </div>
-                    {(d.room_name || d.room_task_label) && (
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20 }}>
-                        {d.room_name}{d.room_task_label ? ` · ${d.room_task_label}` : ""}
-                      </div>
-                    )}
-                    {d.reported_by_initials && (
-                      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 20 }}>Meldt av: {d.reported_by_initials}</div>
-                    )}
-                    {d.reply_text && (
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20, marginTop: 4 }}>
-                        Svar: {d.reply_text} — {d.replied_by_initials}
-                        {d.assigned_to && ` (${ASSIGNED_LABEL[d.assigned_to] || d.assigned_to})`}
-                      </div>
-                    )}
-                  </div>
+                  <DeviationItem
+                    key={d.id} token={token} user={user} deviation={d}
+                    onApproved={(updated) => setDeviations((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
+                    setError={setError}
+                  />
                 ))}
               </div>
             )}

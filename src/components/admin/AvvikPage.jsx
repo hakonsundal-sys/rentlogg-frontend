@@ -139,6 +139,13 @@ export default function AvvikPage({ token, refreshSummary }) {
                         {dev.assigned_to && <span> ({ASSIGNED_LABEL[dev.assigned_to] || dev.assigned_to})</span>}
                       </div>
                     )}
+                    {dev.status === "resolved" && (
+                      <div style={{ fontSize: 12, color: dev.customer_approved_at ? "var(--text-success)" : "var(--text-secondary)", marginTop: 4 }}>
+                        {dev.customer_approved_at
+                          ? `Godkjent av kunde (${dev.customer_approved_by_initials})`
+                          : "Venter på kundegodkjenning"}
+                      </div>
+                    )}
                     {dev.photos?.length > 0 && (
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                         {dev.photos.map((ph) => (
