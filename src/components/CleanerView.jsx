@@ -1,10 +1,21 @@
 import { useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
 import { Card, StatusBadge } from "./shared";
 import QrScanner from "./QrScanner";
+import CleanerHistoryView from "./CleanerHistoryView";
+
+function tabBtnStyle(active) {
+  return {
+    padding: "6px 14px", borderRadius: 999, fontSize: 13, cursor: "pointer",
+    border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+    background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
+    color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+    display: "inline-flex", alignItems: "center",
+  };
+}
 
 function photoUrl(filePath) {
   const filename = filePath.split(/[\\/]/).pop();
@@ -54,6 +65,7 @@ export default function CleanerView({ token, user }) {
   const [error, setError] = useState("");
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
   const [initials, setInitials] = useState(() => user?.name || "");
+  const [viewTab, setViewTab] = useState("today");
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const deviationFileInputRef = useRef(null);
@@ -163,6 +175,16 @@ export default function CleanerView({ token, user }) {
     }
   }
 
+  async function deleteRoomPhoto(photoId) {
+    if (!window.confirm("Fjerne bildet?")) return;
+    try {
+      await apiFetch(`/rooms/runs/${roomRun.id}/photos/${photoId}`, { token, method: "DELETE" });
+      setRoomRun((r) => ({ ...r, photos: r.photos.filter((p) => p.id !== photoId) }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function completeRoom() {
     setError("");
     if (!initials.trim()) {
@@ -208,10 +230,17 @@ export default function CleanerView({ token, user }) {
 
   async function submitDeviation() {
     if (!deviationText.trim()) return;
+    if (!initials.trim()) {
+      setError("Skriv inn navnet ditt for å melde avvik.");
+      return;
+    }
     try {
       const deviation = await apiFetch("/deviations", {
         token, method: "POST",
-        body: JSON.stringify({ site_id: run.site.id, run_id: run.id, description: deviationText, priority: "medium" }),
+        body: JSON.stringify({
+          site_id: run.site.id, run_id: run.id, description: deviationText, priority: "medium",
+          initials: initials.trim(),
+        }),
       });
       if (deviationPhoto) {
         const form = new FormData();
@@ -277,17 +306,38 @@ export default function CleanerView({ token, user }) {
     }
   }
 
+  const viewTabs = (
+    <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+      <button onClick={() => setViewTab("today")} style={tabBtnStyle(viewTab === "today")}>I dag</button>
+      <button onClick={() => setViewTab("history")} style={tabBtnStyle(viewTab === "history")}>
+        <History size={13} style={{ marginRight: 4 }} /> Tidligere
+      </button>
+    </div>
+  );
+
+  if (viewTab === "history") {
+    return (
+      <div>
+        {viewTabs}
+        <CleanerHistoryView token={token} user={user} initials={initials} />
+      </div>
+    );
+  }
+
   if (!run) {
     if (showScanner) {
       return (
         <div>
+          {viewTabs}
           <QrScanner onScan={handleQrScanned} onCancel={() => setShowScanner(false)} />
           {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 12 }}>{error}</div>}
         </div>
       );
     }
     return (
-      <Card style={{ textAlign: "center", padding: 40 }}>
+      <div>
+        {viewTabs}
+        <Card style={{ textAlign: "center", padding: 40 }}>
         <QrCode size={40} style={{ margin: "0 auto 12px", color: "var(--text-secondary)" }} />
         <div style={{ marginBottom: 16, color: "var(--text-secondary)" }}>Skann QR-koden ved lokasjonen for å starte oppdraget</div>
         {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
@@ -323,7 +373,8 @@ export default function CleanerView({ token, user }) {
             </button>
           </form>
         )}
-      </Card>
+        </Card>
+      </div>
     );
   }
 
@@ -335,6 +386,7 @@ export default function CleanerView({ token, user }) {
 
   return (
     <div>
+      {viewTabs}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <button onClick={() => { setRun(null); setRooms(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
           display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
@@ -426,9 +478,22 @@ export default function CleanerView({ token, user }) {
               {roomRun.photos?.length > 0 && (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                   {roomRun.photos.map((p) => (
-                    <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                      <img src={photoUrl(p.file_path)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
-                    </a>
+                    <div key={p.id} style={{ position: "relative" }}>
+                      <a href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
+                        <img src={photoUrl(p.file_path)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                      </a>
+                      <button
+                        onClick={() => deleteRoomPhoto(p.id)}
+                        aria-label="Fjern bilde"
+                        style={{
+                          position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
+                          background: "rgba(0,0,0,0.65)", color: "white", border: "none",
+                          display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}

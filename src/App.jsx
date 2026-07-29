@@ -54,7 +54,7 @@ export default function App() {
         </button>
       </div>
       {user.role === "cleaner" && <CleanerView token={token} user={user} />}
-      {user.role === "customer" && <CustomerView token={token} />}
+      {user.role === "customer" && <CustomerView token={token} user={user} />}
     </Shell>
   );
 }

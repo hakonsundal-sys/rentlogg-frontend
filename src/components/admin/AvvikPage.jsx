@@ -14,6 +14,7 @@ const PRIORITY = {
   high: { label: "Høy", icon: CircleAlert, color: "var(--text-danger)" },
 };
 const STATUS_LABEL = { open: "ÅPEN", in_progress: "PÅGÅR", resolved: "LØST" };
+const ASSIGNED_LABEL = { manager: "Sendt til driftsleder", customer: "Sendt til kunde" };
 
 export default function AvvikPage({ token, refreshSummary }) {
   const [deviations, setDeviations] = useState([]);
@@ -124,6 +125,20 @@ export default function AvvikPage({ token, refreshSummary }) {
                       <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Clock size={12} /> {(dev.run_started_at || dev.created_at).slice(0, 16)}</span>
                       <span style={{ fontWeight: 600, color: p.color }}>{p.label}</span>
                     </div>
+                    {(dev.room_name || dev.room_task_label) && (
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+                        {dev.room_name}{dev.room_task_label ? ` · ${dev.room_task_label}` : ""}
+                      </div>
+                    )}
+                    {dev.reported_by_initials && (
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Meldt av: {dev.reported_by_initials}</div>
+                    )}
+                    {dev.reply_text && (
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--border)" }}>
+                        <strong>Svar:</strong> {dev.reply_text} — {dev.replied_by_initials}
+                        {dev.assigned_to && <span> ({ASSIGNED_LABEL[dev.assigned_to] || dev.assigned_to})</span>}
+                      </div>
+                    )}
                     {dev.photos?.length > 0 && (
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                         {dev.photos.map((ph) => (
