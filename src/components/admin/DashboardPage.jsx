@@ -220,20 +220,68 @@ export default function DashboardPage({ token, user, summary }) {
                   <div>{runDetail.gps_verified ? "Posisjon bekreftet" : "Posisjon ikke bekreftet"}</div>
                 </div>
 
-                <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Sjekkliste</div>
-                {runDetail.items.map((item) => (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
-                    {item.done
-                      ? <CheckCircle2 size={15} style={{ color: "var(--text-success)" }} />
-                      : <Circle size={15} style={{ color: "var(--text-muted)" }} />}
-                    <span style={{
-                      fontSize: 13, textDecoration: item.done ? "line-through" : "none",
-                      color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
-                    }}>
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
+                {runDetail.rooms?.length > 0 ? (
+                  <>
+                    <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Rom</div>
+                    {runDetail.rooms.map((room) => {
+                      const doneCount = room.items.filter((i) => i.done).length;
+                      const status = room.completed_at
+                        ? "FULLFØRT"
+                        : room.items.length > 0
+                        ? "PÅGÅR"
+                        : "IKKE STARTET";
+                      return (
+                        <div key={room.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: 13, fontWeight: 500 }}>{room.name}</span>
+                            <span style={{
+                              fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
+                              background: room.completed_at ? "var(--c-teal)" : room.items.length > 0 ? "var(--accent-orange-bg)" : "var(--surface-2)",
+                              color: room.completed_at ? "var(--text-success)" : room.items.length > 0 ? "var(--accent-orange-dark)" : "var(--text-muted)",
+                            }}>
+                              {status}
+                            </span>
+                          </div>
+                          {room.items.length > 0 && (
+                            <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
+                              {doneCount}/{room.items.length} oppgaver utført
+                            </div>
+                          )}
+                          {room.items.map((item) => (
+                            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0 3px 4px" }}>
+                              {item.done
+                                ? <CheckCircle2 size={13} style={{ color: "var(--text-success)" }} />
+                                : <Circle size={13} style={{ color: "var(--text-muted)" }} />}
+                              <span style={{
+                                fontSize: 12, textDecoration: item.done ? "line-through" : "none",
+                                color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
+                              }}>
+                                {item.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Sjekkliste</div>
+                    {runDetail.items.map((item) => (
+                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
+                        {item.done
+                          ? <CheckCircle2 size={15} style={{ color: "var(--text-success)" }} />
+                          : <Circle size={15} style={{ color: "var(--text-muted)" }} />}
+                        <span style={{
+                          fontSize: 13, textDecoration: item.done ? "line-through" : "none",
+                          color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
+                        }}>
+                          {item.label}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
 
                 {runDetail.photos.length > 0 && (
                   <>
