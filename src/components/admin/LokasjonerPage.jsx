@@ -54,6 +54,9 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   const [loadingQrSiteId, setLoadingQrSiteId] = useState(null);
   const [importingPdf, setImportingPdf] = useState(false);
   const [importPreview, setImportPreview] = useState(null); // { siteId, rooms: [{name, tasks: [string]}] }
+  const [creatingChecklistSiteId, setCreatingChecklistSiteId] = useState(null);
+  const [newChecklistName, setNewChecklistName] = useState("");
+  const [newChecklistTasks, setNewChecklistTasks] = useState([""]);
   const pdfInputRef = useRef(null);
   const pdfImportSiteIdRef = useRef(null);
 
@@ -420,6 +423,41 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  function startCreateChecklist(site) {
+    setCreatingChecklistSiteId(site.id);
+    setNewChecklistName("");
+    setNewChecklistTasks([""]);
+  }
+
+  function updateNewChecklistTask(idx, value) {
+    setNewChecklistTasks((tasks) => tasks.map((t, i) => (i === idx ? value : t)));
+  }
+
+  function addNewChecklistTaskField() {
+    setNewChecklistTasks((tasks) => [...tasks, ""]);
+  }
+
+  function removeNewChecklistTaskField(idx) {
+    setNewChecklistTasks((tasks) => tasks.filter((_, i) => i !== idx));
+  }
+
+  async function submitNewChecklist(e, site) {
+    e.preventDefault();
+    const items = newChecklistTasks.map((t) => t.trim()).filter(Boolean);
+    if (!newChecklistName.trim() || items.length === 0) return;
+    setError("");
+    try {
+      const template = await apiFetch("/checklists/templates", {
+        token, method: "POST", body: JSON.stringify({ name: newChecklistName.trim(), items }),
+      });
+      await apiFetch(`/sites/${site.id}`, { token, method: "PATCH", body: JSON.stringify({ checklist_template_id: template.id }) });
+      setCreatingChecklistSiteId(null);
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function toggleWeekday(siteId, weekday) {
     const existing = (schedules[siteId] || []).find((s) => s.weekday === weekday);
     try {
@@ -514,7 +552,7 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                 <div style={{ fontWeight: 600, marginTop: 12 }}>{site.name}</div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{clientName(site.client_id)}</div>
                 {site.address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{site.address}</div>}
-                {site.checklist_template_id && (
+                {site.checklist_template_id ? (
                   <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                     <ClipboardList size={13} />
                     Sjekkliste: {templates.find((t) => t.id === site.checklist_template_id)?.name || "Ukjent"}
@@ -523,6 +561,35 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                       <Trash2 size={12} />
                     </button>
                   </div>
+                ) : creatingChecklistSiteId !== site.id && (
+                  <button onClick={() => startCreateChecklist(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4, marginTop: 6, fontSize: 12 }}>
+                    <ClipboardList size={13} /> Opprett sjekkliste
+                  </button>
+                )}
+
+                {creatingChecklistSiteId === site.id && (
+                  <form onSubmit={(e) => submitNewChecklist(e, site)} style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                    <input
+                      required value={newChecklistName} onChange={(e) => setNewChecklistName(e.target.value)}
+                      placeholder="Navn på sjekkliste" style={{ ...inputStyle, padding: "5px 8px", fontSize: 12, marginBottom: 6 }}
+                    />
+                    {newChecklistTasks.map((task, i) => (
+                      <div key={i} style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                        <input
+                          value={task} onChange={(e) => updateNewChecklistTask(i, e.target.value)}
+                          placeholder="Oppgave" style={{ ...inputStyle, padding: "4px 6px", fontSize: 12 }}
+                        />
+                        {newChecklistTasks.length > 1 && (
+                          <button type="button" onClick={() => removeNewChecklistTaskField(i)} style={iconBtnStyle}><Trash2 size={12} /></button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={addNewChecklistTaskField} style={{ ...linkBtnStyle, fontSize: 11 }}>+ Legg til oppgave</button>
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <button type="submit" style={{ ...primaryBtnStyle, padding: "5px 12px", fontSize: 12 }}>Opprett</button>
+                      <button type="button" onClick={() => setCreatingChecklistSiteId(null)} style={linkBtnStyle}>Avbryt</button>
+                    </div>
+                  </form>
                 )}
 
                 <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
