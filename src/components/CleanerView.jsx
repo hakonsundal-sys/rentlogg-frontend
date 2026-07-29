@@ -2,9 +2,14 @@ import { useRef, useState } from "react";
 import {
   QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard,
 } from "lucide-react";
-import { apiFetch } from "../api";
+import { apiFetch, API_URL } from "../api";
 import { Card, StatusBadge } from "./shared";
 import QrScanner from "./QrScanner";
+
+function photoUrl(filePath) {
+  const filename = filePath.split(/[\\/]/).pop();
+  return `${API_URL}/uploads/${filename}`;
+}
 
 function getPosition() {
   return new Promise((resolve) => {
@@ -149,7 +154,8 @@ export default function CleanerView({ token, user }) {
     form.append("photo", file);
     form.append("kind", "general");
     try {
-      await apiFetch(`/rooms/runs/${roomRun.id}/photos`, { token, method: "POST", body: form });
+      const photo = await apiFetch(`/rooms/runs/${roomRun.id}/photos`, { token, method: "POST", body: form });
+      setRoomRun((r) => ({ ...r, photos: [...(r.photos || []), photo] }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -417,6 +423,15 @@ export default function CleanerView({ token, user }) {
                   </span>
                 </div>
               ))}
+              {roomRun.photos?.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                  {roomRun.photos.map((p) => (
+                    <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
+                      <img src={photoUrl(p.file_path)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                    </a>
+                  ))}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <input ref={roomFileInputRef} type="file" accept="image/*" capture="environment" onChange={uploadRoomPhoto} style={{ display: "none" }} />
                 <button onClick={() => roomFileInputRef.current.click()} style={{
