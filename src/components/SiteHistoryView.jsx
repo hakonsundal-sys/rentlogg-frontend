@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
-import { X, ChevronDown, ChevronRight, CheckCircle2, Circle } from "lucide-react";
-import { apiFetch, API_URL } from "../api";
+import { X, ChevronDown, ChevronRight } from "lucide-react";
+import { apiFetch } from "../api";
 import { DeviationItem } from "./DeviationItem";
-
-function photoUrl(filePath) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
-}
+import RunRoomsAndItems from "./RunRoomsAndItems";
 
 function tabBtnStyle(active) {
   return {
@@ -128,7 +124,12 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
                 {expandedRunId === run.id && (
                   <div style={{ borderTop: "1px solid var(--border)", padding: 10 }}>
                     {!runDetails[run.id] && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Laster...</div>}
-                    {runDetails[run.id] && <RunDetail detail={runDetails[run.id]} />}
+                    {runDetails[run.id] && (
+                      <RunRoomsAndItems
+                        token={token} runDetail={runDetails[run.id]} editable={false}
+                        editInitials="" onChanged={() => {}} setError={setError}
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -166,51 +167,5 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
         )}
       </div>
     </div>
-  );
-}
-
-function RunDetail({ detail }) {
-  return (
-    <>
-      {detail.rooms?.length > 0 ? (
-        detail.rooms.map((room) => (
-          <div key={room.id} style={{ padding: "6px 0" }}>
-            <div style={{ fontSize: 13, display: "flex", justifyContent: "space-between" }}>
-              <span>{room.name}</span>
-              <span style={{ color: "var(--text-secondary)" }}>{room.items.filter((i) => i.done).length}/{room.items.length}</span>
-            </div>
-            {room.photos?.length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                {room.photos.map((p) => (
-                  <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                    <img src={photoUrl(p.file_path)} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        ))
-      ) : (
-        <>
-          {detail.items.map((item) => (
-            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
-              {item.done
-                ? <CheckCircle2 size={13} style={{ color: "var(--text-success)" }} />
-                : <Circle size={13} style={{ color: "var(--text-muted)" }} />}
-              <span style={{ fontSize: 13 }}>{item.label}</span>
-            </div>
-          ))}
-          {detail.photos?.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-              {detail.photos.map((p) => (
-                <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
-                </a>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </>
   );
 }

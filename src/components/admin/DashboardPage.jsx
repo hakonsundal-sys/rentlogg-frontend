@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Sparkles, X, ClipboardList, CheckCircle2, Circle, Clock, AlertTriangle, Download } from "lucide-react";
+import { Sparkles, X, ClipboardList, CheckCircle2, Clock, AlertTriangle, Download, Pencil } from "lucide-react";
 import { apiFetch, downloadZip, API_URL } from "../../api";
 import { Card } from "../shared";
+import RunRoomsAndItems from "../RunRoomsAndItems";
 
 const ROLE_CHIP = { admin: "Administrator", manager: "Driftsleder" };
 
@@ -24,6 +25,8 @@ export default function DashboardPage({ token, user, summary }) {
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [runDetail, setRunDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [isEditingRun, setIsEditingRun] = useState(false);
+  const [editInitials, setEditInitials] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -33,6 +36,8 @@ export default function DashboardPage({ token, user, summary }) {
 
   async function openRunDetail(runId) {
     setSelectedRunId(runId);
+    setIsEditingRun(false);
+    setEditInitials(user?.name || "");
     setLoadingDetail(true);
     try {
       const data = await apiFetch(`/checklists/runs/${runId}`, { token });
@@ -47,6 +52,15 @@ export default function DashboardPage({ token, user, summary }) {
   function closeRunDetail() {
     setSelectedRunId(null);
     setRunDetail(null);
+    setIsEditingRun(false);
+  }
+
+  async function refreshRunDetail() {
+    try {
+      setRunDetail(await apiFetch(`/checklists/runs/${selectedRunId}`, { token }));
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   if (!summary) return <div style={{ color: "var(--text-secondary)" }}>Laster...</div>;
@@ -233,79 +247,43 @@ export default function DashboardPage({ token, user, summary }) {
                   </button>
                 )}
 
-                {runDetail.rooms?.length > 0 ? (
-                  <>
-                    <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Rom</div>
-                    {runDetail.rooms.map((room) => {
-                      const doneCount = room.items.filter((i) => i.done).length;
-                      const status = room.completed_at
-                        ? "FULLFØRT"
-                        : room.items.length > 0
-                        ? "PÅGÅR"
-                        : "IKKE STARTET";
-                      return (
-                        <div key={room.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: 13, fontWeight: 500 }}>{room.name}</span>
-                            <span style={{
-                              fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
-                              background: room.completed_at ? "var(--c-teal)" : room.items.length > 0 ? "var(--accent-orange-bg)" : "var(--surface-2)",
-                              color: room.completed_at ? "var(--text-success)" : room.items.length > 0 ? "var(--accent-orange-dark)" : "var(--text-muted)",
-                            }}>
-                              {status}
-                            </span>
-                          </div>
-                          {room.items.length > 0 && (
-                            <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
-                              {doneCount}/{room.items.length} oppgaver utført
-                            </div>
-                          )}
-                          {room.items.map((item) => (
-                            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0 3px 4px" }}>
-                              {item.done
-                                ? <CheckCircle2 size={13} style={{ color: "var(--text-success)" }} />
-                                : <Circle size={13} style={{ color: "var(--text-muted)" }} />}
-                              <span style={{
-                                fontSize: 12, textDecoration: item.done ? "line-through" : "none",
-                                color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
-                              }}>
-                                {item.label}
-                              </span>
-                            </div>
-                          ))}
-                          {room.photos.length > 0 && (
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, paddingLeft: 4 }}>
-                              {room.photos.map((p) => (
-                                <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <>
-                    <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Sjekkliste</div>
-                    {runDetail.items.map((item) => (
-                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid var(--border)" }}>
-                        {item.done
-                          ? <CheckCircle2 size={15} style={{ color: "var(--text-success)" }} />
-                          : <Circle size={15} style={{ color: "var(--text-muted)" }} />}
-                        <span style={{
-                          fontSize: 13, textDecoration: item.done ? "line-through" : "none",
-                          color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
-                        }}>
-                          {item.label}
-                        </span>
-                      </div>
-                    ))}
-                  </>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
+                  {!isEditingRun ? (
+                    <button
+                      onClick={() => setIsEditingRun(true)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
+                        color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                      }}
+                    >
+                      <Pencil size={12} /> Rediger
+                    </button>
+                  ) : (
+                    <button onClick={() => setIsEditingRun(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
+                      Ferdig
+                    </button>
+                  )}
+                </div>
+                {isEditingRun && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Signatur (navn)</label>
+                    <input
+                      value={editInitials} onChange={(e) => setEditInitials(e.target.value)}
+                      placeholder="Fullt navn" maxLength={60}
+                      style={{
+                        padding: "4px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                        background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 12, width: 150,
+                      }}
+                    />
+                  </div>
                 )}
+                <RunRoomsAndItems
+                  token={token} runDetail={runDetail} editable={isEditingRun} editInitials={editInitials}
+                  onChanged={refreshRunDetail} setError={setError}
+                />
 
-                {runDetail.photos.length > 0 && (
+                {runDetail.photos.length > 0 && runDetail.rooms?.length > 0 && (
                   <>
                     <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Bilder</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>

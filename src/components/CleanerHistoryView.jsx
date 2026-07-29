@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, CheckCircle2, Circle, AlertTriangle } from "lucide-react";
-import { apiFetch, API_URL } from "../api";
+import { ChevronDown, ChevronRight, AlertTriangle, Pencil } from "lucide-react";
+import { apiFetch } from "../api";
 import { Card } from "./shared";
-
-function photoUrl(filePath) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
-}
+import RunRoomsAndItems from "./RunRoomsAndItems";
 
 const REPLY_ACTIONS = [
   { action: "resolve", label: "Lukk avvik" },
@@ -14,12 +10,14 @@ const REPLY_ACTIONS = [
   { action: "assign_customer", label: "Send til kunde" },
 ];
 
-export default function CleanerHistoryView({ token, initials: sharedInitials }) {
+export default function CleanerHistoryView({ token, user, initials: sharedInitials }) {
   const [runs, setRuns] = useState(null);
   const [error, setError] = useState("");
   const [expandedRunId, setExpandedRunId] = useState(null);
   const [runDetail, setRunDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [isEditingRun, setIsEditingRun] = useState(false);
+  const [editInitials, setEditInitials] = useState("");
 
   useEffect(() => {
     apiFetch("/checklists/my-runs", { token }).then(setRuns).catch((err) => setError(err.message));
@@ -33,6 +31,8 @@ export default function CleanerHistoryView({ token, initials: sharedInitials }) 
     }
     setExpandedRunId(runId);
     setRunDetail(null);
+    setIsEditingRun(false);
+    setEditInitials(sharedInitials || user?.name || "");
     setLoadingDetail(true);
     try {
       const data = await apiFetch(`/checklists/runs/${runId}`, { token });
@@ -41,6 +41,14 @@ export default function CleanerHistoryView({ token, initials: sharedInitials }) 
       setError(err.message);
     } finally {
       setLoadingDetail(false);
+    }
+  }
+
+  async function refreshRunDetail() {
+    try {
+      setRunDetail(await apiFetch(`/checklists/runs/${expandedRunId}`, { token }));
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -95,42 +103,41 @@ export default function CleanerHistoryView({ token, initials: sharedInitials }) 
               {loadingDetail && <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>Laster...</div>}
               {runDetail && (
                 <>
-                  {runDetail.rooms?.length > 0 ? (
-                    <>
-                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Rom</div>
-                      {runDetail.rooms.map((room) => (
-                        <div key={room.id} style={{ padding: "6px 0" }}>
-                          <div style={{ fontSize: 13, display: "flex", justifyContent: "space-between" }}>
-                            <span>{room.name}</span>
-                            <span style={{ color: "var(--text-secondary)" }}>
-                              {room.items.filter((i) => i.done).length}/{room.items.length}
-                            </span>
-                          </div>
-                          {room.photos?.length > 0 && (
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                              {room.photos.map((p) => (
-                                <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Sjekkliste</div>
-                      {runDetail.items.map((item) => (
-                        <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
-                          {item.done
-                            ? <CheckCircle2 size={14} style={{ color: "var(--text-success)" }} />
-                            : <Circle size={14} style={{ color: "var(--text-muted)" }} />}
-                          <span style={{ fontSize: 13 }}>{item.label}</span>
-                        </div>
-                      ))}
-                    </>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
+                    {!isEditingRun ? (
+                      <button
+                        onClick={() => setIsEditingRun(true)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
+                          color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                        }}
+                      >
+                        <Pencil size={12} /> Rediger
+                      </button>
+                    ) : (
+                      <button onClick={() => setIsEditingRun(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
+                        Ferdig
+                      </button>
+                    )}
+                  </div>
+                  {isEditingRun && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Signatur (navn)</label>
+                      <input
+                        value={editInitials} onChange={(e) => setEditInitials(e.target.value)}
+                        placeholder="Fullt navn" maxLength={60}
+                        style={{
+                          padding: "4px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                          background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 12, width: 150,
+                        }}
+                      />
+                    </div>
                   )}
+                  <RunRoomsAndItems
+                    token={token} runDetail={runDetail} editable={isEditingRun} editInitials={editInitials}
+                    onChanged={refreshRunDetail} setError={setError}
+                  />
 
                   {runDetail.deviations?.length > 0 && (
                     <>
