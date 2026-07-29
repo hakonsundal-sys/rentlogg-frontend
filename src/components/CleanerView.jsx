@@ -498,7 +498,7 @@ export default function CleanerView({ token, user }) {
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <input ref={roomFileInputRef} type="file" accept="image/*" capture="environment" onChange={uploadRoomPhoto} style={{ display: "none" }} />
+                <input ref={roomFileInputRef} type="file" accept="image/*" onChange={uploadRoomPhoto} style={{ display: "none" }} />
                 <button onClick={() => roomFileInputRef.current.click()} style={{
                   display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
                   background: "var(--surface-0)", border: "1px solid var(--border)",
@@ -550,7 +550,7 @@ export default function CleanerView({ token, user }) {
           ))}
 
           <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-            <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={uploadPhoto} style={{ display: "none" }} />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={uploadPhoto} style={{ display: "none" }} />
             <button onClick={() => fileInputRef.current.click()} style={{
               display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
               background: "var(--surface-0)", border: "1px solid var(--border)",
@@ -579,7 +579,7 @@ export default function CleanerView({ token, user }) {
                   color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box",
                 }}
               />
-              <input ref={deviationFileInputRef} type="file" accept="image/*" capture="environment" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
+              <input ref={deviationFileInputRef} type="file" accept="image/*" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button type="button" onClick={() => deviationFileInputRef.current.click()} style={{
                   display: "flex", alignItems: "center", gap: 6, background: "var(--surface-0)", border: "1px solid var(--border)",
@@ -620,7 +620,7 @@ export default function CleanerView({ token, user }) {
               color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box",
             }}
           />
-          <input ref={deviationFileInputRef} type="file" accept="image/*" capture="environment" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
+          <input ref={deviationFileInputRef} type="file" accept="image/*" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button type="button" onClick={() => deviationFileInputRef.current.click()} style={{
               display: "flex", alignItems: "center", gap: 6, background: "var(--surface-0)", border: "1px solid var(--border)",
