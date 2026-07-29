@@ -139,6 +139,19 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  async function deleteAllRooms(site) {
+    const count = rooms[site.id]?.length ?? 0;
+    if (!count) return;
+    if (!window.confirm(`Slette alle ${count} rom for ${site.name}? Dette fjerner også oppgaver, planer og historikk for hvert rom.`)) return;
+    try {
+      await apiFetch(`/sites/${site.id}/rooms`, { token, method: "DELETE" });
+      setExpandedRoomId(null);
+      refreshRoomsForSite(site.id);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   function toggleRoomExpand(roomId) {
     if (expandedRoomId === roomId) {
       setExpandedRoomId(null);
@@ -779,6 +792,11 @@ export default function LokasjonerPage({ token, refreshSummary }) {
 
             {expandedRoomsSite === site.id && !importPreview && (
               <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                {(rooms[site.id]?.length ?? 0) > 0 && (
+                  <button onClick={() => deleteAllRooms(site)} style={{ ...linkBtnStyle, color: "var(--text-danger)", marginBottom: 8 }}>
+                    Slett alle rom ({rooms[site.id].length})
+                  </button>
+                )}
                 {(rooms[site.id] || []).map((room) => (
                   <div key={room.id} style={{ marginBottom: 6 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
