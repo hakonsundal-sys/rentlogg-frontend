@@ -9,7 +9,9 @@ export const ASSIGNED_LABEL = { manager: "sendt til driftsleder", customer: "sen
 export function DeviationItem({ token, user, deviation: d, onApproved, setError }) {
   const [approveInitials, setApproveInitials] = useState(user?.name || "");
   const [approving, setApproving] = useState(false);
-  const needsApproval = d.status === "resolved" && !d.customer_approved_at;
+  // Only the customer role can call PATCH /deviations/:id/approve — admin/manager viewing the
+  // same timeline get a read-only "venter på kundegodkjenning" line instead (see below).
+  const needsApproval = user?.role === "customer" && d.status === "resolved" && !d.customer_approved_at;
 
   async function approve() {
     if (!approveInitials.trim()) {
@@ -46,6 +48,13 @@ export function DeviationItem({ token, user, deviation: d, onApproved, setError 
         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20, marginTop: 4 }}>
           Svar: {d.reply_text} — {d.replied_by_initials}
           {d.assigned_to && ` (${ASSIGNED_LABEL[d.assigned_to] || d.assigned_to})`}
+        </div>
+      )}
+      {user?.role !== "customer" && d.status === "resolved" && (
+        <div style={{ fontSize: 12, color: d.customer_approved_at ? "var(--text-success)" : "var(--text-secondary)", marginLeft: 20, marginTop: 4 }}>
+          {d.customer_approved_at
+            ? `Godkjent av kunde (${d.customer_approved_by_initials})`
+            : "Venter på kundegodkjenning"}
         </div>
       )}
       {needsApproval && (

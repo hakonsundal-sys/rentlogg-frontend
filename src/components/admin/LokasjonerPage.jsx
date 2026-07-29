@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList } from "lucide-react";
+import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, AddressAutocomplete } from "../shared";
+import SiteHistoryView from "../SiteHistoryView";
 
 const WEEKDAYS = [
   { value: 1, label: "Man" },
@@ -32,7 +33,7 @@ const emptyForm = { name: "", client_id: "", address: "" };
 // Flip back to true to re-enable; nothing else needs to change.
 const SHOW_FLAT_CHECKLIST = false;
 
-export default function LokasjonerPage({ token, refreshSummary }) {
+export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
   const [cleaners, setCleaners] = useState([]);
@@ -55,6 +56,8 @@ export default function LokasjonerPage({ token, refreshSummary }) {
   const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [qrPreview, setQrPreview] = useState(null); // { siteId, siteName, checkInUrl, qrImage }
+  const [historySite, setHistorySite] = useState(null);
+  const [historyDeviations, setHistoryDeviations] = useState([]);
   const [loadingQrSiteId, setLoadingQrSiteId] = useState(null);
   const [importingPdf, setImportingPdf] = useState(false);
   const [importPreview, setImportPreview] = useState(null); // { siteId, rooms: [{name, tasks: [string]}] }
@@ -429,6 +432,18 @@ export default function LokasjonerPage({ token, refreshSummary }) {
     }
   }
 
+  async function openHistory(site) {
+    setError("");
+    setHistoryDeviations([]);
+    setHistorySite(site);
+    try {
+      const all = await apiFetch("/deviations", { token });
+      setHistoryDeviations(all.filter((d) => d.site_id === site.id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function removeChecklist(site) {
     const template = templates.find((t) => t.id === site.checklist_template_id);
     if (!window.confirm(`Fjerne sjekklisten «${template?.name || ""}» fra ${site.name}?`)) return;
@@ -629,6 +644,9 @@ export default function LokasjonerPage({ token, refreshSummary }) {
                     </button>
                     <button onClick={() => showQrCode(site)} disabled={loadingQrSiteId === site.id} style={linkBtnStyle}>
                       {loadingQrSiteId === site.id ? "Laster..." : "QR-kode"}
+                    </button>
+                    <button onClick={() => openHistory(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                      <History size={12} /> Historikk
                     </button>
                   </div>
                 </div>
@@ -973,6 +991,15 @@ export default function LokasjonerPage({ token, refreshSummary }) {
             </div>
           </div>
         </div>
+      )}
+
+      {historySite && (
+        <SiteHistoryView
+          token={token} user={user} site={historySite} deviations={historyDeviations}
+          onApproved={(updated) => setHistoryDeviations((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
+          setError={setError}
+          onClose={() => setHistorySite(null)}
+        />
       )}
     </div>
   );
