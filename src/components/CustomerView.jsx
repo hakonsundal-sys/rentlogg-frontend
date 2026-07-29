@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Clock } from "lucide-react";
-import { apiFetch, downloadPdf } from "../api";
+import { AlertTriangle, Clock, Download } from "lucide-react";
+import { apiFetch, downloadPdf, downloadZip } from "../api";
 import { Card, StatusBadge } from "./shared";
 
 export default function CustomerView({ token }) {
@@ -43,15 +43,27 @@ export default function CustomerView({ token }) {
                 ))}
               </div>
             )}
-            <button
-              onClick={() => downloadPdf(`/reports/sites/${s.id}/pdf`, token, `rapport-${s.id}.pdf`)}
-              style={{
-                marginTop: 12, background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-                padding: "6px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
-              }}
-            >
-              Last ned rapport (PDF)
-            </button>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button
+                onClick={() => downloadPdf(`/reports/sites/${s.id}/pdf`, token, `rapport-${s.id}.pdf`)}
+                style={{
+                  background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                  padding: "6px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                }}
+              >
+                Last ned rapport (PDF)
+              </button>
+              <button
+                onClick={() => downloadZip(`/reports/sites/${s.id}/photos.zip`, token, `bilder-${s.id}.zip`).catch((err) => setError(err.message))}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                  padding: "6px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                }}
+              >
+                <Download size={13} /> Last ned alle bilder
+              </button>
+            </div>
           </Card>
         );
       })}

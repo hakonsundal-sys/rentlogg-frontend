@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Sparkles, X, ClipboardList, CheckCircle2, Circle, Clock, AlertTriangle } from "lucide-react";
-import { apiFetch, API_URL } from "../../api";
+import { Sparkles, X, ClipboardList, CheckCircle2, Circle, Clock, AlertTriangle, Download } from "lucide-react";
+import { apiFetch, downloadZip, API_URL } from "../../api";
 import { Card } from "../shared";
 
 const ROLE_CHIP = { admin: "Administrator", manager: "Driftsleder" };
@@ -219,6 +219,19 @@ export default function DashboardPage({ token, user, summary }) {
                   )}
                   <div>{runDetail.gps_verified ? "Posisjon bekreftet" : "Posisjon ikke bekreftet"}</div>
                 </div>
+
+                {(runDetail.photos.length > 0 || runDetail.rooms?.some((r) => r.photos.length > 0)) && (
+                  <button
+                    onClick={() => downloadZip(`/checklists/runs/${runDetail.id}/photos.zip`, token, `bilder-besok-${runDetail.id}.zip`).catch((err) => setError(err.message))}
+                    style={{
+                      marginTop: 12, display: "flex", alignItems: "center", gap: 6,
+                      background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                      padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                    }}
+                  >
+                    <Download size={14} /> Last ned alle bilder
+                  </button>
+                )}
 
                 {runDetail.rooms?.length > 0 ? (
                   <>

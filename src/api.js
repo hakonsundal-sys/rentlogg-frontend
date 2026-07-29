@@ -41,4 +41,8 @@ export function downloadCsv(path, token, filename) {
   return downloadBlob(path, token, filename);
 }
 
+export function downloadZip(path, token, filename) {
+  return downloadBlob(path, token, filename);
+}
+
 export { API_URL };
