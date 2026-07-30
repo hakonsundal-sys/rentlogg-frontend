@@ -159,6 +159,15 @@ export default function CleanerView({ token, user }) {
     }
   }
 
+  async function markAllRoomItems() {
+    setRoomRun((r) => ({ ...r, items: r.items.map((i) => ({ ...i, done: true })) }));
+    try {
+      await apiFetch(`/rooms/runs/${roomRun.id}/items/complete-all`, { token, method: "POST" });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function uploadRoomPhoto(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -458,10 +467,20 @@ export default function CleanerView({ token, user }) {
 
           {expandedRoomId && roomRun && (
             <Card style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={{ fontWeight: 500 }}>{rooms.find((r) => r.id === expandedRoomId)?.name}</div>
-                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  {roomRun.items.filter((i) => i.done).length}/{roomRun.items.length}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                    {roomRun.items.filter((i) => i.done).length}/{roomRun.items.length}
+                  </div>
+                  {roomRun.items.length > 0 && roomRun.items.some((i) => !i.done) && (
+                    <button onClick={markAllRoomItems} style={{
+                      background: "none", border: "none", color: "var(--accent-orange-dark)",
+                      fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0,
+                    }}>
+                      Merk alle
+                    </button>
+                  )}
                 </div>
               </div>
               {roomRun.items.map((item) => (
