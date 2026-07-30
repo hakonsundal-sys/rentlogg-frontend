@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
+import { queueableFetch, subscribeQueue, useQueueStatus } from "../offlineQueue";
 import { Card, StatusBadge } from "./shared";
 import QrScanner from "./QrScanner";
 import CleanerHistoryView from "./CleanerHistoryView";
@@ -66,10 +67,42 @@ export default function CleanerView({ token, user }) {
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
   const [initials, setInitials] = useState(() => user?.name || "");
   const [viewTab, setViewTab] = useState("today");
+  const [pendingRoomPhotos, setPendingRoomPhotos] = useState([]); // photos queued offline: { tempId, previewUrl }
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const deviationFileInputRef = useRef(null);
   const undoTimeoutRef = useRef(null);
+  const { pendingCount, flushNow } = useQueueStatus();
+
+  useEffect(() => {
+    function goOnline() { setIsOnline(true); }
+    function goOffline() { setIsOnline(false); }
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  // Reconciles a queued room photo once it actually reaches the server: drop the local blob
+  // preview and pull the real, server-confirmed photo list so it shows with a real id (needed
+  // for delete to work).
+  useEffect(() => {
+    const unsubscribe = subscribeQueue((event) => {
+      if (event.type !== "success" && event.type !== "failed") return;
+      setPendingRoomPhotos((list) => {
+        const match = list.find((p) => p.tempId === event.tempId);
+        if (match) URL.revokeObjectURL(match.previewUrl);
+        return list.filter((p) => p.tempId !== event.tempId);
+      });
+      if (event.type === "success" && expandedRoomId) {
+        apiFetch(`/rooms/${expandedRoomId}/checkin`, { token, method: "POST" }).then(setRoomRun).catch(() => {});
+      }
+    });
+    return unsubscribe;
+  }, [expandedRoomId, token]);
 
   function showUndo(label, onUndo) {
     clearTimeout(undoTimeoutRef.current);
@@ -140,6 +173,7 @@ export default function CleanerView({ token, user }) {
 
   async function openRoom(room) {
     setError("");
+    setPendingRoomPhotos([]);
     try {
       const data = await apiFetch(`/rooms/${room.id}/checkin`, { token, method: "POST" });
       setRoomRun(data);
@@ -153,7 +187,7 @@ export default function CleanerView({ token, user }) {
     const done = !item.done;
     setRoomRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
     try {
-      await apiFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
+      await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
     } catch (err) {
       setError(err.message);
     }
@@ -162,7 +196,7 @@ export default function CleanerView({ token, user }) {
   async function markAllRoomItems() {
     setRoomRun((r) => ({ ...r, items: r.items.map((i) => ({ ...i, done: true })) }));
     try {
-      await apiFetch(`/rooms/runs/${roomRun.id}/items/complete-all`, { token, method: "POST" });
+      await queueableFetch(`/rooms/runs/${roomRun.id}/items/complete-all`, { token, method: "POST" });
     } catch (err) {
       setError(err.message);
     }
@@ -174,11 +208,18 @@ export default function CleanerView({ token, user }) {
     const form = new FormData();
     form.append("photo", file);
     form.append("kind", "general");
+    const previewUrl = URL.createObjectURL(file);
     try {
-      const photo = await apiFetch(`/rooms/runs/${roomRun.id}/photos`, { token, method: "POST", body: form });
-      setRoomRun((r) => ({ ...r, photos: [...(r.photos || []), photo] }));
+      const result = await queueableFetch(`/rooms/runs/${roomRun.id}/photos`, { token, method: "POST", body: form });
+      if (result.queued) {
+        setPendingRoomPhotos((p) => [...p, { tempId: result.tempId, previewUrl }]);
+      } else {
+        setRoomRun((r) => ({ ...r, photos: [...(r.photos || []), result] }));
+        URL.revokeObjectURL(previewUrl);
+      }
     } catch (err) {
       setError(err.message);
+      URL.revokeObjectURL(previewUrl);
     } finally {
       e.target.value = "";
     }
@@ -203,7 +244,7 @@ export default function CleanerView({ token, user }) {
     const roomId = expandedRoomId;
     const roomName = rooms.find((r) => r.id === roomId)?.name || "Rom";
     try {
-      await apiFetch(`/rooms/runs/${roomRun.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
+      await queueableFetch(`/rooms/runs/${roomRun.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       setExpandedRoomId(null);
       setRoomRun(null);
       refreshRooms();
@@ -224,7 +265,7 @@ export default function CleanerView({ token, user }) {
     }
     const roomIds = rooms.filter((r) => r.dueToday && r.status !== "completed").map((r) => r.id);
     try {
-      await apiFetch(`/sites/${run.site.id}/rooms/complete-all-due`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
+      await queueableFetch(`/sites/${run.site.id}/rooms/complete-all-due`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       refreshRooms();
       showUndo(`${roomIds.length} rom fullført`, async () => {
         await Promise.all(
@@ -244,17 +285,21 @@ export default function CleanerView({ token, user }) {
       return;
     }
     try {
-      const deviation = await apiFetch("/deviations", {
+      const deviation = await queueableFetch("/deviations", {
         token, method: "POST",
         body: JSON.stringify({
           site_id: run.site.id, run_id: run.id, description: deviationText, priority: "medium",
           initials: initials.trim(),
         }),
       });
-      if (deviationPhoto) {
+      if (deviation.queued) {
+        if (deviationPhoto) {
+          setError("Avviket er lagret og sendes når du får nett igjen. Legg til bildet på nytt etterpå — det kan ikke kobles til avviket før det er sendt inn.");
+        }
+      } else if (deviationPhoto) {
         const form = new FormData();
         form.append("photo", deviationPhoto);
-        await apiFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
+        await queueableFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
       }
       setDeviationText("");
       setDeviationPhoto(null);
@@ -269,7 +314,7 @@ export default function CleanerView({ token, user }) {
     const done = !item.done;
     setRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
     try {
-      await apiFetch(`/checklists/runs/${run.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
+      await queueableFetch(`/checklists/runs/${run.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
     } catch (err) {
       setError(err.message);
     }
@@ -281,10 +326,11 @@ export default function CleanerView({ token, user }) {
     const form = new FormData();
     form.append("photo", file);
     form.append("kind", "general");
+    setPhotoCount((c) => c + 1);
     try {
-      await apiFetch(`/checklists/runs/${run.id}/photos`, { token, method: "POST", body: form });
-      setPhotoCount((c) => c + 1);
+      await queueableFetch(`/checklists/runs/${run.id}/photos`, { token, method: "POST", body: form });
     } catch (err) {
+      setPhotoCount((c) => Math.max(0, c - 1));
       setError(err.message);
     } finally {
       e.target.value = "";
@@ -305,7 +351,7 @@ export default function CleanerView({ token, user }) {
       }
     }
     try {
-      await apiFetch(`/checklists/runs/${run.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
+      await queueableFetch(`/checklists/runs/${run.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       setRun(null);
       setRooms(null);
       clearTimeout(undoTimeoutRef.current);
@@ -324,6 +370,28 @@ export default function CleanerView({ token, user }) {
     </div>
   );
 
+  const offlineBanner = (!isOnline || pendingCount > 0) && (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8,
+      background: "var(--surface-0)", border: "1px solid var(--border)",
+      borderRadius: "var(--radius)", padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--text-secondary)",
+    }}>
+      <span>
+        {!isOnline
+          ? "Ingen nettforbindelse — endringer lagres lokalt og sendes automatisk."
+          : `${pendingCount} endring${pendingCount === 1 ? "" : "er"} venter på å sendes.`}
+      </span>
+      {pendingCount > 0 && (
+        <button onClick={flushNow} style={{
+          background: "none", border: "none", color: "var(--accent-orange-dark)",
+          fontWeight: 600, cursor: "pointer", fontSize: 13,
+        }}>
+          Prøv igjen nå
+        </button>
+      )}
+    </div>
+  );
+
   if (viewTab === "history") {
     return (
       <div>
@@ -338,6 +406,7 @@ export default function CleanerView({ token, user }) {
       return (
         <div>
           {viewTabs}
+          {offlineBanner}
           <QrScanner onScan={handleQrScanned} onCancel={() => setShowScanner(false)} />
           {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 12 }}>{error}</div>}
         </div>
@@ -346,6 +415,7 @@ export default function CleanerView({ token, user }) {
     return (
       <div>
         {viewTabs}
+        {offlineBanner}
         <Card style={{ textAlign: "center", padding: 40 }}>
         <QrCode size={40} style={{ margin: "0 auto 12px", color: "var(--text-secondary)" }} />
         <div style={{ marginBottom: 16, color: "var(--text-secondary)" }}>Skann QR-koden ved lokasjonen for å starte oppdraget</div>
@@ -405,6 +475,8 @@ export default function CleanerView({ token, user }) {
         </button>
         <StatusBadge status={run.site.status} />
       </div>
+
+      {offlineBanner}
 
       {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
@@ -494,7 +566,7 @@ export default function CleanerView({ token, user }) {
                   </span>
                 </div>
               ))}
-              {roomRun.photos?.length > 0 && (
+              {(roomRun.photos?.length > 0 || pendingRoomPhotos.length > 0) && (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                   {roomRun.photos.map((p) => (
                     <div key={p.id} style={{ position: "relative" }}>
@@ -512,6 +584,16 @@ export default function CleanerView({ token, user }) {
                       >
                         <X size={12} />
                       </button>
+                    </div>
+                  ))}
+                  {pendingRoomPhotos.map((p) => (
+                    <div key={p.tempId} style={{ position: "relative" }} title="Venter på nett — sendes automatisk">
+                      <img src={p.previewUrl} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)", opacity: 0.55 }} />
+                      <div style={{
+                        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Clock size={18} style={{ color: "white", filter: "drop-shadow(0 0 2px rgba(0,0,0,0.8))" }} />
+                      </div>
                     </div>
                   ))}
                 </div>
