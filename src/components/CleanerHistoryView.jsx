@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, AlertTriangle, Pencil } from "lucide-react";
-import { apiFetch } from "../api";
+import { ChevronDown, ChevronRight, AlertTriangle, Pencil, FileText, Download } from "lucide-react";
+import { apiFetch, downloadPdf, viewHtmlReport } from "../api";
 import { Card } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 
@@ -138,6 +138,29 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                     token={token} runDetail={runDetail} editable={isEditingRun} editInitials={editInitials}
                     onChanged={refreshRunDetail} setError={setError}
                   />
+
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                    <button
+                      onClick={() => viewHtmlReport(`/reports/runs/${run.id}/html`, token).catch((err) => setError(err.message))}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                        padding: "7px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                      }}
+                    >
+                      <FileText size={13} /> Vis rapport
+                    </button>
+                    <button
+                      onClick={() => downloadPdf(`/reports/runs/${run.id}/pdf`, token, `rapport-besok-${run.id}.pdf`).catch((err) => setError(err.message))}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                        padding: "7px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                      }}
+                    >
+                      <Download size={13} /> Last ned PDF
+                    </button>
+                  </div>
 
                   {runDetail.deviations?.length > 0 && (
                     <>

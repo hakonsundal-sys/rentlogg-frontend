@@ -45,4 +45,26 @@ export function downloadZip(path, token, filename) {
   return downloadBlob(path, token, filename);
 }
 
+// Opens a protected HTML report in a new tab. A plain <a href> can't carry the Bearer token a
+// protected route needs, so this fetches it the same authenticated way every other download
+// does, then opens the blob instead of forcing a save — the report is meant to be read/copied
+// as an email body, not just downloaded. The tab is opened synchronously (before the `await`)
+// so it stays tied to the click's user gesture — opening it only after the fetch resolves gets
+// silently blocked as a popup by most browsers.
+export async function viewHtmlReport(path, token) {
+  const win = window.open("", "_blank");
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Kunne ikke åpne rapporten");
+    const blob = await res.blob();
+    if (!win) throw new Error("Nettleseren blokkerte den nye fanen. Tillat sprettoppvinduer og prøv igjen.");
+    win.location = URL.createObjectURL(blob);
+  } catch (err) {
+    win?.close();
+    throw err;
+  }
+}
+
 export { API_URL };

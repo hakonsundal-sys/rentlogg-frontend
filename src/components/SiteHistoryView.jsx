@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { X, ChevronDown, ChevronRight } from "lucide-react";
-import { apiFetch } from "../api";
+import { X, ChevronDown, ChevronRight, FileText, Download } from "lucide-react";
+import { apiFetch, downloadPdf, viewHtmlReport } from "../api";
 import { DeviationItem } from "./DeviationItem";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 
@@ -125,10 +125,34 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
                   <div style={{ borderTop: "1px solid var(--border)", padding: 10 }}>
                     {!runDetails[run.id] && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Laster...</div>}
                     {runDetails[run.id] && (
-                      <RunRoomsAndItems
-                        token={token} runDetail={runDetails[run.id]} editable={false}
-                        editInitials="" onChanged={() => {}} setError={setError}
-                      />
+                      <>
+                        <RunRoomsAndItems
+                          token={token} runDetail={runDetails[run.id]} editable={false}
+                          editInitials="" onChanged={() => {}} setError={setError}
+                        />
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                          <button
+                            onClick={() => viewHtmlReport(`/reports/runs/${run.id}/html`, token).catch((err) => setError(err.message))}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 6,
+                              background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                              padding: "7px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                            }}
+                          >
+                            <FileText size={13} /> Vis rapport
+                          </button>
+                          <button
+                            onClick={() => downloadPdf(`/reports/runs/${run.id}/pdf`, token, `rapport-besok-${run.id}.pdf`).catch((err) => setError(err.message))}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 6,
+                              background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                              padding: "7px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                            }}
+                          >
+                            <Download size={13} /> Last ned PDF
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

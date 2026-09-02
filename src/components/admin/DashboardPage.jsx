@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Sparkles, X, ClipboardList, CheckCircle2, Clock, AlertTriangle, Download, Pencil } from "lucide-react";
-import { apiFetch, downloadZip, API_URL } from "../../api";
+import { Sparkles, X, ClipboardList, CheckCircle2, Clock, AlertTriangle, Download, Pencil, FileText } from "lucide-react";
+import { apiFetch, downloadZip, downloadPdf, viewHtmlReport, API_URL } from "../../api";
 import { Card } from "../shared";
 import RunRoomsAndItems from "../RunRoomsAndItems";
 
@@ -234,18 +234,40 @@ export default function DashboardPage({ token, user, summary }) {
                   <div>{runDetail.gps_verified ? "Posisjon bekreftet" : "Posisjon ikke bekreftet"}</div>
                 </div>
 
-                {(runDetail.photos.length > 0 || runDetail.rooms?.some((r) => r.photos.length > 0)) && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                   <button
-                    onClick={() => downloadZip(`/checklists/runs/${runDetail.id}/photos.zip`, token, `bilder-besok-${runDetail.id}.zip`).catch((err) => setError(err.message))}
+                    onClick={() => viewHtmlReport(`/reports/runs/${runDetail.id}/html`, token).catch((err) => setError(err.message))}
                     style={{
-                      marginTop: 12, display: "flex", alignItems: "center", gap: 6,
+                      display: "flex", alignItems: "center", gap: 6,
                       background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
                       padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
                     }}
                   >
-                    <Download size={14} /> Last ned alle bilder
+                    <FileText size={14} /> Vis rapport
                   </button>
-                )}
+                  <button
+                    onClick={() => downloadPdf(`/reports/runs/${runDetail.id}/pdf`, token, `rapport-besok-${runDetail.id}.pdf`).catch((err) => setError(err.message))}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                      padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                    }}
+                  >
+                    <Download size={14} /> Last ned PDF
+                  </button>
+                  {(runDetail.photos.length > 0 || runDetail.rooms?.some((r) => r.photos.length > 0)) && (
+                    <button
+                      onClick={() => downloadZip(`/checklists/runs/${runDetail.id}/photos.zip`, token, `bilder-besok-${runDetail.id}.zip`).catch((err) => setError(err.message))}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                        padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                      }}
+                    >
+                      <Download size={14} /> Last ned alle bilder
+                    </button>
+                  )}
+                </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
