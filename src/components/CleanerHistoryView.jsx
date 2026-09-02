@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle, Pencil, FileText, Download } from "lucide-react";
-import { apiFetch, downloadPdf, viewHtmlReport } from "../api";
+import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { Card } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
+
+function photoUrl(filePath) {
+  const filename = filePath.split(/[\\/]/).pop();
+  return `${API_URL}/uploads/${filename}`;
+}
 
 const REPLY_ACTIONS = [
   { action: "resolve", label: "Lukk avvik" },
@@ -226,6 +231,15 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           <div style={{ fontSize: 13 }}>{deviation.description}</div>
           {deviation.reported_by_initials && (
             <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>Meldt av: {deviation.reported_by_initials}</div>
+          )}
+          {deviation.photos?.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+              {deviation.photos.map((p) => (
+                <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
+                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                </a>
+              ))}
+            </div>
           )}
         </div>
       </div>
