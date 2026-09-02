@@ -27,7 +27,7 @@ function todayWeekday() {
   return new Date(`${todayStr}T00:00:00`).getDay();
 }
 
-const emptyForm = { name: "", client_id: "", address: "" };
+const emptyForm = { name: "", client_id: "", address: "", report_recipients: "" };
 
 // Flat (non-room) checklists are hidden for now — locations use only the room-based setup.
 // Flip back to true to re-enable; nothing else needs to change.
@@ -370,6 +370,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
         token, method: "POST",
         body: JSON.stringify({
           name: form.name, client_id: Number(form.client_id), address: form.address || null,
+          report_recipients: form.report_recipients || null,
         }),
       });
       setForm(emptyForm);
@@ -387,6 +388,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
       name: site.name || "",
       client_id: site.client_id || "",
       address: site.address || "",
+      report_recipients: site.report_recipients || "",
     });
   }
 
@@ -398,6 +400,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
         token, method: "PATCH",
         body: JSON.stringify({
           name: editSiteForm.name, client_id: Number(editSiteForm.client_id), address: editSiteForm.address || null,
+          report_recipients: editSiteForm.report_recipients || null,
         }),
       });
       setEditingSiteId(null);
@@ -540,6 +543,12 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} style={{ gridColumn: "span 2" }} />
+            <input
+              type="text" placeholder="Rapport-mottakere (kommaseparert e-post)"
+              value={form.report_recipients}
+              onChange={(e) => setForm({ ...form, report_recipients: e.target.value })}
+              style={{ ...inputStyle, gridColumn: "span 2" }}
+            />
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett lokasjon</button>
           </form>
         </Card>
@@ -556,6 +565,12 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <AddressAutocomplete value={editSiteForm.address} onChange={(v) => setEditSiteForm({ ...editSiteForm, address: v })} inputStyle={inputStyle} />
+                <input
+                  type="text" placeholder="Rapport-mottakere (kommaseparert e-post)"
+                  value={editSiteForm.report_recipients}
+                  onChange={(e) => setEditSiteForm({ ...editSiteForm, report_recipients: e.target.value })}
+                  style={inputStyle}
+                />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingSiteId(null)} style={linkBtnStyle}>Avbryt</button>
