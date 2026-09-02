@@ -62,7 +62,7 @@ function PhotosRow({ photos, onDelete }) {
 
 function AddPhotoButton({ inputRef, onUpload }) {
   return (
-    <div style={{ marginTop: 6 }}>
+    <>
       <input ref={inputRef} type="file" accept="image/*" onChange={onUpload} style={{ display: "none" }} />
       <button
         onClick={() => inputRef.current?.click()}
@@ -74,7 +74,22 @@ function AddPhotoButton({ inputRef, onUpload }) {
       >
         <Camera size={13} /> Ta bilde
       </button>
-    </div>
+    </>
+  );
+}
+
+function CompleteButton({ onClick, label }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        background: "var(--text-success)", color: "white", border: "none",
+        padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
+      }}
+    >
+      <CheckCircle2 size={13} /> {label}
+    </button>
   );
 }
 
@@ -145,6 +160,40 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     return fileInputsRef.current[key];
   }
 
+  // Checking off every item does not itself mark a room/visit as done — that's a deliberate,
+  // separate signed action (matches the live flow's "Fullfør rom"/"Fullfør besøk" buttons), so
+  // retroactively fixing a missed task still needs this explicit step, with the same name
+  // validation used everywhere else a completion gets signed.
+  async function completeRoom(roomRunId) {
+    if (!editInitials?.trim()) {
+      setError("Skriv inn navnet ditt for å fullføre rommet.");
+      return;
+    }
+    try {
+      await apiFetch(`/rooms/runs/${roomRunId}/complete`, {
+        token, method: "POST", body: JSON.stringify({ initials: editInitials.trim() }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function completeFlatRun() {
+    if (!editInitials?.trim()) {
+      setError("Skriv inn navnet ditt for å fullføre besøket.");
+      return;
+    }
+    try {
+      await apiFetch(`/checklists/runs/${runDetail.id}/complete`, {
+        token, method: "POST", body: JSON.stringify({ initials: editInitials.trim() }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (runDetail.rooms?.length > 0) {
     return (
       <>
@@ -179,7 +228,12 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                 <PhotosRow photos={room.photos} onDelete={editable ? (id) => deletePhoto(room.roomRunId, id) : null} />
               )}
               {editable && room.roomRunId && (
-                <AddPhotoButton inputRef={inputRefFor(key)} onUpload={(e) => uploadPhoto(room.roomRunId, e)} />
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 6 }}>
+                  <AddPhotoButton inputRef={inputRefFor(key)} onUpload={(e) => uploadPhoto(room.roomRunId, e)} />
+                  {!room.completed_at && (
+                    <CompleteButton onClick={() => completeRoom(room.roomRunId)} label="Fullfør rom" />
+                  )}
+                </div>
               )}
               <EditedBadge editedAt={room.edited_at} editedBy={room.edited_by_initials} />
             </div>
@@ -202,7 +256,10 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
         <PhotosRow photos={runDetail.photos} onDelete={editable ? (id) => deletePhoto(null, id) : null} />
       )}
       {editable && (
-        <AddPhotoButton inputRef={inputRefFor("flat")} onUpload={(e) => uploadPhoto(null, e)} />
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8 }}>
+          <AddPhotoButton inputRef={inputRefFor("flat")} onUpload={(e) => uploadPhoto(null, e)} />
+          {!runDetail.completed_at && <CompleteButton onClick={completeFlatRun} label="Fullfør besøk" />}
+        </div>
       )}
       <EditedBadge editedAt={runDetail.edited_at} editedBy={runDetail.edited_by_initials} />
     </>
