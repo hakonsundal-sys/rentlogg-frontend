@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
-import { Download, CheckCircle2, FileText, Clock, AlertTriangle } from "lucide-react";
+import { Download, CheckCircle2, FileText, Clock, AlertTriangle, Send } from "lucide-react";
 import { apiFetch, downloadCsv } from "../../api";
 import { Card } from "../shared";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
+}
+
+// Same "what calendar day just ended" offset as the backend's yesterdayInOslo() — the digest
+// normally runs at 07:00 for the previous day, so that's the sensible default here too.
+function yesterdayInOslo() {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 1);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(d);
 }
 
 const STATUS_LABEL = { completed: "Fullført", in_progress: "Pågår", missing: "Manglende" };
@@ -15,6 +23,9 @@ export default function RapporterPage({ token }) {
   const [siteId, setSiteId] = useState("");
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
+  const [digestDate, setDigestDate] = useState(yesterdayInOslo());
+  const [digestSending, setDigestSending] = useState(false);
+  const [digestResult, setDigestResult] = useState(null);
 
   useEffect(() => {
     apiFetch("/sites", { token }).then(setSites).catch((err) => setError(err.message));
@@ -28,6 +39,22 @@ export default function RapporterPage({ token }) {
   function exportCsv() {
     const params = new URLSearchParams({ month, ...(siteId ? { site_id: siteId } : {}) });
     downloadCsv(`/reports/summary.csv?${params}`, token, `rapport-${month}.csv`).catch((err) => setError(err.message));
+  }
+
+  async function sendDigestNow() {
+    setError("");
+    setDigestResult(null);
+    setDigestSending(true);
+    try {
+      const result = await apiFetch("/reports/daily-digest/run", {
+        token, method: "POST", body: JSON.stringify({ date: digestDate }),
+      });
+      setDigestResult(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDigestSending(false);
+    }
   }
 
   return (
@@ -48,6 +75,28 @@ export default function RapporterPage({ token }) {
           </button>
         </div>
       </div>
+
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 600 }}>Send daglig rapport manuelt</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+              Sender den vanlige 07:00-digesten for valgt dato på nytt, til alle lokasjoner med mottakere satt.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="date" value={digestDate} onChange={(e) => setDigestDate(e.target.value)} style={inputStyle} />
+            <button onClick={sendDigestNow} disabled={digestSending} style={primaryBtnStyle}>
+              <Send size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> {digestSending ? "Sender..." : "Send nå"}
+            </button>
+          </div>
+        </div>
+        {digestResult && (
+          <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)" }}>
+            {digestResult.sent} sendt, {digestResult.skipped} hoppet over, {digestResult.failed} feilet ({digestResult.date})
+          </div>
+        )}
+      </Card>
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
 
