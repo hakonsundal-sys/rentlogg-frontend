@@ -24,6 +24,7 @@ export default function RapporterPage({ token }) {
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [digestDate, setDigestDate] = useState(yesterdayInOslo());
+  const [digestSiteId, setDigestSiteId] = useState("");
   const [digestSending, setDigestSending] = useState(false);
   const [digestResult, setDigestResult] = useState(null);
 
@@ -47,7 +48,7 @@ export default function RapporterPage({ token }) {
     setDigestSending(true);
     try {
       const result = await apiFetch("/reports/daily-digest/run", {
-        token, method: "POST", body: JSON.stringify({ date: digestDate }),
+        token, method: "POST", body: JSON.stringify({ date: digestDate, ...(digestSiteId ? { site_id: digestSiteId } : {}) }),
       });
       setDigestResult(result);
     } catch (err) {
@@ -81,10 +82,14 @@ export default function RapporterPage({ token }) {
           <div>
             <div style={{ fontWeight: 600 }}>Send daglig rapport manuelt</div>
             <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-              Sender den vanlige 07:00-digesten for valgt dato på nytt, til alle lokasjoner med mottakere satt.
+              Sender den vanlige 07:00-digesten for valgt dato på nytt — til alle lokasjoner med mottakere satt, eller kun én.
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select value={digestSiteId} onChange={(e) => setDigestSiteId(e.target.value)} style={inputStyle}>
+              <option value="">Alle lokasjoner</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
             <input type="date" value={digestDate} onChange={(e) => setDigestDate(e.target.value)} style={inputStyle} />
             <button onClick={sendDigestNow} disabled={digestSending} style={primaryBtnStyle}>
               <Send size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> {digestSending ? "Sender..." : "Send nå"}
