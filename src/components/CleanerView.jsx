@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus } from "../offlineQueue";
-import { Card, StatusBadge } from "./shared";
+import { Card, StatusBadge, DocumentsList } from "./shared";
 import QrScanner from "./QrScanner";
 import CleanerHistoryView from "./CleanerHistoryView";
 
@@ -79,6 +79,8 @@ export default function CleanerView({ token, user }) {
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
   const [initials, setInitials] = useState(() => user?.name || "");
   const [viewTab, setViewTab] = useState("today");
+  const [documents, setDocuments] = useState([]);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [pendingRoomPhotos, setPendingRoomPhotos] = useState([]); // photos queued offline: { tempId, previewUrl }
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const fileInputRef = useRef(null);
@@ -153,6 +155,9 @@ export default function CleanerView({ token, user }) {
 
       const siteRooms = await apiFetch(`/sites/${checkin.site.id}/rooms`, { token });
       setRooms(siteRooms);
+
+      setShowDocuments(false);
+      apiFetch(`/sites/${checkin.site.id}/documents`, { token }).then(setDocuments).catch(() => setDocuments([]));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -518,6 +523,20 @@ export default function CleanerView({ token, user }) {
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
             <MapPin size={15} /> Posisjon ikke bekreftet
+          </div>
+        )}
+        {documents.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <button
+              onClick={() => setShowDocuments((v) => !v)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none",
+                padding: 0, fontSize: 13, color: "var(--accent-orange-dark)", cursor: "pointer",
+              }}
+            >
+              <FileText size={13} /> Dokumenter ({documents.length})
+            </button>
+            {showDocuments && <div style={{ marginTop: 6 }}><DocumentsList documents={documents} /></div>}
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>

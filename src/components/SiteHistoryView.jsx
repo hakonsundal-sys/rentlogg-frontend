@@ -3,6 +3,7 @@ import { X, ChevronDown, ChevronRight, FileText, Download } from "lucide-react";
 import { apiFetch, downloadPdf, viewHtmlReport } from "../api";
 import { DeviationItem } from "./DeviationItem";
 import RunRoomsAndItems from "./RunRoomsAndItems";
+import { DocumentsList } from "./shared";
 
 function tabBtnStyle(active) {
   return {
@@ -23,6 +24,7 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
   const [hasMore, setHasMore] = useState(false);
   const [expandedRunId, setExpandedRunId] = useState(null);
   const [runDetails, setRunDetails] = useState({});
+  const [documents, setDocuments] = useState([]);
 
   async function loadRuns(before) {
     setLoadingRuns(true);
@@ -40,6 +42,7 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
 
   useEffect(() => {
     loadRuns();
+    apiFetch(`/sites/${site.id}/documents`, { token }).then(setDocuments).catch((err) => setError(err.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site.id]);
 
@@ -86,7 +89,10 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
           <button onClick={() => setTab("visits")} style={tabBtnStyle(tab === "visits")}>Besøk</button>
           <button onClick={() => setTab("deviations")} style={tabBtnStyle(tab === "deviations")}>Avvik ({sortedDeviations.length})</button>
+          <button onClick={() => setTab("documents")} style={tabBtnStyle(tab === "documents")}>Dokumenter ({documents.length})</button>
         </div>
+
+        {tab === "documents" && <DocumentsList documents={documents} />}
 
         {tab === "visits" && (
           <>

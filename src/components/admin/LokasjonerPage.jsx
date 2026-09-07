@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History } from "lucide-react";
+import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, AddressAutocomplete } from "../shared";
+import { Card, AddressAutocomplete, DocumentsList } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
 
 const WEEKDAYS = [
@@ -45,6 +45,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [form, setForm] = useState(emptyForm);
   const [expandedSite, setExpandedSite] = useState(null);
   const [expandedRoomsSite, setExpandedRoomsSite] = useState(null);
+  const [expandedDocsSite, setExpandedDocsSite] = useState(null);
+  const [documents, setDocuments] = useState({}); // siteId -> [{id, name, file_path, visibility}]
+  const [newDocName, setNewDocName] = useState("");
+  const [newDocVisibility, setNewDocVisibility] = useState("both");
   const [expandedRoomId, setExpandedRoomId] = useState(null);
   const [roomItems, setRoomItems] = useState({}); // roomId -> [{id, label}]
   const [roomSchedules, setRoomSchedules] = useState({}); // roomId -> [{id, weekday, assigned_cleaner_id, assigned_cleaner_name}]
@@ -66,6 +70,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [newChecklistTasks, setNewChecklistTasks] = useState([""]);
   const pdfInputRef = useRef(null);
   const pdfImportSiteIdRef = useRef(null);
+  const docFileInputRef = useRef(null);
 
   function loadAll() {
     Promise.all([
@@ -435,6 +440,50 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  function loadDocuments(siteId) {
+    apiFetch(`/sites/${siteId}/documents`, { token })
+      .then((docs) => setDocuments((d) => ({ ...d, [siteId]: docs })))
+      .catch((err) => setError(err.message));
+  }
+
+  function toggleDocsSite(siteId) {
+    if (expandedDocsSite === siteId) {
+      setExpandedDocsSite(null);
+      return;
+    }
+    setExpandedDocsSite(siteId);
+    setNewDocName("");
+    loadDocuments(siteId);
+  }
+
+  async function uploadDocument(siteId, e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("name", newDocName.trim() || file.name);
+    form.append("visibility", newDocVisibility);
+    try {
+      await apiFetch(`/sites/${siteId}/documents`, { token, method: "POST", body: form });
+      setNewDocName("");
+      loadDocuments(siteId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  async function deleteDocument(siteId, docId) {
+    if (!window.confirm("Fjerne dokumentet?")) return;
+    try {
+      await apiFetch(`/sites/${siteId}/documents/${docId}`, { token, method: "DELETE" });
+      loadDocuments(siteId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function openHistory(site) {
     setError("");
     setHistoryDeviations([]);
@@ -663,6 +712,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     <button onClick={() => openHistory(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                       <History size={12} /> Historikk
                     </button>
+                    <button onClick={() => toggleDocsSite(site.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                      <FileText size={12} /> {expandedDocsSite === site.id ? "Skjul dokumenter" : "Dokumenter"}
+                    </button>
                   </div>
                 </div>
               </>
@@ -708,6 +760,28 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     </select>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {expandedDocsSite === site.id && (
+              <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                <DocumentsList documents={documents[site.id] || []} onDelete={(docId) => deleteDocument(site.id, docId)} />
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
+                  <input
+                    placeholder="Navn (valgfritt)" value={newDocName}
+                    onChange={(e) => setNewDocName(e.target.value)}
+                    style={{ ...inputStyle, flex: 1, minWidth: 120 }}
+                  />
+                  <select value={newDocVisibility} onChange={(e) => setNewDocVisibility(e.target.value)} style={inputStyle}>
+                    <option value="both">Begge</option>
+                    <option value="staff">Ansatte</option>
+                    <option value="customer">Kunde</option>
+                  </select>
+                  <input ref={docFileInputRef} type="file" accept="image/*,.pdf" onChange={(e) => uploadDocument(site.id, e)} style={{ display: "none" }} />
+                  <button onClick={() => docFileInputRef.current?.click()} style={linkBtnStyle}>
+                    <FileUp size={13} style={{ marginRight: 4, verticalAlign: -2 }} /> Last opp
+                  </button>
+                </div>
               </div>
             )}
 

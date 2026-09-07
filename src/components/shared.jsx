@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { X } from "lucide-react";
+import { API_URL } from "../api";
 
 export function StatusBadge({ status }) {
   const map = {
@@ -44,6 +46,42 @@ export function Card({ children, style }) {
       borderRadius: "var(--radius-lg)", padding: 16, ...style,
     }}>
       {children}
+    </div>
+  );
+}
+
+function documentUrl(filePath) {
+  const filename = filePath.split(/[\\/]/).pop();
+  return `${API_URL}/uploads/${filename}`;
+}
+
+// Shared read/edit list for a site's document library — used by admin (with onDelete), and
+// read-only by the customer and cleaner surfaces.
+export function DocumentsList({ documents, onDelete }) {
+  if (!documents.length) {
+    return <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Ingen dokumenter ennå.</div>;
+  }
+  return (
+    <div>
+      {documents.map((d) => (
+        <div key={d.id} style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "6px 0", borderTop: "1px solid var(--border)",
+        }}>
+          <a href={documentUrl(d.file_path)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent-orange-dark)" }}>
+            {d.name}
+          </a>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(d.id)}
+              aria-label="Fjern dokument"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 0 }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
