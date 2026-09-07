@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle, Pencil, FileText, Download } from "lucide-react";
 import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
+import { isNetworkError } from "../offlineQueue";
 import { Card } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 
@@ -53,7 +54,9 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
     try {
       setRunDetail(await apiFetch(`/checklists/runs/${expandedRunId}`, { token }));
     } catch (err) {
-      setError(err.message);
+      // A mutation just made via RunRoomsAndItems may have been queued offline rather than sent
+      // — there's nothing new to fetch yet, so a network failure here isn't a real error to show.
+      if (!isNetworkError(err)) setError(err.message);
     }
   }
 

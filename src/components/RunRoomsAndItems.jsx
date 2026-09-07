@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Camera, CheckCircle2, Circle, X } from "lucide-react";
-import { apiFetch, API_URL } from "../api";
+import { API_URL } from "../api";
+import { queueableFetch } from "../offlineQueue";
 
 function photoUrl(filePath) {
   const filename = filePath.split(/[\\/]/).pop();
@@ -117,7 +118,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   async function toggleItem(roomRunId, item) {
     const done = !item.done;
     try {
-      await apiFetch(endpointFor(roomRunId, `items/${item.id}`), {
+      await queueableFetch(endpointFor(roomRunId, `items/${item.id}`), {
         token, method: "PATCH", body: JSON.stringify({ done, initials: editInitials }),
       });
       onChanged();
@@ -134,7 +135,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     form.append("kind", "general");
     form.append("initials", editInitials || "");
     try {
-      await apiFetch(endpointFor(roomRunId, "photos"), { token, method: "POST", body: form });
+      await queueableFetch(endpointFor(roomRunId, "photos"), { token, method: "POST", body: form });
       onChanged();
     } catch (err) {
       setError(err.message);
@@ -146,7 +147,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   async function deletePhoto(roomRunId, photoId) {
     if (!window.confirm("Fjerne bildet?")) return;
     try {
-      await apiFetch(endpointFor(roomRunId, `photos/${photoId}`), {
+      await queueableFetch(endpointFor(roomRunId, `photos/${photoId}`), {
         token, method: "DELETE", body: JSON.stringify({ initials: editInitials }),
       });
       onChanged();
@@ -170,7 +171,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
       return;
     }
     try {
-      await apiFetch(`/rooms/runs/${roomRunId}/complete`, {
+      await queueableFetch(`/rooms/runs/${roomRunId}/complete`, {
         token, method: "POST", body: JSON.stringify({ initials: editInitials.trim() }),
       });
       onChanged();
@@ -185,7 +186,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
       return;
     }
     try {
-      await apiFetch(`/checklists/runs/${runDetail.id}/complete`, {
+      await queueableFetch(`/checklists/runs/${runDetail.id}/complete`, {
         token, method: "POST", body: JSON.stringify({ initials: editInitials.trim() }),
       });
       onChanged();

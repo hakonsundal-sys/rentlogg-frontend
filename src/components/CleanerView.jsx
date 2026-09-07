@@ -3,7 +3,7 @@ import {
   QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
-import { queueableFetch, subscribeQueue, useQueueStatus } from "../offlineQueue";
+import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
 import { Card, StatusBadge, DocumentsList } from "./shared";
 import QrScanner from "./QrScanner";
 import CleanerHistoryView from "./CleanerHistoryView";
@@ -106,12 +106,19 @@ export default function CleanerView({ token, user }) {
   useEffect(() => {
     const unsubscribe = subscribeQueue((event) => {
       if (event.type !== "success" && event.type !== "failed") return;
+      let wasPendingPhoto = false;
       setPendingRoomPhotos((list) => {
         const match = list.find((p) => p.tempId === event.tempId);
-        if (match) URL.revokeObjectURL(match.previewUrl);
+        if (match) {
+          wasPendingPhoto = true;
+          URL.revokeObjectURL(match.previewUrl);
+        }
         return list.filter((p) => p.tempId !== event.tempId);
       });
-      if (event.type === "success" && expandedRoomId) {
+      // Only refetch when the flushed item was actually one of this room's pending photos —
+      // otherwise any unrelated queued mutation flushing (e.g. an item toggle from a different
+      // room) would re-POST checkin here too, for no reason.
+      if (wasPendingPhoto && event.type === "success" && expandedRoomId) {
         apiFetch(`/rooms/${expandedRoomId}/checkin`, { token, method: "POST" }).then(setRoomRun).catch(() => {});
       }
     });
@@ -159,7 +166,10 @@ export default function CleanerView({ token, user }) {
       setShowDocuments(false);
       apiFetch(`/sites/${checkin.site.id}/documents`, { token }).then(setDocuments).catch(() => setDocuments([]));
     } catch (err) {
-      setError(err.message);
+      // Check-in needs the server's checklist back to render anything, so it can't just be
+      // queued like the in-visit mutations below — give a clear reason instead of a raw
+      // "Failed to fetch" when there's simply no connection yet.
+      setError(isNetworkError(err) ? "Ingen nettforbindelse. Prøv igjen når du har dekning." : err.message);
     } finally {
       setScanning(false);
     }
@@ -196,7 +206,9 @@ export default function CleanerView({ token, user }) {
       setRoomRun(data);
       setExpandedRoomId(room.id);
     } catch (err) {
-      setError(err.message);
+      // Same reasoning as checkInWithToken — opening a room needs its item list back to render
+      // at all, so this can't be handed to the offline queue.
+      setError(isNetworkError(err) ? "Ingen nettforbindelse. Prøv igjen når du har dekning." : err.message);
     }
   }
 
@@ -245,7 +257,7 @@ export default function CleanerView({ token, user }) {
   async function deleteRoomPhoto(photoId) {
     if (!window.confirm("Fjerne bildet?")) return;
     try {
-      await apiFetch(`/rooms/runs/${roomRun.id}/photos/${photoId}`, { token, method: "DELETE" });
+      await queueableFetch(`/rooms/runs/${roomRun.id}/photos/${photoId}`, { token, method: "DELETE" });
       setRoomRun((r) => ({ ...r, photos: r.photos.filter((p) => p.id !== photoId) }));
     } catch (err) {
       setError(err.message);
@@ -266,7 +278,7 @@ export default function CleanerView({ token, user }) {
       setRoomRun(null);
       refreshRooms();
       showUndo(`${roomName} fullført`, async () => {
-        await apiFetch(`/rooms/${roomId}/reopen`, { token, method: "POST" });
+        await queueableFetch(`/rooms/${roomId}/reopen`, { token, method: "POST" });
         refreshRooms();
       });
     } catch (err) {
@@ -286,7 +298,7 @@ export default function CleanerView({ token, user }) {
       refreshRooms();
       showUndo(`${roomIds.length} rom fullført`, async () => {
         await Promise.all(
-          roomIds.map((id) => apiFetch(`/rooms/${id}/reopen`, { token, method: "POST", body: JSON.stringify({ resetItems: true }) }))
+          roomIds.map((id) => queueableFetch(`/rooms/${id}/reopen`, { token, method: "POST", body: JSON.stringify({ resetItems: true }) }))
         );
         refreshRooms();
       });
@@ -619,12 +631,12 @@ export default function CleanerView({ token, user }) {
                         onClick={() => deleteRoomPhoto(p.id)}
                         aria-label="Fjern bilde"
                         style={{
-                          position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
+                          position: "absolute", top: -8, right: -8, width: 28, height: 28, borderRadius: "50%",
                           background: "rgba(0,0,0,0.65)", color: "white", border: "none",
                           display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
                         }}
                       >
-                        <X size={12} />
+                        <X size={14} />
                       </button>
                     </div>
                   ))}
@@ -645,13 +657,13 @@ export default function CleanerView({ token, user }) {
                 <button onClick={() => roomFileInputRef.current.click()} style={{
                   display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
                   background: "var(--surface-0)", border: "1px solid var(--border)",
-                  padding: "8px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
+                  padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
                 }}>
-                  <Camera size={14} /> Ta bilde
+                  <Camera size={16} /> Ta bilde
                 </button>
                 <button onClick={completeRoom} style={{
                   flex: 1, background: "var(--text-success)", color: "white", border: "none",
-                  padding: "8px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
+                  padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
                 }}>
                   Fullfør rom
                 </button>

@@ -18,7 +18,10 @@ function openDb() {
   return dbPromise;
 }
 
-function isNetworkError(err) {
+// Exported so callers that need the response body right away (and so can't just hand the call
+// to queueableFetch) can still show the same friendly "no connection" message instead of a raw
+// TypeError, e.g. CleanerView's check-in and open-room calls.
+export function isNetworkError(err) {
   return err instanceof TypeError;
 }
 
