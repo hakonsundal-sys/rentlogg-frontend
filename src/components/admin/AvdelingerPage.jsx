@@ -3,11 +3,10 @@ import { Building2, Trash2, Pencil } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card } from "../shared";
 
-const emptyForm = { name: "", client_id: "" };
+const emptyForm = { name: "" };
 
 export default function AvdelingerPage({ token, refreshSummary }) {
   const [departments, setDepartments] = useState([]);
-  const [clients, setClients] = useState([]);
   const [sites, setSites] = useState([]);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -17,10 +16,9 @@ export default function AvdelingerPage({ token, refreshSummary }) {
   const [editForm, setEditForm] = useState(emptyForm);
 
   function loadAll() {
-    Promise.all([apiFetch("/departments", { token }), apiFetch("/clients", { token }), apiFetch("/sites", { token })])
-      .then(([departmentsData, clientsData, sitesData]) => {
+    Promise.all([apiFetch("/departments", { token }), apiFetch("/sites", { token })])
+      .then(([departmentsData, sitesData]) => {
         setDepartments(departmentsData);
-        setClients(clientsData);
         setSites(sitesData);
       })
       .catch((err) => setError(err.message));
@@ -29,13 +27,12 @@ export default function AvdelingerPage({ token, refreshSummary }) {
   useEffect(loadAll, [token]);
 
   const siteCount = (departmentId) => sites.filter((s) => s.department_id === departmentId).length;
-  const clientName = (clientId) => clients.find((c) => c.id === clientId)?.name || "Ukjent kunde";
 
   async function createDepartment(e) {
     e.preventDefault();
     setError("");
     try {
-      await apiFetch("/departments", { token, method: "POST", body: JSON.stringify({ ...form, client_id: Number(form.client_id) }) });
+      await apiFetch("/departments", { token, method: "POST", body: JSON.stringify(form) });
       setForm(emptyForm);
       setShowForm(false);
       loadAll();
@@ -60,16 +57,17 @@ export default function AvdelingerPage({ token, refreshSummary }) {
 
   function startEditDepartment(department) {
     setEditingDepartmentId(department.id);
-    setEditForm({ name: department.name || "", client_id: String(department.client_id) });
+    setEditForm({ name: department.name || "" });
   }
 
   async function saveEditDepartment(e, id) {
     e.preventDefault();
     setError("");
     try {
-      await apiFetch(`/departments/${id}`, { token, method: "PATCH", body: JSON.stringify({ name: editForm.name }) });
+      await apiFetch(`/departments/${id}`, { token, method: "PATCH", body: JSON.stringify(editForm) });
       setEditingDepartmentId(null);
       loadAll();
+      refreshSummary?.();
     } catch (err) {
       setError(err.message);
     }
@@ -80,7 +78,9 @@ export default function AvdelingerPage({ token, refreshSummary }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Avdelinger</h1>
-          <div style={{ color: "var(--text-secondary)" }}>{departments.length} avdelinger</div>
+          <div style={{ color: "var(--text-secondary)" }}>
+            {departments.length} avdelinger &middot; intern regioninndeling av lokasjoner (Vest, Sør, Øst, Midt osv.)
+          </div>
         </div>
         <button onClick={() => setShowForm((v) => !v)} style={primaryBtnStyle}>+ Ny avdeling</button>
       </div>
@@ -89,13 +89,9 @@ export default function AvdelingerPage({ token, refreshSummary }) {
 
       {showForm && (
         <Card style={{ marginBottom: 20 }}>
-          <form onSubmit={createDepartment} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            <input required placeholder="Avdelingsnavn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-            <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} style={inputStyle}>
-              <option value="">Velg kunde...</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett avdeling</button>
+          <form onSubmit={createDepartment} style={{ display: "flex", gap: 10 }}>
+            <input required placeholder="Avdelingsnavn (f.eks. Vest)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+            <button type="submit" style={primaryBtnStyle}>Opprett avdeling</button>
           </form>
         </Card>
       )}
@@ -127,7 +123,6 @@ export default function AvdelingerPage({ token, refreshSummary }) {
                 </div>
 
                 <div style={{ fontWeight: 600, marginTop: 12 }}>{department.name}</div>
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>{clientName(department.client_id)}</div>
 
                 <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
                   {siteCount(department.id)} lokasjoner

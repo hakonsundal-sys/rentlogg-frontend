@@ -369,7 +369,6 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
 
   const clientName = (id) => clients.find((c) => c.id === id)?.name || "—";
   const departmentName = (id) => departments.find((d) => d.id === id)?.name || null;
-  const departmentsForClient = (clientId) => departments.filter((d) => d.client_id === Number(clientId));
   const isScheduledToday = (siteId) => (schedules[siteId] || []).some((s) => s.weekday === todayWeekday());
 
   async function createSite(e) {
@@ -594,14 +593,14 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
         <Card style={{ marginBottom: 20 }}>
           <form onSubmit={createSite} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
             <input required placeholder="Navn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-            <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value, department_id: "" })} style={inputStyle}>
+            <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} style={inputStyle}>
               <option value="">Velg kunde</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            {form.client_id && departmentsForClient(form.client_id).length > 0 && (
-              <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} style={{ ...inputStyle, gridColumn: "span 2" }}>
+            {departments.length > 0 && (
+              <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} style={inputStyle}>
                 <option value="">Ingen avdeling</option>
-                {departmentsForClient(form.client_id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             )}
             <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} style={{ gridColumn: "span 2" }} />
@@ -622,14 +621,14 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
             {editingSiteId === site.id ? (
               <form onSubmit={(e) => saveEditSite(e, site.id)} style={{ display: "grid", gap: 8 }}>
                 <input required placeholder="Navn" value={editSiteForm.name} onChange={(e) => setEditSiteForm({ ...editSiteForm, name: e.target.value })} style={inputStyle} />
-                <select required value={editSiteForm.client_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, client_id: e.target.value, department_id: "" })} style={inputStyle}>
+                <select required value={editSiteForm.client_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, client_id: e.target.value })} style={inputStyle}>
                   <option value="">Velg kunde</option>
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                {editSiteForm.client_id && departmentsForClient(editSiteForm.client_id).length > 0 && (
+                {departments.length > 0 && (
                   <select value={editSiteForm.department_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, department_id: e.target.value })} style={inputStyle}>
                     <option value="">Ingen avdeling</option>
-                    {departmentsForClient(editSiteForm.client_id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 )}
                 <AddressAutocomplete value={editSiteForm.address} onChange={(v) => setEditSiteForm({ ...editSiteForm, address: v })} inputStyle={inputStyle} />
