@@ -27,6 +27,7 @@ export default function RapporterPage({ token }) {
   const [error, setError] = useState("");
   const [digestDate, setDigestDate] = useState(yesterdayInOslo());
   const [digestSiteId, setDigestSiteId] = useState("");
+  const [digestRecipients, setDigestRecipients] = useState([]); // checked subset of the selected site's own recipients
   const [digestSending, setDigestSending] = useState(false);
   const [digestResult, setDigestResult] = useState(null);
 
@@ -34,6 +35,21 @@ export default function RapporterPage({ token }) {
     apiFetch("/sites", { token }).then(setSites).catch((err) => setError(err.message));
     apiFetch("/departments", { token }).then(setDepartments).catch(() => {});
   }, [token]);
+
+  const digestSiteRecipients = digestSiteId
+    ? (sites.find((s) => s.id === Number(digestSiteId))?.report_recipients || "").split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  // Picking a location resets the checkbox list to "everyone configured for it" — matches
+  // today's default behavior (send to all) unless someone actively narrows it down.
+  useEffect(() => {
+    setDigestRecipients(digestSiteRecipients);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [digestSiteId]);
+
+  function toggleDigestRecipient(email) {
+    setDigestRecipients((list) => (list.includes(email) ? list.filter((e) => e !== email) : [...list, email]));
+  }
 
   useEffect(() => {
     const params = new URLSearchParams({
@@ -54,12 +70,20 @@ export default function RapporterPage({ token }) {
   }
 
   async function sendDigestNow() {
+    if (digestSiteId && digestSiteRecipients.length > 0 && digestRecipients.length === 0) {
+      setError("Velg minst én mottaker, eller fjern lokasjonsvalget for å sende til alle.");
+      return;
+    }
     setError("");
     setDigestResult(null);
     setDigestSending(true);
     try {
       const result = await apiFetch("/reports/daily-digest/run", {
-        token, method: "POST", body: JSON.stringify({ date: digestDate, ...(digestSiteId ? { site_id: digestSiteId } : {}) }),
+        token, method: "POST",
+        body: JSON.stringify({
+          date: digestDate,
+          ...(digestSiteId ? { site_id: digestSiteId, recipients: digestRecipients } : {}),
+        }),
       });
       setDigestResult(result);
     } catch (err) {
@@ -113,6 +137,30 @@ export default function RapporterPage({ token }) {
             </button>
           </div>
         </div>
+        {digestSiteId && digestSiteRecipients.length > 0 && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
+              Mottakere for denne lokasjonen
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {digestSiteRecipients.map((email) => (
+                <label key={email} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={digestRecipients.includes(email)}
+                    onChange={() => toggleDigestRecipient(email)}
+                  />
+                  {email}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        {digestSiteId && digestSiteRecipients.length === 0 && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-secondary)" }}>
+            Denne lokasjonen har ingen rapport-mottakere satt opp ennå.
+          </div>
+        )}
         {digestResult && (
           <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)" }}>
             {digestResult.sent} sendt, {digestResult.skipped} hoppet over, {digestResult.failed} feilet ({digestResult.date})
