@@ -23,6 +23,18 @@ function photoUrl(filePath) {
   return `${API_URL}/uploads/${filename}`;
 }
 
+// Prefers the site's own coordinates (exact) over its free-text address (geocoded by Maps at
+// open time) — falls back to address since not every site has lat/lng set.
+function mapUrlFor(site) {
+  if (site.latitude != null && site.longitude != null) {
+    return `https://www.google.com/maps/search/?api=1&query=${site.latitude},${site.longitude}`;
+  }
+  if (site.address) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.address)}`;
+  }
+  return null;
+}
+
 function getPosition() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null);
@@ -526,6 +538,17 @@ export default function CleanerView({ token, user }) {
           <Card style={{ marginBottom: 16 }}>
             <div style={{ fontWeight: 500 }}>Dagens plan</div>
             <div style={{ fontSize: 20, fontWeight: 600, marginTop: 4 }}>{dueDoneCount} av {dueRooms.length} rom ferdig</div>
+            {mapUrlFor(run.site) && (
+              <a
+                href={mapUrlFor(run.site)} target="_blank" rel="noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8,
+                  fontSize: 13, color: "var(--accent-orange-dark)", textDecoration: "none",
+                }}
+              >
+                <MapPin size={13} /> Åpne kart
+              </a>
+            )}
           </Card>
 
           {dueRooms.length > 0 && dueDoneCount < dueRooms.length && (

@@ -997,7 +997,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
             <img src={qrPreview.qrImage} alt="QR-kode" style={{ width: "100%", borderRadius: "var(--radius)" }} />
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <a
-                href={qrPreview.qrImage} download={`qr-${qrPreview.siteName.replace(/\s+/g, "-").toLowerCase()}.png`}
+                href={qrPreview.qrImage} download={`qr-${qrPreview.siteName.replace(/\s+/g, "-").toLowerCase()}.svg`}
                 style={{ ...primaryBtnStyle, flex: 1, textAlign: "center", textDecoration: "none", display: "inline-block" }}
               >
                 Last ned
