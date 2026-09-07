@@ -32,7 +32,7 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, n
           Rentlogg
         </div>
         <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2, marginLeft: 34 }}>
-          Scan. Verify. Trust.
+          Dokumentert etterkontroll
         </div>
       </div>
 

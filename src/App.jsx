@@ -78,7 +78,7 @@ function Shell({ children }) {
         <div style={{ fontSize: 19, fontWeight: 700 }}>Rentlogg</div>
       </div>
       <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 40, marginBottom: 20 }}>
-        Scan. Verify. Trust.
+        Dokumentert etterkontroll
       </div>
       {children}
     </div>
