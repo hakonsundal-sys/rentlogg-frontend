@@ -1,10 +1,11 @@
-import { LayoutGrid, MapPin, Users, AlertTriangle, UserPlus, FileText, CircleUser, LogOut } from "lucide-react";
+import { LayoutGrid, MapPin, Users, Building2, AlertTriangle, UserPlus, FileText, CircleUser, LogOut } from "lucide-react";
 import { RoleBadge } from "../shared";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
   { id: "lokasjoner", label: "Lokasjoner", icon: MapPin },
   { id: "kunder", label: "Kunder", icon: Users },
+  { id: "avdelinger", label: "Avdelinger", icon: Building2 },
   { id: "avvik", label: "Avvik", icon: AlertTriangle },
   { id: "inviter", label: "Inviter brukere", icon: UserPlus },
   { id: "rapporter", label: "Rapporter", icon: FileText },

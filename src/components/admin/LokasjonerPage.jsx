@@ -27,7 +27,7 @@ function todayWeekday() {
   return new Date(`${todayStr}T00:00:00`).getDay();
 }
 
-const emptyForm = { name: "", client_id: "", address: "", report_recipients: "" };
+const emptyForm = { name: "", client_id: "", department_id: "", address: "", report_recipients: "" };
 
 // Flat (non-room) checklists are hidden for now — locations use only the room-based setup.
 // Flip back to true to re-enable; nothing else needs to change.
@@ -36,6 +36,7 @@ const SHOW_FLAT_CHECKLIST = false;
 export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [cleaners, setCleaners] = useState([]);
   const [templates, setTemplates] = useState([]); // [{id, name, items: [{id, label}]}]
   const [schedules, setSchedules] = useState({}); // siteId -> [{id, weekday, assigned_cleaner_id, assigned_cleaner_name}]
@@ -76,12 +77,14 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     Promise.all([
       apiFetch("/sites", { token }),
       apiFetch("/clients", { token }),
+      apiFetch("/departments", { token }),
       apiFetch("/auth/users?role=cleaner", { token }),
       apiFetch("/checklists/templates", { token }),
     ])
-      .then(async ([sitesData, clientsData, cleanersData, templatesData]) => {
+      .then(async ([sitesData, clientsData, departmentsData, cleanersData, templatesData]) => {
         setSites(sitesData);
         setClients(clientsData);
+        setDepartments(departmentsData);
         setCleaners(cleanersData);
         setTemplates(templatesData);
         const scheduleEntries = await Promise.all(
@@ -365,6 +368,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   }
 
   const clientName = (id) => clients.find((c) => c.id === id)?.name || "—";
+  const departmentName = (id) => departments.find((d) => d.id === id)?.name || null;
+  const departmentsForClient = (clientId) => departments.filter((d) => d.client_id === Number(clientId));
   const isScheduledToday = (siteId) => (schedules[siteId] || []).some((s) => s.weekday === todayWeekday());
 
   async function createSite(e) {
@@ -374,8 +379,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
       await apiFetch("/sites", {
         token, method: "POST",
         body: JSON.stringify({
-          name: form.name, client_id: Number(form.client_id), address: form.address || null,
-          report_recipients: form.report_recipients || null,
+          name: form.name, client_id: Number(form.client_id), department_id: form.department_id ? Number(form.department_id) : null,
+          address: form.address || null, report_recipients: form.report_recipients || null,
         }),
       });
       setForm(emptyForm);
@@ -392,6 +397,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     setEditSiteForm({
       name: site.name || "",
       client_id: site.client_id || "",
+      department_id: site.department_id || "",
       address: site.address || "",
       report_recipients: site.report_recipients || "",
     });
@@ -404,8 +410,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
       await apiFetch(`/sites/${siteId}`, {
         token, method: "PATCH",
         body: JSON.stringify({
-          name: editSiteForm.name, client_id: Number(editSiteForm.client_id), address: editSiteForm.address || null,
-          report_recipients: editSiteForm.report_recipients || null,
+          name: editSiteForm.name, client_id: Number(editSiteForm.client_id),
+          department_id: editSiteForm.department_id ? Number(editSiteForm.department_id) : null,
+          address: editSiteForm.address || null, report_recipients: editSiteForm.report_recipients || null,
         }),
       });
       setEditingSiteId(null);
@@ -587,10 +594,16 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
         <Card style={{ marginBottom: 20 }}>
           <form onSubmit={createSite} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
             <input required placeholder="Navn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-            <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} style={inputStyle}>
+            <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value, department_id: "" })} style={inputStyle}>
               <option value="">Velg kunde</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {form.client_id && departmentsForClient(form.client_id).length > 0 && (
+              <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} style={{ ...inputStyle, gridColumn: "span 2" }}>
+                <option value="">Ingen avdeling</option>
+                {departmentsForClient(form.client_id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            )}
             <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} style={{ gridColumn: "span 2" }} />
             <input
               type="text" placeholder="Rapport-mottakere (kommaseparert e-post)"
@@ -609,10 +622,16 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
             {editingSiteId === site.id ? (
               <form onSubmit={(e) => saveEditSite(e, site.id)} style={{ display: "grid", gap: 8 }}>
                 <input required placeholder="Navn" value={editSiteForm.name} onChange={(e) => setEditSiteForm({ ...editSiteForm, name: e.target.value })} style={inputStyle} />
-                <select required value={editSiteForm.client_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, client_id: e.target.value })} style={inputStyle}>
+                <select required value={editSiteForm.client_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, client_id: e.target.value, department_id: "" })} style={inputStyle}>
                   <option value="">Velg kunde</option>
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                {editSiteForm.client_id && departmentsForClient(editSiteForm.client_id).length > 0 && (
+                  <select value={editSiteForm.department_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, department_id: e.target.value })} style={inputStyle}>
+                    <option value="">Ingen avdeling</option>
+                    {departmentsForClient(editSiteForm.client_id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                )}
                 <AddressAutocomplete value={editSiteForm.address} onChange={(v) => setEditSiteForm({ ...editSiteForm, address: v })} inputStyle={inputStyle} />
                 <input
                   type="text" placeholder="Rapport-mottakere (kommaseparert e-post)"
@@ -646,7 +665,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                 </div>
 
                 <div style={{ fontWeight: 600, marginTop: 12 }}>{site.name}</div>
-                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{clientName(site.client_id)}</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                  {clientName(site.client_id)}
+                  {departmentName(site.department_id) && ` · ${departmentName(site.department_id)}`}
+                </div>
                 {site.address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{site.address}</div>}
                 {SHOW_FLAT_CHECKLIST && (
                   <>

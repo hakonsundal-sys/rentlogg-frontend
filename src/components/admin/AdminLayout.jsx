@@ -4,6 +4,7 @@ import TopBanner from "./TopBanner";
 import DashboardPage from "./DashboardPage";
 import LokasjonerPage from "./LokasjonerPage";
 import KunderPage from "./KunderPage";
+import AvdelingerPage from "./AvdelingerPage";
 import AvvikPage from "./AvvikPage";
 import InviterBrukerePage from "./InviterBrukerePage";
 import RapporterPage from "./RapporterPage";
@@ -14,6 +15,7 @@ const PAGES = {
   dashboard: DashboardPage,
   lokasjoner: LokasjonerPage,
   kunder: KunderPage,
+  avdelinger: AvdelingerPage,
   avvik: AvvikPage,
   inviter: InviterBrukerePage,
   rapporter: RapporterPage,

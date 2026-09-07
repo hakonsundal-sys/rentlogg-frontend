@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Clock, Download, History } from "lucide-react";
+import { AlertTriangle, Building2, Clock, Download, History } from "lucide-react";
 import { apiFetch, downloadPdf, downloadZip } from "../api";
 import { Card, StatusBadge } from "./shared";
 import { DeviationItem } from "./DeviationItem";
@@ -9,6 +9,30 @@ export default function CustomerView({ token, user }) {
   const [sites, setSites] = useState([]);
   const [deviations, setDeviations] = useState([]);
   const [error, setError] = useState("");
+
+  // Self-service avdeling-opprettelse er kun for en kunde scopet til hele klienten (department_id
+  // null) — en avdelings-scopet kunde har ingen innsyn i eller kontroll over søsken-avdelinger.
+  const [departments, setDepartments] = useState([]);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [showDepartmentForm, setShowDepartmentForm] = useState(false);
+
+  useEffect(() => {
+    if (user?.department_id) return;
+    apiFetch("/departments", { token }).then(setDepartments).catch(() => {});
+  }, [token, user?.department_id]);
+
+  async function createDepartment(e) {
+    e.preventDefault();
+    if (!newDepartmentName.trim()) return;
+    try {
+      await apiFetch("/departments", { token, method: "POST", body: JSON.stringify({ name: newDepartmentName.trim() }) });
+      setNewDepartmentName("");
+      setShowDepartmentForm(false);
+      setDepartments(await apiFetch("/departments", { token }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   const [historySite, setHistorySite] = useState(null);
 
@@ -89,6 +113,41 @@ export default function CustomerView({ token, user }) {
 
   return (
     <div>
+      {!user?.department_id && (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
+              <Building2 size={15} /> Avdelinger ({departments.length})
+            </div>
+            <button onClick={() => setShowDepartmentForm((v) => !v)} style={secondaryBtnStyle}>+ Ny avdeling</button>
+          </div>
+          {departments.length > 0 && (
+            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {departments.map((d) => (
+                <span key={d.id} style={{
+                  fontSize: 12, padding: "4px 10px", borderRadius: 999,
+                  background: "var(--surface-2)", color: "var(--text-secondary)",
+                }}>
+                  {d.name}
+                </span>
+              ))}
+            </div>
+          )}
+          {showDepartmentForm && (
+            <form onSubmit={createDepartment} style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <input
+                required value={newDepartmentName} onChange={(e) => setNewDepartmentName(e.target.value)}
+                placeholder="Navn på avdeling" style={{
+                  flex: 1, padding: "7px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13,
+                }}
+              />
+              <button type="submit" style={primaryBtnStyle}>Opprett</button>
+            </form>
+          )}
+        </Card>
+      )}
+
       {sites.map((s) => {
         // A resolved avvik keeps showing until the customer actively approves it — that
         // signed confirmation is the point, not just letting it quietly disappear once the

@@ -8,11 +8,13 @@ const STATUS_LABEL = { used: "Brukt", revoked: "Trukket tilbake", expired: "Utl�
 export default function InviterBrukerePage({ token, user }) {
   const isSuperAdmin = user?.role === "super_admin";
   const [clients, setClients] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [invitations, setInvitations] = useState({ active: [], history: [] });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState(isSuperAdmin ? "admin" : "cleaner");
   const [clientId, setClientId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
@@ -20,12 +22,15 @@ export default function InviterBrukerePage({ token, user }) {
   function loadAll() {
     apiFetch("/invitations", { token }).then(setInvitations).catch((err) => setError(err.message));
     apiFetch("/clients", { token }).then(setClients).catch(() => {});
+    apiFetch("/departments", { token }).then(setDepartments).catch(() => {});
     if (isSuperAdmin) {
       apiFetch("/companies", { token }).then(setCompanies).catch(() => {});
     }
   }
 
   useEffect(loadAll, [token]);
+
+  const departmentsForClient = (id) => departments.filter((d) => d.client_id === Number(id));
 
   async function createInvite(e) {
     e.preventDefault();
@@ -36,11 +41,13 @@ export default function InviterBrukerePage({ token, user }) {
         body: JSON.stringify({
           email, role,
           client_id: role === "customer" ? Number(clientId) : undefined,
+          department_id: role === "customer" && departmentId ? Number(departmentId) : undefined,
           company_id: isSuperAdmin ? Number(companyId) : undefined,
         }),
       });
       setEmail("");
       setClientId("");
+      setDepartmentId("");
       setCompanyId("");
       loadAll();
     } catch (err) {
@@ -92,9 +99,15 @@ export default function InviterBrukerePage({ token, user }) {
             <option value="admin">Admin</option>
           </select>
           {role === "customer" && (
-            <select required value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
+            <select required value={clientId} onChange={(e) => { setClientId(e.target.value); setDepartmentId(""); }} style={inputStyle}>
               <option value="">Velg kunde</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          {role === "customer" && clientId && departmentsForClient(clientId).length > 0 && (
+            <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} style={inputStyle}>
+              <option value="">Hele kunden</option>
+              {departmentsForClient(clientId).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           )}
           {isSuperAdmin && (
@@ -126,7 +139,9 @@ export default function InviterBrukerePage({ token, user }) {
           }}>
             <div>
               <div style={{ fontSize: 14 }}>{inv.email}</div>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Utløper {inv.expires_at}</div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                Utløper {inv.expires_at}{inv.department_name && ` · ${inv.department_name}`}
+              </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <RoleBadge role={inv.role} />
