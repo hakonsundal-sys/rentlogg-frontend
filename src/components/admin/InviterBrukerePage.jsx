@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Send, Link2, X } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, RoleBadge } from "../shared";
+import { Card, RoleBadge, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 
 const STATUS_LABEL = { used: "Brukt", revoked: "Trukket tilbake", expired: "Utløpt" };
 
@@ -14,15 +14,23 @@ export default function InviterBrukerePage({ token, user }) {
   const [role, setRole] = useState(isSuperAdmin ? "admin" : "cleaner");
   const [clientId, setClientId] = useState("");
   const [companyId, setCompanyId] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
 
   function loadAll() {
-    apiFetch("/invitations", { token }).then(setInvitations).catch((err) => setError(err.message));
-    apiFetch("/clients", { token }).then(setClients).catch(() => {});
-    if (isSuperAdmin) {
-      apiFetch("/companies", { token }).then(setCompanies).catch(() => {});
-    }
+    Promise.all([
+      apiFetch("/invitations", { token }),
+      apiFetch("/clients", { token }).catch(() => []),
+      isSuperAdmin ? apiFetch("/companies", { token }).catch(() => []) : Promise.resolve([]),
+    ])
+      .then(([invitationsData, clientsData, companiesData]) => {
+        setInvitations(invitationsData);
+        setClients(clientsData);
+        setCompanies(companiesData);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }
 
   useEffect(loadAll, [token]);
@@ -80,28 +88,33 @@ export default function InviterBrukerePage({ token, user }) {
         <div style={{ fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
           <Send size={16} /> Ny invitasjon
         </div>
-        <form onSubmit={createInvite} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input
-            required type="email" placeholder="navn@firma.no" value={email}
-            onChange={(e) => setEmail(e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 200 }}
-          />
-          <select value={role} onChange={(e) => setRole(e.target.value)} style={inputStyle}>
-            <option value="cleaner">Renholder</option>
-            <option value="manager">Driftsleder</option>
-            <option value="customer">Kunde</option>
-            <option value="admin">Admin</option>
-          </select>
-          {role === "customer" && (
-            <select required value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
-              <option value="">Velg kunde</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <form onSubmit={createInvite} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <Field label="E-post" style={{ flex: 1, minWidth: 200 }}>
+            <input required type="email" placeholder="navn@firma.no" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Rolle">
+            <select value={role} onChange={(e) => setRole(e.target.value)} style={inputStyle}>
+              <option value="cleaner">Renholder</option>
+              <option value="manager">Driftsleder</option>
+              <option value="customer">Kunde</option>
+              <option value="admin">Admin</option>
             </select>
+          </Field>
+          {role === "customer" && (
+            <Field label="Kunde">
+              <select required value={clientId} onChange={(e) => setClientId(e.target.value)} style={inputStyle}>
+                <option value="">Velg kunde</option>
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </Field>
           )}
           {isSuperAdmin && (
-            <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} style={inputStyle}>
-              <option value="">Velg firma</option>
-              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Field label="Firma">
+              <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} style={inputStyle}>
+                <option value="">Velg firma</option>
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </Field>
           )}
           <button type="submit" style={primaryBtnStyle}>+ Opprett</button>
         </form>
@@ -116,7 +129,8 @@ export default function InviterBrukerePage({ token, user }) {
         AKTIVE INVITASJONER ({invitations.active.length})
       </div>
       <Card style={{ marginBottom: 20 }}>
-        {invitations.active.length === 0 && (
+        {loading && <Loading />}
+        {!loading && invitations.active.length === 0 && (
           <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 13, padding: 8 }}>Ingen aktive invitasjoner.</div>
         )}
         {invitations.active.map((inv, i) => (
@@ -144,7 +158,7 @@ export default function InviterBrukerePage({ token, user }) {
         HISTORIKK ({invitations.history.length})
       </div>
       <Card>
-        {invitations.history.length === 0 && (
+        {!loading && invitations.history.length === 0 && (
           <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 13, padding: 8 }}>Ingen historikk ennå.</div>
         )}
         {invitations.history.map((inv, i) => (
@@ -163,18 +177,3 @@ export default function InviterBrukerePage({ token, user }) {
     </div>
   );
 }
-
-const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
-  padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
-};
-const linkBtnStyle = {
-  background: "none", border: "none", color: "var(--accent-orange-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
-};
-const iconBtnStyle = {
-  background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4,
-};
-const inputStyle = {
-  padding: "9px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
-  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box",
-};

@@ -51,6 +51,41 @@ export function Card({ children, style }) {
   );
 }
 
+// Simple "Laster..." placeholder for list pages, so the first render doesn't flash an
+// "ingen X ennå" empty state before the initial fetch has actually come back.
+export function Loading({ text = "Laster..." }) {
+  return <div style={{ color: "var(--text-secondary)", fontSize: 13, padding: "8px 0" }}>{text}</div>;
+}
+
+// A visible label above a form control, unlike a placeholder that disappears once the field has
+// a value — used across the admin CRUD forms (Lokasjoner/Kunder/Avdelinger/Avvik/Inviter) so a
+// field being edited still shows what it is.
+export function Field({ label, children, style }) {
+  return (
+    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", ...style }}>
+      <span style={{ display: "block", marginBottom: 4 }}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+// Shared control styling for the admin CRUD pages (Lokasjoner/Kunder/Avdelinger/Avvik/Inviter) —
+// kept in one place so a new page can't drift into a different button/input shape than the rest.
+export const primaryBtnStyle = {
+  background: "var(--accent-orange)", color: "white", border: "none",
+  padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
+};
+export const linkBtnStyle = {
+  background: "none", border: "none", color: "var(--accent-orange-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
+};
+export const iconBtnStyle = {
+  background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4,
+};
+export const inputStyle = {
+  padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box", width: "100%",
+};
+
 function documentUrl(filePath) {
   const filename = filePath.split(/[\\/]/).pop();
   return `${API_URL}/uploads/${filename}`;

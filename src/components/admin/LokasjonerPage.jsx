@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, AddressAutocomplete, DocumentsList } from "../shared";
+import { Card, AddressAutocomplete, DocumentsList, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
 
 const WEEKDAYS = [
@@ -41,6 +41,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [templates, setTemplates] = useState([]); // [{id, name, items: [{id, label}]}]
   const [schedules, setSchedules] = useState({}); // siteId -> [{id, weekday, assigned_cleaner_id, assigned_cleaner_name}]
   const [rooms, setRooms] = useState({}); // siteId -> [{id, name, interval_days, dueToday, status, lastCleanedAt, itemCount}]
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -96,7 +97,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
         );
         setRooms(Object.fromEntries(roomEntries));
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }
 
   useEffect(loadAll, [token]);
@@ -592,24 +594,34 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
       {showForm && (
         <Card style={{ marginBottom: 20 }}>
           <form onSubmit={createSite} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            <input required placeholder="Navn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-            <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} style={inputStyle}>
-              <option value="">Velg kunde</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            {departments.length > 0 && (
-              <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} style={inputStyle}>
-                <option value="">Ingen avdeling</option>
-                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            <Field label="Navn">
+              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="Kunde">
+              <select required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} style={inputStyle}>
+                <option value="">Velg kunde</option>
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+            </Field>
+            {departments.length > 0 && (
+              <Field label="Avdeling">
+                <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} style={inputStyle}>
+                  <option value="">Ingen avdeling</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </Field>
             )}
-            <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} style={{ gridColumn: "span 2" }} />
-            <input
-              type="text" placeholder="Rapport-mottakere (kommaseparert e-post)"
-              value={form.report_recipients}
-              onChange={(e) => setForm({ ...form, report_recipients: e.target.value })}
-              style={{ ...inputStyle, gridColumn: "span 2" }}
-            />
+            <Field label="Adresse" style={{ gridColumn: "span 2" }}>
+              <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} />
+            </Field>
+            <Field label="Rapport-mottakere (kommaseparert e-post)" style={{ gridColumn: "span 2" }}>
+              <input
+                type="text"
+                value={form.report_recipients}
+                onChange={(e) => setForm({ ...form, report_recipients: e.target.value })}
+                style={inputStyle}
+              />
+            </Field>
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett lokasjon</button>
           </form>
         </Card>
@@ -620,24 +632,34 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           <Card key={site.id}>
             {editingSiteId === site.id ? (
               <form onSubmit={(e) => saveEditSite(e, site.id)} style={{ display: "grid", gap: 8 }}>
-                <input required placeholder="Navn" value={editSiteForm.name} onChange={(e) => setEditSiteForm({ ...editSiteForm, name: e.target.value })} style={inputStyle} />
-                <select required value={editSiteForm.client_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, client_id: e.target.value })} style={inputStyle}>
-                  <option value="">Velg kunde</option>
-                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                {departments.length > 0 && (
-                  <select value={editSiteForm.department_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, department_id: e.target.value })} style={inputStyle}>
-                    <option value="">Ingen avdeling</option>
-                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                <Field label="Navn">
+                  <input required value={editSiteForm.name} onChange={(e) => setEditSiteForm({ ...editSiteForm, name: e.target.value })} style={inputStyle} />
+                </Field>
+                <Field label="Kunde">
+                  <select required value={editSiteForm.client_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, client_id: e.target.value })} style={inputStyle}>
+                    <option value="">Velg kunde</option>
+                    {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
+                </Field>
+                {departments.length > 0 && (
+                  <Field label="Avdeling">
+                    <select value={editSiteForm.department_id} onChange={(e) => setEditSiteForm({ ...editSiteForm, department_id: e.target.value })} style={inputStyle}>
+                      <option value="">Ingen avdeling</option>
+                      {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </Field>
                 )}
-                <AddressAutocomplete value={editSiteForm.address} onChange={(v) => setEditSiteForm({ ...editSiteForm, address: v })} inputStyle={inputStyle} />
-                <input
-                  type="text" placeholder="Rapport-mottakere (kommaseparert e-post)"
-                  value={editSiteForm.report_recipients}
-                  onChange={(e) => setEditSiteForm({ ...editSiteForm, report_recipients: e.target.value })}
-                  style={inputStyle}
-                />
+                <Field label="Adresse">
+                  <AddressAutocomplete value={editSiteForm.address} onChange={(v) => setEditSiteForm({ ...editSiteForm, address: v })} inputStyle={inputStyle} />
+                </Field>
+                <Field label="Rapport-mottakere (kommaseparert e-post)">
+                  <input
+                    type="text"
+                    value={editSiteForm.report_recipients}
+                    onChange={(e) => setEditSiteForm({ ...editSiteForm, report_recipients: e.target.value })}
+                    style={inputStyle}
+                  />
+                </Field>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingSiteId(null)} style={linkBtnStyle}>Avbryt</button>
@@ -1074,7 +1096,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           </Card>
         ))}
       </div>
-      {sites.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen lokasjoner ennå.</Card>}
+      {loading ? <Loading /> : sites.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen lokasjoner ennå.</Card>}
 
       {qrPreview && (
         <div
@@ -1114,18 +1136,3 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     </div>
   );
 }
-
-const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
-  padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
-};
-const linkBtnStyle = {
-  background: "none", border: "none", color: "var(--accent-orange-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
-};
-const iconBtnStyle = {
-  background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4,
-};
-const inputStyle = {
-  padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
-  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box", width: "100%",
-};

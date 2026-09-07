@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, CheckCircle2, FileText, Clock, AlertTriangle, Send } from "lucide-react";
 import { apiFetch, downloadCsv } from "../../api";
-import { Card } from "../shared";
+import { Card, primaryBtnStyle } from "../shared";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
@@ -19,8 +19,10 @@ const STATUS_LABEL = { completed: "Fullført", in_progress: "Pågår", missing: 
 
 export default function RapporterPage({ token }) {
   const [sites, setSites] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [month, setMonth] = useState(currentMonth());
   const [siteId, setSiteId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [digestDate, setDigestDate] = useState(yesterdayInOslo());
@@ -30,15 +32,24 @@ export default function RapporterPage({ token }) {
 
   useEffect(() => {
     apiFetch("/sites", { token }).then(setSites).catch((err) => setError(err.message));
+    apiFetch("/departments", { token }).then(setDepartments).catch(() => {});
   }, [token]);
 
   useEffect(() => {
-    const params = new URLSearchParams({ month, ...(siteId ? { site_id: siteId } : {}) });
+    const params = new URLSearchParams({
+      month,
+      ...(siteId ? { site_id: siteId } : {}),
+      ...(!siteId && departmentId ? { department_id: departmentId } : {}),
+    });
     apiFetch(`/reports/summary?${params}`, { token }).then(setReport).catch((err) => setError(err.message));
-  }, [token, month, siteId]);
+  }, [token, month, siteId, departmentId]);
 
   function exportCsv() {
-    const params = new URLSearchParams({ month, ...(siteId ? { site_id: siteId } : {}) });
+    const params = new URLSearchParams({
+      month,
+      ...(siteId ? { site_id: siteId } : {}),
+      ...(!siteId && departmentId ? { department_id: departmentId } : {}),
+    });
     downloadCsv(`/reports/summary.csv?${params}`, token, `rapport-${month}.csv`).catch((err) => setError(err.message));
   }
 
@@ -67,6 +78,12 @@ export default function RapporterPage({ token }) {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={inputStyle} />
+          {departments.length > 0 && (
+            <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} style={inputStyle}>
+              <option value="">Alle avdelinger</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          )}
           <select value={siteId} onChange={(e) => setSiteId(e.target.value)} style={inputStyle}>
             <option value="">Alle lokasjoner</option>
             {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -159,10 +176,6 @@ function StatCard({ icon: Icon, label, value, color }) {
   );
 }
 
-const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
-  padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
-};
 const inputStyle = {
   padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
   background: "var(--surface-1)", color: "var(--text-primary)", fontSize: 13,

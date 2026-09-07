@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Info, AlertTriangle, CircleAlert, MapPin, Clock } from "lucide-react";
 import { apiFetch, API_URL } from "../../api";
-import { Card } from "../shared";
+import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 
 function photoUrl(filePath) {
   const filename = filePath.split(/[\\/]/).pop();
@@ -19,23 +19,31 @@ const ASSIGNED_LABEL = { manager: "Sendt til driftsleder", customer: "Sendt til 
 export default function AvvikPage({ token, refreshSummary }) {
   const [deviations, setDeviations] = useState([]);
   const [sites, setSites] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ title: "", description: "", priority: "medium" });
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   function loadAll() {
-    Promise.all([apiFetch("/deviations", { token }), apiFetch("/sites", { token })])
-      .then(([devData, sitesData]) => {
+    Promise.all([apiFetch("/deviations", { token }), apiFetch("/sites", { token }), apiFetch("/departments", { token }).catch(() => [])])
+      .then(([devData, sitesData, departmentsData]) => {
         setDeviations(devData);
         setSites(sitesData);
+        setDepartments(departmentsData);
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }
 
   useEffect(loadAll, [token]);
 
   const siteName = (id) => sites.find((s) => s.id === id)?.name || "—";
+  const visibleDeviations = departmentFilter
+    ? deviations.filter((d) => sites.find((s) => s.id === d.site_id)?.department_id === Number(departmentFilter))
+    : deviations;
 
   function startEdit(dev) {
     setEditingId(dev.id);
@@ -76,38 +84,49 @@ export default function AvvikPage({ token, refreshSummary }) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Avvik</h1>
-      <div style={{ color: "var(--text-secondary)", marginBottom: 20 }}>{deviations.length} registrerte avvik</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Avvik</h1>
+          <div style={{ color: "var(--text-secondary)" }}>{visibleDeviations.length} registrerte avvik</div>
+        </div>
+        {departments.length > 0 && (
+          <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} style={{ ...inputStyle, width: 180 }}>
+            <option value="">Alle avdelinger</option>
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        )}
+      </div>
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
 
-      {deviations.map((dev) => {
+      {visibleDeviations.map((dev) => {
         const p = PRIORITY[dev.priority] || PRIORITY.medium;
         const Icon = p.icon;
         return (
           <Card key={dev.id} style={{ marginBottom: 12 }}>
             {editingId === dev.id ? (
               <div>
-                <input
-                  value={editForm.title}
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                  placeholder="Tittel"
-                  style={{ ...inputStyle, marginBottom: 8 }}
-                />
-                <textarea
-                  value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  style={{ ...inputStyle, minHeight: 60, marginBottom: 8, resize: "vertical" }}
-                />
-                <select
-                  value={editForm.priority}
-                  onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
-                  style={{ ...inputStyle, marginBottom: 8, width: 160 }}
-                >
-                  <option value="low">Lav</option>
-                  <option value="medium">Middels</option>
-                  <option value="high">Høy</option>
-                </select>
+                <Field label="Tittel" style={{ marginBottom: 8 }}>
+                  <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} style={inputStyle} />
+                </Field>
+                <Field label="Beskrivelse" style={{ marginBottom: 8 }}>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
+                  />
+                </Field>
+                <Field label="Prioritet" style={{ marginBottom: 8, width: 160 }}>
+                  <select
+                    value={editForm.priority}
+                    onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                    style={inputStyle}
+                  >
+                    <option value="low">Lav</option>
+                    <option value="medium">Middels</option>
+                    <option value="high">Høy</option>
+                  </select>
+                </Field>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => saveEdit(dev.id)} style={primaryBtnStyle}>Lagre</button>
                   <button onClick={() => setEditingId(null)} style={linkBtnStyle}>Avbryt</button>
@@ -190,23 +209,14 @@ export default function AvvikPage({ token, refreshSummary }) {
         );
       })}
 
-      {deviations.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen registrerte avvik.</Card>}
+      {loading ? <Loading /> : visibleDeviations.length === 0 && (
+        <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen registrerte avvik.</Card>
+      )}
     </div>
   );
 }
 
-const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
-  padding: "8px 14px", borderRadius: "var(--radius)", fontSize: 13, fontWeight: 600, cursor: "pointer",
-};
 const secondaryBtnStyle = {
   background: "none", border: "1px solid var(--border)", color: "var(--text-primary)",
   padding: "6px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
-};
-const linkBtnStyle = {
-  background: "none", border: "none", color: "var(--accent-orange-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
-};
-const inputStyle = {
-  padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
-  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box", width: "100%",
 };

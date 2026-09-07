@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Users, Trash2, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, AddressAutocomplete } from "../shared";
+import { Card, AddressAutocomplete, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 
 const emptyForm = { name: "", contact_name: "", contact_email: "", phone: "", address: "" };
 
 export default function KunderPage({ token, refreshSummary }) {
   const [clients, setClients] = useState([]);
   const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -21,7 +22,8 @@ export default function KunderPage({ token, refreshSummary }) {
         setClients(clientsData);
         setSites(sitesData);
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }
 
   useEffect(loadAll, [token]);
@@ -94,11 +96,21 @@ export default function KunderPage({ token, refreshSummary }) {
       {showForm && (
         <Card style={{ marginBottom: 20 }}>
           <form onSubmit={createClient} style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-            <input required placeholder="Firmanavn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-            <input placeholder="Kontaktperson" value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} style={inputStyle} />
-            <input type="email" placeholder="E-post" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} style={inputStyle} />
-            <input placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
-            <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} style={{ gridColumn: "span 2" }} />
+            <Field label="Firmanavn">
+              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="Kontaktperson">
+              <input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="E-post">
+              <input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="Telefon">
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
+            </Field>
+            <Field label="Adresse" style={{ gridColumn: "span 2" }}>
+              <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} inputStyle={inputStyle} />
+            </Field>
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett kunde</button>
           </form>
         </Card>
@@ -109,11 +121,21 @@ export default function KunderPage({ token, refreshSummary }) {
           <Card key={client.id}>
             {editingClientId === client.id ? (
               <form onSubmit={(e) => saveEditClient(e, client.id)} style={{ display: "grid", gap: 8 }}>
-                <input required placeholder="Firmanavn" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} style={inputStyle} />
-                <input placeholder="Kontaktperson" value={editForm.contact_name} onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })} style={inputStyle} />
-                <input type="email" placeholder="E-post" value={editForm.contact_email} onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })} style={inputStyle} />
-                <input placeholder="Telefon" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputStyle} />
-                <AddressAutocomplete value={editForm.address} onChange={(v) => setEditForm({ ...editForm, address: v })} inputStyle={inputStyle} />
+                <Field label="Firmanavn">
+                  <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} style={inputStyle} />
+                </Field>
+                <Field label="Kontaktperson">
+                  <input value={editForm.contact_name} onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })} style={inputStyle} />
+                </Field>
+                <Field label="E-post">
+                  <input type="email" value={editForm.contact_email} onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })} style={inputStyle} />
+                </Field>
+                <Field label="Telefon">
+                  <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputStyle} />
+                </Field>
+                <Field label="Adresse">
+                  <AddressAutocomplete value={editForm.address} onChange={(v) => setEditForm({ ...editForm, address: v })} inputStyle={inputStyle} />
+                </Field>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingClientId(null)} style={linkBtnStyle}>Avbryt</button>
@@ -170,22 +192,7 @@ export default function KunderPage({ token, refreshSummary }) {
           </Card>
         ))}
       </div>
-      {clients.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen kunder ennå.</Card>}
+      {loading ? <Loading /> : clients.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen kunder ennå.</Card>}
     </div>
   );
 }
-
-const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
-  padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
-};
-const linkBtnStyle = {
-  background: "none", border: "none", color: "var(--accent-orange-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
-};
-const iconBtnStyle = {
-  background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4,
-};
-const inputStyle = {
-  padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
-  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box", width: "100%",
-};

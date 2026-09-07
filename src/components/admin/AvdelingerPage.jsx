@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Building2, Trash2, Pencil } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card } from "../shared";
+import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 
 const emptyForm = { name: "" };
 
 export default function AvdelingerPage({ token, refreshSummary }) {
   const [departments, setDepartments] = useState([]);
   const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -21,7 +22,8 @@ export default function AvdelingerPage({ token, refreshSummary }) {
         setDepartments(departmentsData);
         setSites(sitesData);
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }
 
   useEffect(loadAll, [token]);
@@ -89,8 +91,10 @@ export default function AvdelingerPage({ token, refreshSummary }) {
 
       {showForm && (
         <Card style={{ marginBottom: 20 }}>
-          <form onSubmit={createDepartment} style={{ display: "flex", gap: 10 }}>
-            <input required placeholder="Avdelingsnavn (f.eks. Vest)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+          <form onSubmit={createDepartment} style={{ display: "flex", gap: 10, alignItems: "end" }}>
+            <Field label="Avdelingsnavn" style={{ flex: 1 }}>
+              <input required placeholder="f.eks. Vest" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+            </Field>
             <button type="submit" style={primaryBtnStyle}>Opprett avdeling</button>
           </form>
         </Card>
@@ -101,7 +105,9 @@ export default function AvdelingerPage({ token, refreshSummary }) {
           <Card key={department.id}>
             {editingDepartmentId === department.id ? (
               <form onSubmit={(e) => saveEditDepartment(e, department.id)} style={{ display: "grid", gap: 8 }}>
-                <input required placeholder="Avdelingsnavn" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} style={inputStyle} />
+                <Field label="Avdelingsnavn">
+                  <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} style={inputStyle} />
+                </Field>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingDepartmentId(null)} style={linkBtnStyle}>Avbryt</button>
@@ -142,22 +148,7 @@ export default function AvdelingerPage({ token, refreshSummary }) {
           </Card>
         ))}
       </div>
-      {departments.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen avdelinger ennå.</Card>}
+      {loading ? <Loading /> : departments.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen avdelinger ennå.</Card>}
     </div>
   );
 }
-
-const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
-  padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
-};
-const linkBtnStyle = {
-  background: "none", border: "none", color: "var(--accent-orange-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
-};
-const iconBtnStyle = {
-  background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4,
-};
-const inputStyle = {
-  padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
-  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box", width: "100%",
-};

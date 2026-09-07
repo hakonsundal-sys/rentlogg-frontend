@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Clock, Download, History } from "lucide-react";
 import { apiFetch, downloadPdf, downloadZip } from "../api";
-import { Card, StatusBadge } from "./shared";
+import { Card, StatusBadge, Loading } from "./shared";
 import { DeviationItem } from "./DeviationItem";
 import SiteHistoryView from "./SiteHistoryView";
 
 export default function CustomerView({ token, user }) {
   const [sites, setSites] = useState([]);
   const [deviations, setDeviations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [historySite, setHistorySite] = useState(null);
@@ -27,7 +28,8 @@ export default function CustomerView({ token, user }) {
         setSites(sites);
         setDeviations(deviations);
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, [token]);
 
   async function openReportForm(site) {
@@ -86,6 +88,7 @@ export default function CustomerView({ token, user }) {
   }
 
   if (error) return <Card style={{ color: "var(--text-danger)" }}>{error}</Card>;
+  if (loading) return <Loading />;
 
   return (
     <div>
