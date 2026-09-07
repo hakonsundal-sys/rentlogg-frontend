@@ -3,6 +3,7 @@ import { LogOut } from "lucide-react";
 import LoginView from "./components/LoginView";
 import AcceptInvitePage from "./components/AcceptInvitePage";
 import AdminLayout from "./components/admin/AdminLayout";
+import SuperAdminLayout from "./components/admin/SuperAdminLayout";
 import CleanerView from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
 import { RoleBadge } from "./components/shared";
@@ -34,6 +35,10 @@ export default function App() {
   }
 
   const { token, user } = auth;
+
+  if (user.role === "super_admin") {
+    return <SuperAdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
+  }
 
   if (user.role === "admin" || user.role === "manager") {
     return <AdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;

@@ -20,6 +20,7 @@ export function StatusBadge({ status }) {
 }
 
 const ROLE_BADGE = {
+  super_admin: { label: "SUPER ADMIN", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
   admin: { label: "ADMIN", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
   manager: { label: "MANAGER", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
   cleaner: { label: "RENHOLDER", bg: "var(--c-teal)", color: "var(--text-success)" },

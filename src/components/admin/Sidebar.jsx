@@ -11,7 +11,9 @@ const NAV_ITEMS = [
   { id: "profil", label: "Min profil", icon: CircleUser },
 ];
 
-export default function Sidebar({ currentPage, setCurrentPage, user, onLogout }) {
+// navItems defaults to the full admin/manager nav — super_admin has no company of its own, so
+// it belongs to none of those company-scoped pages and passes its own short list instead.
+export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, navItems = NAV_ITEMS }) {
   return (
     <div style={{
       width: 260, minHeight: "100vh", background: "var(--sidebar-bg)",
@@ -34,7 +36,7 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout })
       </div>
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = currentPage === item.id;
           return (
             <button

@@ -5,18 +5,24 @@ import { Card, RoleBadge } from "../shared";
 
 const STATUS_LABEL = { used: "Brukt", revoked: "Trukket tilbake", expired: "Utløpt" };
 
-export default function InviterBrukerePage({ token }) {
+export default function InviterBrukerePage({ token, user }) {
+  const isSuperAdmin = user?.role === "super_admin";
   const [clients, setClients] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [invitations, setInvitations] = useState({ active: [], history: [] });
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("cleaner");
+  const [role, setRole] = useState(isSuperAdmin ? "admin" : "cleaner");
   const [clientId, setClientId] = useState("");
+  const [companyId, setCompanyId] = useState("");
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
 
   function loadAll() {
     apiFetch("/invitations", { token }).then(setInvitations).catch((err) => setError(err.message));
     apiFetch("/clients", { token }).then(setClients).catch(() => {});
+    if (isSuperAdmin) {
+      apiFetch("/companies", { token }).then(setCompanies).catch(() => {});
+    }
   }
 
   useEffect(loadAll, [token]);
@@ -27,10 +33,15 @@ export default function InviterBrukerePage({ token }) {
     try {
       await apiFetch("/invitations", {
         token, method: "POST",
-        body: JSON.stringify({ email, role, client_id: role === "customer" ? Number(clientId) : undefined }),
+        body: JSON.stringify({
+          email, role,
+          client_id: role === "customer" ? Number(clientId) : undefined,
+          company_id: isSuperAdmin ? Number(companyId) : undefined,
+        }),
       });
       setEmail("");
       setClientId("");
+      setCompanyId("");
       loadAll();
     } catch (err) {
       setError(err.message);
@@ -86,10 +97,18 @@ export default function InviterBrukerePage({ token }) {
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
+          {isSuperAdmin && (
+            <select required value={companyId} onChange={(e) => setCompanyId(e.target.value)} style={inputStyle}>
+              <option value="">Velg firma</option>
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
           <button type="submit" style={primaryBtnStyle}>+ Opprett</button>
         </form>
         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>
-          Lenken er gyldig i 14 dager. Brukeren får rollen og tilknyttes ditt firma automatisk.
+          {isSuperAdmin
+            ? "Lenken er gyldig i 14 dager. Brukeren får rollen og tilknyttes det valgte firmaet."
+            : "Lenken er gyldig i 14 dager. Brukeren får rollen og tilknyttes ditt firma automatisk."}
         </div>
       </Card>
 
