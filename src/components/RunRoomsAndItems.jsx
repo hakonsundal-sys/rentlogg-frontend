@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle2, Circle, X } from "lucide-react";
 import { API_URL } from "../api";
 import { queueableFetch } from "../offlineQueue";
@@ -94,6 +94,37 @@ function CompleteButton({ onClick, label }) {
   );
 }
 
+// Local text state so typing doesn't fight the runDetail prop on every keystroke — saved on
+// blur, matching the same debounce-by-blur pattern used elsewhere for free text (e.g. the room
+// interval input in LokasjonerPage). Re-syncs if the underlying note changes from outside
+// (onChanged() refetch after another edit lands).
+function NoteField({ value, onSave, editable }) {
+  const [text, setText] = useState(value || "");
+  useEffect(() => setText(value || ""), [value]);
+
+  if (!editable) {
+    return value?.trim() ? (
+      <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
+        <strong>Notat:</strong> {value}
+      </div>
+    ) : null;
+  }
+
+  return (
+    <textarea
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => { if (text !== (value || "")) onSave(text); }}
+      placeholder="Notat (valgfritt)"
+      style={{
+        width: "100%", minHeight: 40, marginTop: 6, padding: 6, borderRadius: "var(--radius)",
+        border: "1px solid var(--border)", background: "var(--surface-0)", color: "var(--text-primary)",
+        fontSize: 12, resize: "vertical", boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
 function EditedBadge({ editedAt, editedBy }) {
   if (!editedAt) return null;
   return (
@@ -149,6 +180,17 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     try {
       await queueableFetch(endpointFor(roomRunId, `photos/${photoId}`), {
         token, method: "DELETE", body: JSON.stringify({ initials: editInitials }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function saveNote(roomRunId, note) {
+    try {
+      await queueableFetch(endpointFor(roomRunId, "note"), {
+        token, method: "PATCH", body: JSON.stringify({ note, initials: editInitials }),
       });
       onChanged();
     } catch (err) {
@@ -228,6 +270,13 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
               {room.photos.length > 0 && (
                 <PhotosRow photos={room.photos} onDelete={editable ? (id) => deletePhoto(room.roomRunId, id) : null} />
               )}
+              {room.roomRunId && (
+                <NoteField
+                  value={room.note}
+                  editable={editable}
+                  onSave={(note) => saveNote(room.roomRunId, note)}
+                />
+              )}
               {editable && room.roomRunId && (
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 6 }}>
                   <AddPhotoButton inputRef={inputRefFor(key)} onUpload={(e) => uploadPhoto(room.roomRunId, e)} />
@@ -256,6 +305,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
       {runDetail.photos?.length > 0 && (
         <PhotosRow photos={runDetail.photos} onDelete={editable ? (id) => deletePhoto(null, id) : null} />
       )}
+      <NoteField value={runDetail.note} editable={editable} onSave={(note) => saveNote(null, note)} />
       {editable && (
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8 }}>
           <AddPhotoButton inputRef={inputRefFor("flat")} onUpload={(e) => uploadPhoto(null, e)} />

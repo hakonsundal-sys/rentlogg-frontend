@@ -264,6 +264,18 @@ export default function CleanerView({ token, user }) {
     }
   }
 
+  function updateRoomNoteLocal(note) {
+    setRoomRun((r) => ({ ...r, note }));
+  }
+
+  async function saveRoomNote() {
+    try {
+      await queueableFetch(`/rooms/runs/${roomRun.id}/note`, { token, method: "PATCH", body: JSON.stringify({ note: roomRun.note || "" }) });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function completeRoom() {
     setError("");
     if (!initials.trim()) {
@@ -344,6 +356,18 @@ export default function CleanerView({ token, user }) {
     setRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
     try {
       await queueableFetch(`/checklists/runs/${run.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function updateRunNoteLocal(note) {
+    setRun((r) => ({ ...r, note }));
+  }
+
+  async function saveRunNote() {
+    try {
+      await queueableFetch(`/checklists/runs/${run.id}/note`, { token, method: "PATCH", body: JSON.stringify({ note: run.note || "" }) });
     } catch (err) {
       setError(err.message);
     }
@@ -652,6 +676,17 @@ export default function CleanerView({ token, user }) {
                   ))}
                 </div>
               )}
+              <textarea
+                value={roomRun.note || ""}
+                onChange={(e) => updateRoomNoteLocal(e.target.value)}
+                onBlur={saveRoomNote}
+                placeholder="Notat for dette rommet (valgfritt)"
+                style={{
+                  width: "100%", minHeight: 50, marginTop: 12, padding: 8, borderRadius: "var(--radius)",
+                  border: "1px solid var(--border)", background: "var(--surface-0)", color: "var(--text-primary)",
+                  fontSize: 13, resize: "vertical", boxSizing: "border-box",
+                }}
+              />
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <input ref={roomFileInputRef} type="file" accept="image/*" onChange={uploadRoomPhoto} style={{ display: "none" }} />
                 <button onClick={() => roomFileInputRef.current.click()} style={{
@@ -703,6 +738,18 @@ export default function CleanerView({ token, user }) {
               </span>
             </div>
           ))}
+
+          <textarea
+            value={run.note || ""}
+            onChange={(e) => updateRunNoteLocal(e.target.value)}
+            onBlur={saveRunNote}
+            placeholder="Notat for besøket (valgfritt)"
+            style={{
+              width: "100%", minHeight: 50, marginTop: 12, padding: 8, borderRadius: "var(--radius)",
+              border: "1px solid var(--border)", background: "var(--surface-0)", color: "var(--text-primary)",
+              fontSize: 13, resize: "vertical", boxSizing: "border-box",
+            }}
+          />
 
           <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={uploadPhoto} style={{ display: "none" }} />
