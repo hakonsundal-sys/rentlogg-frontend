@@ -525,6 +525,110 @@ export default function CleanerView({ token, user }) {
   const notPlannedRooms = isRoomEnabled ? rooms.filter((r) => !r.dueToday) : [];
   const dueDoneCount = dueRooms.filter((r) => r.status === "completed").length;
 
+  // Rendered inline right under whichever RoomRow was tapped, instead of always popping up in a
+  // fixed spot above the whole list — so opening a room near the bottom doesn't jump the view.
+  function renderExpandedRoom(room) {
+    return (
+      <Card style={{ marginTop: 6, marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontWeight: 500 }}>{room.name}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+              {roomRun.items.filter((i) => i.done).length}/{roomRun.items.length}
+            </div>
+            {roomRun.items.length > 0 && roomRun.items.some((i) => !i.done) && (
+              <button onClick={markAllRoomItems} style={{
+                background: "none", border: "none", color: "var(--accent-orange-dark)",
+                fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0,
+              }}>
+                Merk alle
+              </button>
+            )}
+          </div>
+        </div>
+        {roomRun.items.map((item) => (
+          <div key={item.id} onClick={() => toggleRoomItem(item)} style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+            borderTop: "1px solid var(--border)", cursor: "pointer",
+          }}>
+            {item.done ? <CheckCircle2 size={16} style={{ color: "var(--text-success)" }} /> : <Circle size={16} style={{ color: "var(--text-muted)" }} />}
+            <span style={{ fontSize: 13, textDecoration: item.done ? "line-through" : "none", color: item.done ? "var(--text-secondary)" : "var(--text-primary)" }}>
+              {item.label}
+            </span>
+          </div>
+        ))}
+        {(roomRun.photos?.length > 0 || pendingRoomPhotos.length > 0) && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            {roomRun.photos.map((p) => (
+              <div key={p.id} style={{ position: "relative" }}>
+                <a href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
+                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                </a>
+                <button
+                  onClick={() => deleteRoomPhoto(p.id)}
+                  aria-label="Fjern bilde"
+                  style={{
+                    position: "absolute", top: -8, right: -8, width: 28, height: 28, borderRadius: "50%",
+                    background: "rgba(0,0,0,0.65)", color: "white", border: "none",
+                    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            {pendingRoomPhotos.map((p) => (
+              <div key={p.tempId} style={{ position: "relative" }} title="Venter på nett — sendes automatisk">
+                <img src={p.previewUrl} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)", opacity: 0.55 }} />
+                <div style={{
+                  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Clock size={18} style={{ color: "white", filter: "drop-shadow(0 0 2px rgba(0,0,0,0.8))" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <textarea
+          value={roomRun.note || ""}
+          onChange={(e) => updateRoomNoteLocal(e.target.value)}
+          onBlur={saveRoomNote}
+          placeholder="Notat for dette rommet (valgfritt)"
+          style={{
+            width: "100%", minHeight: 50, marginTop: 12, padding: 8, borderRadius: "var(--radius)",
+            border: "1px solid var(--border)", background: "var(--surface-0)", color: "var(--text-primary)",
+            fontSize: 13, resize: "vertical", boxSizing: "border-box",
+          }}
+        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input ref={roomFileInputRef} type="file" accept="image/*" onChange={uploadRoomPhoto} style={{ display: "none" }} />
+            <button onClick={() => roomFileInputRef.current.click()} style={{
+              display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
+              background: "var(--surface-0)", border: "1px solid var(--border)",
+              padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
+            }}>
+              <Camera size={16} /> Ta bilde
+            </button>
+            <button onClick={saveRoomNoteAndClose} style={{
+              display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
+              background: "var(--surface-0)", border: "1px solid var(--border)",
+              padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
+            }}>
+              <Save size={16} /> Lagre
+            </button>
+          </div>
+          <button onClick={completeRoom} style={{
+            background: "var(--text-success)", color: "white", border: "none",
+            padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
+          }}>
+            Fullfør rom
+          </button>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <div>
       {viewTabs}
@@ -624,109 +728,12 @@ export default function CleanerView({ token, user }) {
             </button>
           )}
 
-          {expandedRoomId && roomRun && (
-            <Card style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontWeight: 500 }}>{rooms.find((r) => r.id === expandedRoomId)?.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                    {roomRun.items.filter((i) => i.done).length}/{roomRun.items.length}
-                  </div>
-                  {roomRun.items.length > 0 && roomRun.items.some((i) => !i.done) && (
-                    <button onClick={markAllRoomItems} style={{
-                      background: "none", border: "none", color: "var(--accent-orange-dark)",
-                      fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0,
-                    }}>
-                      Merk alle
-                    </button>
-                  )}
-                </div>
-              </div>
-              {roomRun.items.map((item) => (
-                <div key={item.id} onClick={() => toggleRoomItem(item)} style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
-                  borderTop: "1px solid var(--border)", cursor: "pointer",
-                }}>
-                  {item.done ? <CheckCircle2 size={16} style={{ color: "var(--text-success)" }} /> : <Circle size={16} style={{ color: "var(--text-muted)" }} />}
-                  <span style={{ fontSize: 13, textDecoration: item.done ? "line-through" : "none", color: item.done ? "var(--text-secondary)" : "var(--text-primary)" }}>
-                    {item.label}
-                  </span>
-                </div>
-              ))}
-              {(roomRun.photos?.length > 0 || pendingRoomPhotos.length > 0) && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                  {roomRun.photos.map((p) => (
-                    <div key={p.id} style={{ position: "relative" }}>
-                      <a href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                        <img src={photoUrl(p.file_path)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
-                      </a>
-                      <button
-                        onClick={() => deleteRoomPhoto(p.id)}
-                        aria-label="Fjern bilde"
-                        style={{
-                          position: "absolute", top: -8, right: -8, width: 28, height: 28, borderRadius: "50%",
-                          background: "rgba(0,0,0,0.65)", color: "white", border: "none",
-                          display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0,
-                        }}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                  {pendingRoomPhotos.map((p) => (
-                    <div key={p.tempId} style={{ position: "relative" }} title="Venter på nett — sendes automatisk">
-                      <img src={p.previewUrl} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)", opacity: 0.55 }} />
-                      <div style={{
-                        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        <Clock size={18} style={{ color: "white", filter: "drop-shadow(0 0 2px rgba(0,0,0,0.8))" }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <textarea
-                value={roomRun.note || ""}
-                onChange={(e) => updateRoomNoteLocal(e.target.value)}
-                onBlur={saveRoomNote}
-                placeholder="Notat for dette rommet (valgfritt)"
-                style={{
-                  width: "100%", minHeight: 50, marginTop: 12, padding: 8, borderRadius: "var(--radius)",
-                  border: "1px solid var(--border)", background: "var(--surface-0)", color: "var(--text-primary)",
-                  fontSize: 13, resize: "vertical", boxSizing: "border-box",
-                }}
-              />
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input ref={roomFileInputRef} type="file" accept="image/*" onChange={uploadRoomPhoto} style={{ display: "none" }} />
-                  <button onClick={() => roomFileInputRef.current.click()} style={{
-                    display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
-                    background: "var(--surface-0)", border: "1px solid var(--border)",
-                    padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
-                  }}>
-                    <Camera size={16} /> Ta bilde
-                  </button>
-                  <button onClick={saveRoomNoteAndClose} style={{
-                    display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
-                    background: "var(--surface-0)", border: "1px solid var(--border)",
-                    padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
-                  }}>
-                    <Save size={16} /> Lagre
-                  </button>
-                </div>
-                <button onClick={completeRoom} style={{
-                  background: "var(--text-success)", color: "white", border: "none",
-                  padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
-                }}>
-                  Fullfør rom
-                </button>
-              </div>
-            </Card>
-          )}
-
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Rom å gjøre i dag</div>
           {dueRooms.map((room) => (
-            <RoomRow key={room.id} room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} />
+            <div key={room.id}>
+              <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} />
+              {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
+            </div>
           ))}
           {dueRooms.length === 0 && <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>Ingen rom planlagt i dag.</div>}
 
@@ -734,7 +741,10 @@ export default function CleanerView({ token, user }) {
             <>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", margin: "16px 0 8px" }}>Ikke planlagt i dag</div>
               {notPlannedRooms.map((room) => (
-                <RoomRow key={room.id} room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} muted />
+                <div key={room.id}>
+                  <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} muted />
+                  {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
+                </div>
               ))}
             </>
           )}
