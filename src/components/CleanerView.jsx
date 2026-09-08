@@ -212,6 +212,17 @@ export default function CleanerView({ token, user }) {
     }
   }
 
+  // Tapping the already-open room again just closes it — any note text already saved on blur
+  // when the tap moved focus away from the textarea, same as switching straight to another room.
+  function toggleRoom(room) {
+    if (expandedRoomId === room.id) {
+      setExpandedRoomId(null);
+      setRoomRun(null);
+      return;
+    }
+    openRoom(room);
+  }
+
   async function toggleRoomItem(item) {
     const done = !item.done;
     setRoomRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
@@ -731,7 +742,7 @@ export default function CleanerView({ token, user }) {
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Rom å gjøre i dag</div>
           {dueRooms.map((room) => (
             <div key={room.id}>
-              <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} />
+              <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} />
               {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
             </div>
           ))}
@@ -742,7 +753,7 @@ export default function CleanerView({ token, user }) {
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", margin: "16px 0 8px" }}>Ikke planlagt i dag</div>
               {notPlannedRooms.map((room) => (
                 <div key={room.id}>
-                  <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => openRoom(room)} muted />
+                  <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} muted />
                   {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
                 </div>
               ))}
