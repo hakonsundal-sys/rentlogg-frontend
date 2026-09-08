@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
@@ -274,6 +274,15 @@ export default function CleanerView({ token, user }) {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // Explicit "Lagre"-knapp ved siden av "Ta bilde" — lagrer notatet med en gang (ikke avhengig av
+  // at feltet mister fokus) og lukker romkortet, siden man da er ferdig med rommet for nå uten
+  // nødvendigvis å fullføre det.
+  async function saveRoomNoteAndClose() {
+    await saveRoomNote();
+    setExpandedRoomId(null);
+    setRoomRun(null);
   }
 
   async function completeRoom() {
@@ -687,17 +696,26 @@ export default function CleanerView({ token, user }) {
                   fontSize: 13, resize: "vertical", boxSizing: "border-box",
                 }}
               />
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <input ref={roomFileInputRef} type="file" accept="image/*" onChange={uploadRoomPhoto} style={{ display: "none" }} />
-                <button onClick={() => roomFileInputRef.current.click()} style={{
-                  display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
-                  background: "var(--surface-0)", border: "1px solid var(--border)",
-                  padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
-                }}>
-                  <Camera size={16} /> Ta bilde
-                </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input ref={roomFileInputRef} type="file" accept="image/*" onChange={uploadRoomPhoto} style={{ display: "none" }} />
+                  <button onClick={() => roomFileInputRef.current.click()} style={{
+                    display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
+                    background: "var(--surface-0)", border: "1px solid var(--border)",
+                    padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
+                  }}>
+                    <Camera size={16} /> Ta bilde
+                  </button>
+                  <button onClick={saveRoomNoteAndClose} style={{
+                    display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
+                    background: "var(--surface-0)", border: "1px solid var(--border)",
+                    padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
+                  }}>
+                    <Save size={16} /> Lagre
+                  </button>
+                </div>
                 <button onClick={completeRoom} style={{
-                  flex: 1, background: "var(--text-success)", color: "white", border: "none",
+                  background: "var(--text-success)", color: "white", border: "none",
                   padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
                 }}>
                   Fullfør rom
