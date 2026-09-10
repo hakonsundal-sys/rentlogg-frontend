@@ -18,6 +18,11 @@ function tabBtnStyle(active) {
   };
 }
 
+const deviationSelectStyle = {
+  padding: "7px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+  background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13,
+};
+
 function photoUrl(filePath) {
   const filename = filePath.split(/[\\/]/).pop();
   return `${API_URL}/uploads/${filename}`;
@@ -83,6 +88,9 @@ export default function CleanerView({ token, user }) {
   const [showDeviationForm, setShowDeviationForm] = useState(false);
   const [deviationText, setDeviationText] = useState("");
   const [deviationPhoto, setDeviationPhoto] = useState(null);
+  const [deviationRoomId, setDeviationRoomId] = useState("");
+  const [deviationTasks, setDeviationTasks] = useState([]);
+  const [deviationTaskLabel, setDeviationTaskLabel] = useState("");
   const [photoCount, setPhotoCount] = useState(0);
   const [error, setError] = useState("");
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
@@ -360,6 +368,24 @@ export default function CleanerView({ token, user }) {
     }
   }
 
+  // Populates the task dropdown for whichever room is picked, mirroring the same
+  // room/task-scoping the customer-facing "Meld avvik" form already offers — so a deviation
+  // filed from a room-based site can actually say which of the (often dozens of) rooms it's
+  // about, instead of relying on the cleaner remembering to mention it in the free text.
+  async function onDeviationRoomChange(roomId) {
+    setDeviationRoomId(roomId);
+    setDeviationTaskLabel("");
+    if (!roomId) {
+      setDeviationTasks([]);
+      return;
+    }
+    try {
+      setDeviationTasks(await apiFetch(`/rooms/${roomId}/items`, { token }));
+    } catch {
+      setDeviationTasks([]);
+    }
+  }
+
   async function submitDeviation() {
     if (!deviationText.trim()) return;
     if (!initials.trim()) {
@@ -371,7 +397,9 @@ export default function CleanerView({ token, user }) {
       const deviation = await queueableFetch("/deviations", {
         token, method: "POST",
         body: JSON.stringify({
-          site_id: run.site.id, run_id: run.id, description: deviationText, priority: "medium",
+          site_id: run.site.id, run_id: run.id,
+          room_id: deviationRoomId || null, room_task_label: deviationTaskLabel || null,
+          description: deviationText, priority: "medium",
           initials: initials.trim(),
         }),
       });
@@ -386,6 +414,9 @@ export default function CleanerView({ token, user }) {
       }
       setDeviationText("");
       setDeviationPhoto(null);
+      setDeviationRoomId("");
+      setDeviationTasks([]);
+      setDeviationTaskLabel("");
       setShowDeviationForm(false);
       setRun((r) => ({ ...r, site: { ...r.site, status: "deviation" } }));
     } catch (err) {
@@ -905,16 +936,36 @@ export default function CleanerView({ token, user }) {
       )}
 
       {!showDeviationForm && isRoomEnabled && (
-        <button onClick={() => setShowDeviationForm(true)} style={{
-          display: "flex", alignItems: "center", gap: 6, justifyContent: "center", width: "100%",
-          background: "var(--bg-danger)", color: "var(--text-danger)", border: "1px solid var(--border-danger)",
-          padding: "10px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer", marginTop: 12,
-        }}>
+        <button
+          onClick={() => {
+            // If a room is open when "Meld avvik" is tapped, assume that's the room the
+            // avvik is about — one less thing to pick, and easy to change if it's wrong.
+            if (expandedRoomId) onDeviationRoomChange(String(expandedRoomId));
+            setShowDeviationForm(true);
+          }}
+          style={{
+            display: "flex", alignItems: "center", gap: 6, justifyContent: "center", width: "100%",
+            background: "var(--bg-danger)", color: "var(--text-danger)", border: "1px solid var(--border-danger)",
+            padding: "10px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer", marginTop: 12,
+          }}
+        >
           <AlertTriangle size={16} /> Meld avvik
         </button>
       )}
       {showDeviationForm && isRoomEnabled && (
         <Card style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <select value={deviationRoomId} onChange={(e) => onDeviationRoomChange(e.target.value)} style={deviationSelectStyle}>
+              <option value="">Generelt (ikke rom-spesifikt)</option>
+              {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+            {deviationRoomId && (
+              <select value={deviationTaskLabel} onChange={(e) => setDeviationTaskLabel(e.target.value)} style={deviationSelectStyle}>
+                <option value="">Generelt for rommet</option>
+                {deviationTasks.map((t) => <option key={t.id} value={t.label}>{t.label}</option>)}
+              </select>
+            )}
+          </div>
           <textarea
             value={deviationText}
             onChange={(e) => setDeviationText(e.target.value)}
