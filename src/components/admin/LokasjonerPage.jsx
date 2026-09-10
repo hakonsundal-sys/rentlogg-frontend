@@ -196,6 +196,33 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  // A room's own schedule says how often it gets opened at all — this is for a single task
+  // inside it that's due less often than the room itself (e.g. a daily room with one monthly
+  // task). Unset (both null) means "every time the room is cleaned", same as before this existed.
+  async function setItemMonthlyMode(roomId, itemId, weekday, occurrence) {
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({ monthly_weekday: weekday, monthly_occurrence: occurrence }),
+      });
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function setItemDailyMode(roomId, itemId) {
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({ monthly_weekday: null, monthly_occurrence: null }),
+      });
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function setRoomIntervalMode(siteId, roomId, days) {
     try {
       await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ interval_days: days }) });
@@ -975,9 +1002,41 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     {expandedRoomId === room.id && (
                       <div style={{ marginLeft: 8, marginTop: 6, paddingLeft: 8, borderLeft: "2px solid var(--border)" }}>
                         {(roomItems[room.id] || []).map((item) => (
-                          <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
-                            <span>{item.label}</span>
-                            <button onClick={() => deleteRoomItem(room.id, item.id)} style={iconBtnStyle}><Trash2 size={11} /></button>
+                          <div key={item.id} style={{ padding: "3px 0", borderBottom: "1px solid var(--border)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                              <span>{item.label}</span>
+                              <button onClick={() => deleteRoomItem(room.id, item.id)} style={iconBtnStyle}><Trash2 size={11} /></button>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                              <select
+                                value={item.monthly_weekday != null ? "monthly" : "daily"}
+                                onChange={(e) => e.target.value === "monthly"
+                                  ? setItemMonthlyMode(room.id, item.id, todayWeekday(), 1)
+                                  : setItemDailyMode(room.id, item.id)}
+                                style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 92 }}
+                              >
+                                <option value="daily">Hver gang</option>
+                                <option value="monthly">Månedlig</option>
+                              </select>
+                              {item.monthly_weekday != null && (
+                                <>
+                                  <select
+                                    value={item.monthly_occurrence ?? 1}
+                                    onChange={(e) => setItemMonthlyMode(room.id, item.id, item.monthly_weekday, Number(e.target.value))}
+                                    style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 78 }}
+                                  >
+                                    {OCCURRENCES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                  </select>
+                                  <select
+                                    value={item.monthly_weekday}
+                                    onChange={(e) => setItemMonthlyMode(room.id, item.id, Number(e.target.value), item.monthly_occurrence ?? 1)}
+                                    style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 66 }}
+                                  >
+                                    {WEEKDAYS.map((wd) => <option key={wd.value} value={wd.value}>{wd.label}</option>)}
+                                  </select>
+                                </>
+                              )}
+                            </div>
                           </div>
                         ))}
                         <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
