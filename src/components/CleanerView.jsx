@@ -91,7 +91,10 @@ export default function CleanerView({ token, user }) {
   const [deviationRoomId, setDeviationRoomId] = useState("");
   const [deviationTasks, setDeviationTasks] = useState([]);
   const [deviationTaskLabel, setDeviationTaskLabel] = useState("");
+  const [deviationPriority, setDeviationPriority] = useState("medium");
   const [photoCount, setPhotoCount] = useState(0);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingRoomPhoto, setUploadingRoomPhoto] = useState(false);
   const [error, setError] = useState("");
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
   const [initials, setInitials] = useState(() => user?.name || "");
@@ -276,6 +279,7 @@ export default function CleanerView({ token, user }) {
     form.append("photo", file);
     form.append("kind", "general");
     const previewUrl = URL.createObjectURL(file);
+    setUploadingRoomPhoto(true);
     try {
       const result = await queueableFetch(`/rooms/runs/${roomRun.id}/photos`, { token, method: "POST", body: form });
       if (result.queued) {
@@ -288,6 +292,7 @@ export default function CleanerView({ token, user }) {
       setError(err.message);
       URL.revokeObjectURL(previewUrl);
     } finally {
+      setUploadingRoomPhoto(false);
       e.target.value = "";
     }
   }
@@ -354,6 +359,8 @@ export default function CleanerView({ token, user }) {
       return;
     }
     const roomIds = rooms.filter((r) => r.dueToday && r.status !== "completed").map((r) => r.id);
+    if (roomIds.length === 0) return;
+    if (!window.confirm(`Fullføre alle ${roomIds.length} gjenstående rom for i dag?`)) return;
     try {
       await queueableFetch(`/sites/${run.site.id}/rooms/complete-all-due`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       refreshRooms();
@@ -399,7 +406,7 @@ export default function CleanerView({ token, user }) {
         body: JSON.stringify({
           site_id: run.site.id, run_id: run.id,
           room_id: deviationRoomId || null, room_task_label: deviationTaskLabel || null,
-          description: deviationText, priority: "medium",
+          description: deviationText, priority: deviationPriority,
           initials: initials.trim(),
         }),
       });
@@ -417,6 +424,7 @@ export default function CleanerView({ token, user }) {
       setDeviationRoomId("");
       setDeviationTasks([]);
       setDeviationTaskLabel("");
+      setDeviationPriority("medium");
       setShowDeviationForm(false);
       setRun((r) => ({ ...r, site: { ...r.site, status: "deviation" } }));
     } catch (err) {
@@ -453,12 +461,14 @@ export default function CleanerView({ token, user }) {
     form.append("photo", file);
     form.append("kind", "general");
     setPhotoCount((c) => c + 1);
+    setUploadingPhoto(true);
     try {
       await queueableFetch(`/checklists/runs/${run.id}/photos`, { token, method: "POST", body: form });
     } catch (err) {
       setPhotoCount((c) => Math.max(0, c - 1));
       setError(err.message);
     } finally {
+      setUploadingPhoto(false);
       e.target.value = "";
     }
   }
@@ -698,12 +708,13 @@ export default function CleanerView({ token, user }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           <div style={{ display: "flex", gap: 8 }}>
             <input ref={roomFileInputRef} type="file" accept="image/*" onChange={uploadRoomPhoto} style={{ display: "none" }} />
-            <button onClick={() => roomFileInputRef.current.click()} style={{
+            <button onClick={() => roomFileInputRef.current.click()} disabled={uploadingRoomPhoto} style={{
               display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
               background: "var(--surface-0)", border: "1px solid var(--border)",
-              padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
+              padding: "12px", borderRadius: "var(--radius)", fontSize: 14,
+              cursor: uploadingRoomPhoto ? "default" : "pointer", opacity: uploadingRoomPhoto ? 0.6 : 1,
             }}>
-              <Camera size={16} /> Ta bilde
+              <Camera size={16} /> {uploadingRoomPhoto ? "Laster opp..." : "Ta bilde"}
             </button>
             <button onClick={saveRoomNoteAndClose} style={{
               display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
@@ -887,12 +898,13 @@ export default function CleanerView({ token, user }) {
 
           <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={uploadPhoto} style={{ display: "none" }} />
-            <button onClick={() => fileInputRef.current.click()} style={{
+            <button onClick={() => fileInputRef.current.click()} disabled={uploadingPhoto} style={{
               display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
               background: "var(--surface-0)", border: "1px solid var(--border)",
-              padding: "10px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
+              padding: "10px", borderRadius: "var(--radius)", fontSize: 13,
+              cursor: uploadingPhoto ? "default" : "pointer", opacity: uploadingPhoto ? 0.6 : 1,
             }}>
-              <Camera size={16} /> Ta bilde{photoCount > 0 ? ` (${photoCount})` : ""}
+              <Camera size={16} /> {uploadingPhoto ? "Laster opp..." : `Ta bilde${photoCount > 0 ? ` (${photoCount})` : ""}`}
             </button>
             <button onClick={() => setShowDeviationForm((v) => !v)} style={{
               display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "center",
@@ -916,7 +928,12 @@ export default function CleanerView({ token, user }) {
                 }}
               />
               <input ref={deviationFileInputRef} type="file" accept="image/*" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <select value={deviationPriority} onChange={(e) => setDeviationPriority(e.target.value)} style={deviationSelectStyle}>
+                  <option value="low">Lav prioritet</option>
+                  <option value="medium">Middels prioritet</option>
+                  <option value="high">Høy prioritet</option>
+                </select>
                 <button type="button" onClick={() => deviationFileInputRef.current.click()} style={{
                   display: "flex", alignItems: "center", gap: 6, background: "var(--surface-0)", border: "1px solid var(--border)",
                   padding: "8px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
@@ -977,7 +994,12 @@ export default function CleanerView({ token, user }) {
             }}
           />
           <input ref={deviationFileInputRef} type="file" accept="image/*" onChange={(e) => setDeviationPhoto(e.target.files[0] || null)} style={{ display: "none" }} />
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <select value={deviationPriority} onChange={(e) => setDeviationPriority(e.target.value)} style={deviationSelectStyle}>
+              <option value="low">Lav prioritet</option>
+              <option value="medium">Middels prioritet</option>
+              <option value="high">Høy prioritet</option>
+            </select>
             <button type="button" onClick={() => deviationFileInputRef.current.click()} style={{
               display: "flex", alignItems: "center", gap: 6, background: "var(--surface-0)", border: "1px solid var(--border)",
               padding: "8px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
