@@ -143,6 +143,18 @@ export default function CleanerView({ token, user }) {
       if (wasPendingPhoto && event.type === "success" && expandedRoomId) {
         apiFetch(`/rooms/${expandedRoomId}/checkin`, { token, method: "POST" }).then(setRoomRun).catch(() => {});
       }
+      // A queued item only ever fails permanently on a real HTTP error (not "still offline" —
+      // those just keep waiting), so this is never going to succeed on its own. Previously this
+      // went completely unsurfaced: a pending-photo preview would just quietly vanish, and any
+      // other queued action (item toggle, note, "fullfør rom"...) would be dropped with no sign
+      // anything went wrong at all.
+      if (event.type === "failed") {
+        setError(
+          wasPendingPhoto
+            ? `Et bilde kunne ikke sendes og gikk tapt (${event.error}). Ta bildet på nytt.`
+            : `En lagret endring kunne ikke sendes (${event.error}). Prøv på nytt.`
+        );
+      }
     });
     return unsubscribe;
   }, [expandedRoomId, token]);

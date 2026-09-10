@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, AlertTriangle, Pencil, FileText, Download } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, AlertTriangle, Pencil, FileText, Download, Camera } from "lucide-react";
 import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
 import { Card } from "./shared";
@@ -192,11 +192,15 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
 }
 
 const ASSIGNED_LABEL = { manager: "Sendt til driftsleder", customer: "Sendt til kunde" };
+const PRIORITY_LABEL = { low: "Lav", medium: "Middels", high: "Høy" };
+const PRIORITY_COLOR = { low: "var(--text-secondary)", medium: "var(--accent-orange-dark)", high: "var(--text-danger)" };
 
 function DeviationRow({ token, deviation, sharedInitials, onReplied, setError }) {
   const [replyText, setReplyText] = useState("");
   const [replyInitials, setReplyInitials] = useState(sharedInitials || "");
+  const [replyPhoto, setReplyPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const replyFileInputRef = useRef(null);
 
   async function reply(action) {
     if (!replyText.trim()) {
@@ -214,6 +218,21 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
         body: JSON.stringify({ reply_text: replyText.trim(), initials: replyInitials.trim(), action }),
       });
       onReplied(updated);
+      // A separate call, same as the initial "meld avvik" flow — a photo can't be attached in
+      // the same request as the text reply. If this leg fails the reply itself has already
+      // gone through, so surface the photo error on its own rather than looking like the
+      // whole reply failed.
+      if (replyPhoto) {
+        const form = new FormData();
+        form.append("photo", replyPhoto);
+        try {
+          const photo = await apiFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
+          onReplied({ id: deviation.id, photos: [...(deviation.photos || []), photo] });
+        } catch (err) {
+          setError(`Svaret ble sendt, men bildet kunne ikke lastes opp: ${err.message}`);
+        }
+        setReplyPhoto(null);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -232,9 +251,16 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
             </div>
           )}
           <div style={{ fontSize: 13 }}>{deviation.description}</div>
-          {deviation.reported_by_initials && (
-            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>Meldt av: {deviation.reported_by_initials}</div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+            {deviation.reported_by_initials && (
+              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Meldt av: {deviation.reported_by_initials}</div>
+            )}
+            {deviation.priority && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: PRIORITY_COLOR[deviation.priority] }}>
+                {PRIORITY_LABEL[deviation.priority] || deviation.priority}
+              </span>
+            )}
+          </div>
           {deviation.photos?.length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
               {deviation.photos.map((p) => (
@@ -281,7 +307,20 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
               background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13, width: 160,
             }}
           />
+          <input
+            ref={replyFileInputRef} type="file" accept="image/*"
+            onChange={(e) => setReplyPhoto(e.target.files[0] || null)} style={{ display: "none" }}
+          />
           <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+            <button
+              type="button" disabled={submitting} onClick={() => replyFileInputRef.current.click()}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, background: "var(--surface-0)", border: "1px solid var(--border)",
+                padding: "6px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+              }}
+            >
+              <Camera size={13} /> {replyPhoto ? replyPhoto.name : "Legg ved bilde"}
+            </button>
             {REPLY_ACTIONS.map(({ action, label }) => (
               <button
                 key={action} disabled={submitting} onClick={() => reply(action)}
