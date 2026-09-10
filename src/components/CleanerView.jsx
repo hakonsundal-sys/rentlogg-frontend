@@ -566,6 +566,14 @@ export default function CleanerView({ token, user }) {
             <span style={{ fontSize: 13, textDecoration: item.done ? "line-through" : "none", color: item.done ? "var(--text-secondary)" : "var(--text-primary)" }}>
               {item.label}
             </span>
+            {item.monthly ? (
+              <span style={{
+                fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+                background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
+              }}>
+                Månedlig
+              </span>
+            ) : null}
           </div>
         ))}
         {(roomRun.photos?.length > 0 || pendingRoomPhotos.length > 0) && (

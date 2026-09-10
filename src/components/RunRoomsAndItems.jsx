@@ -30,6 +30,14 @@ function ItemRow({ item, variant, onToggle }) {
       }}>
         {item.label}
       </span>
+      {item.monthly ? (
+        <span style={{
+          fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+          background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
+        }}>
+          Månedlig
+        </span>
+      ) : null}
     </div>
   );
 }
