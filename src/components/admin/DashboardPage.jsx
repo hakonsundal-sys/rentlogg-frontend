@@ -76,14 +76,21 @@ export default function DashboardPage({ token, user, summary }) {
   const runDeviations = runDetail ? deviations.filter((d) => d.run_id === runDetail.id) : [];
 
   const activity = [
-    ...summary.recentActivity.map((a) => ({
-      key: `run-${a.id}`,
-      title: a.siteName,
-      subtitle: `${a.cleanerName} · ${a.status === "completed" ? "Fullført" : "Pågår"}${a.signedInitials ? ` · signert ${a.signedInitials}` : ""}`,
-      badge: a.status === "completed" ? "FULLFØRT" : "PÅGÅR",
-      badgeColor: a.status === "completed" ? "var(--text-success)" : "var(--accent-orange-dark)",
-      badgeBg: a.status === "completed" ? "var(--c-teal)" : "var(--accent-orange-bg)",
-    })),
+    ...summary.recentActivity.map((a) => {
+      // "Fullført" only ever meant the cleaner tapped "Avslutt besøk" — on a room-based site
+      // that can happen with most rooms still undone, so the room count rides along whenever
+      // there is one, instead of just trusting the flat badge.
+      const roomProgress = a.roomDueCount != null ? `${a.roomCompletedCount}/${a.roomDueCount} rom` : null;
+      return {
+        key: `run-${a.id}`,
+        title: a.siteName,
+        subtitle: [a.cleanerName, roomProgress || (a.status === "completed" ? "Fullført" : "Pågår"), a.signedInitials ? `signert ${a.signedInitials}` : null]
+          .filter(Boolean).join(" · "),
+        badge: a.status === "completed" ? "FULLFØRT" : "PÅGÅR",
+        badgeColor: a.status === "completed" ? "var(--text-success)" : "var(--accent-orange-dark)",
+        badgeBg: a.status === "completed" ? "var(--c-teal)" : "var(--accent-orange-bg)",
+      };
+    }),
     ...summary.plannedToday.map((p) => ({
       key: `planned-${p.siteId}`,
       title: p.siteName,
@@ -180,26 +187,41 @@ export default function DashboardPage({ token, user, summary }) {
           </div>
         </div>
         {filteredRuns.length === 0 && <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>Ingen oppdrag ennå.</div>}
-        {filteredRuns.map((r) => (
-          <div key={r.id} onClick={() => openRunDetail(r.id)} style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            padding: "10px 0", borderTop: "1px solid var(--border)", cursor: "pointer",
-          }}>
-            <div>
-              <div style={{ fontWeight: 500, fontSize: 14 }}>{r.site_name}</div>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                {r.cleaner_name} · {r.started_at.slice(0, 16)}
-              </div>
-            </div>
-            <span style={{
-              fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 999,
-              background: r.completed_at ? "var(--c-teal)" : "var(--accent-orange-bg)",
-              color: r.completed_at ? "var(--text-success)" : "var(--accent-orange-dark)",
+        {filteredRuns.map((r) => {
+          const roomProgress = r.room_due_count != null ? `${r.room_completed_count}/${r.room_due_count} rom` : null;
+          // "Avslutt besøk" closes the flat visit regardless of how many rooms actually got
+          // done — flag it clearly when that badge says FULLFØRT but the rooms disagree,
+          // since that's exactly the gap between "closed" and "actually done".
+          const roomsIncomplete = r.room_due_count != null && r.room_completed_count < r.room_due_count;
+          return (
+            <div key={r.id} onClick={() => openRunDetail(r.id)} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "10px 0", borderTop: "1px solid var(--border)", cursor: "pointer",
             }}>
-              {r.completed_at ? "FULLFØRT" : "PÅGÅR"}
-            </span>
-          </div>
-        ))}
+              <div>
+                <div style={{ fontWeight: 500, fontSize: 14 }}>{r.site_name}</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  {r.cleaner_name} · {r.started_at.slice(0, 16)}
+                  {roomProgress && (
+                    <span style={{
+                      color: roomsIncomplete && r.completed_at ? "var(--text-danger)" : "var(--text-secondary)",
+                      fontWeight: roomsIncomplete && r.completed_at ? 600 : 400,
+                    }}>
+                      {" · "}{roomProgress}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span style={{
+                fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 999,
+                background: r.completed_at ? "var(--c-teal)" : "var(--accent-orange-bg)",
+                color: r.completed_at ? "var(--text-success)" : "var(--accent-orange-dark)",
+              }}>
+                {r.completed_at ? "FULLFØRT" : "PÅGÅR"}
+              </span>
+            </div>
+          );
+        })}
       </Card>
 
       {selectedRunId && (

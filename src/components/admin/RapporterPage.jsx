@@ -187,7 +187,7 @@ export default function RapporterPage({ token }) {
                   <th style={thStyle}>Lokasjon</th>
                   <th style={thStyle}>Planlagt</th>
                   <th style={thStyle}>Rom</th>
-                  <th style={thStyle}>Oppgaver</th>
+                  <th style={thStyle}>Fullført</th>
                 </tr>
               </thead>
               <tbody>
