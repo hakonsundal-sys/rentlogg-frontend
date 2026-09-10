@@ -54,7 +54,12 @@ export default function QrScanner({ onScan, onCancel }) {
         await videoRef.current.play();
         tick();
       } catch {
-        if (!cancelled) setError("Fikk ikke tilgang til kamera. Sjekk tillatelser i nettleseren.");
+        if (!cancelled) {
+          setError(
+            "Fikk ikke tilgang til kamera. Trykk på kamera-/hengelås-ikonet i adressefeltet og " +
+            "gi tilgang, eller lukk dette og skriv inn koden manuelt i stedet."
+          );
+        }
       }
     })();
 

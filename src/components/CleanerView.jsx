@@ -62,6 +62,15 @@ function extractQrToken(scannedText) {
 
 const ROOM_STATUS_LABEL = { missing: "IKKE STARTET", in_progress: "PÅGÅR", completed: "FERDIG" };
 
+const ONBOARDING_DISMISSED_KEY = "rentlogg_onboarding_dismissed";
+function isOnboardingDismissed() {
+  try {
+    return !!localStorage.getItem(ONBOARDING_DISMISSED_KEY);
+  } catch {
+    return false;
+  }
+}
+
 export default function CleanerView({ token, user }) {
   const [run, setRun] = useState(null);
   const [rooms, setRooms] = useState(null); // null = not room-enabled site (or not yet loaded)
@@ -83,10 +92,12 @@ export default function CleanerView({ token, user }) {
   const [showDocuments, setShowDocuments] = useState(false);
   const [pendingRoomPhotos, setPendingRoomPhotos] = useState([]); // photos queued offline: { tempId, previewUrl }
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDismissed());
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const deviationFileInputRef = useRef(null);
   const undoTimeoutRef = useRef(null);
+  const initialsInputRef = useRef(null);
   const { pendingCount, flushNow } = useQueueStatus();
 
   useEffect(() => {
@@ -128,7 +139,15 @@ export default function CleanerView({ token, user }) {
   function showUndo(label, onUndo) {
     clearTimeout(undoTimeoutRef.current);
     setUndoAction({ label, onUndo });
-    undoTimeoutRef.current = setTimeout(() => setUndoAction(null), 8000);
+    undoTimeoutRef.current = setTimeout(() => setUndoAction(null), 15000);
+  }
+
+  // Jumps to and highlights the signature field when a "fullfør" action is blocked on it —
+  // the field itself lives up in the visit-info card, potentially far from whichever room's
+  // "Fullfør rom" button the cleaner just tapped, so the plain error text alone was easy to miss.
+  function focusInitials() {
+    initialsInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    initialsInputRef.current?.focus();
   }
 
   async function performUndo() {
@@ -300,6 +319,7 @@ export default function CleanerView({ token, user }) {
     setError("");
     if (!initials.trim()) {
       setError("Skriv inn navnet ditt for å fullføre rommet.");
+      focusInitials();
       return;
     }
     const roomId = expandedRoomId;
@@ -322,6 +342,7 @@ export default function CleanerView({ token, user }) {
     setError("");
     if (!initials.trim()) {
       setError("Skriv inn navnet ditt for å fullføre oppgavene.");
+      focusInitials();
       return;
     }
     const roomIds = rooms.filter((r) => r.dueToday && r.status !== "completed").map((r) => r.id);
@@ -343,6 +364,7 @@ export default function CleanerView({ token, user }) {
     if (!deviationText.trim()) return;
     if (!initials.trim()) {
       setError("Skriv inn navnet ditt for å melde avvik.");
+      focusInitials();
       return;
     }
     try {
@@ -414,6 +436,7 @@ export default function CleanerView({ token, user }) {
     setError("");
     if (!initials.trim()) {
       setError("Skriv inn navnet ditt for å fullføre besøket.");
+      focusInitials();
       return;
     }
     if (rooms && rooms.length > 0) {
@@ -489,6 +512,28 @@ export default function CleanerView({ token, user }) {
       <div>
         {viewTabs}
         {offlineBanner}
+        {showOnboarding && (
+          <Card style={{ marginBottom: 12, fontSize: 13 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Kom i gang</div>
+            <div style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+              1. Skann QR-koden ved lokasjonen<br />
+              2. Huk av rom og oppgaver etter hvert som du gjør dem<br />
+              3. Skriv navnet ditt og trykk «Fullfør»
+            </div>
+            <button
+              onClick={() => {
+                try { localStorage.setItem(ONBOARDING_DISMISSED_KEY, "1"); } catch { /* ignore */ }
+                setShowOnboarding(false);
+              }}
+              style={{
+                marginTop: 10, background: "none", border: "none", color: "var(--accent-orange-dark)",
+                fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0,
+              }}
+            >
+              Skjønner, skjul
+            </button>
+          </Card>
+        )}
         <Card style={{ textAlign: "center", padding: 40 }}>
         <QrCode size={40} style={{ margin: "0 auto 12px", color: "var(--text-secondary)" }} />
         <div style={{ marginBottom: 16, color: "var(--text-secondary)" }}>Skann QR-koden ved lokasjonen for å starte oppdraget</div>
@@ -689,8 +734,13 @@ export default function CleanerView({ token, user }) {
             <ShieldCheck size={15} /> Posisjon bekreftet
           </div>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
-            <MapPin size={15} /> Posisjon ikke bekreftet
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
+              <MapPin size={15} /> Posisjon ikke bekreftet
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, marginLeft: 21 }}>
+              Kun til info — du trenger ikke gjøre noe med dette.
+            </div>
           </div>
         )}
         {documents.length > 0 && (
@@ -710,6 +760,7 @@ export default function CleanerView({ token, user }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
           <label style={{ fontSize: 13, color: "var(--text-secondary)" }}>Signatur (navn)</label>
           <input
+            ref={initialsInputRef}
             value={initials} onChange={(e) => setInitials(e.target.value)}
             placeholder="Fullt navn" maxLength={60}
             style={{
@@ -758,7 +809,12 @@ export default function CleanerView({ token, user }) {
 
           {notPlannedRooms.length > 0 && (
             <>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", margin: "16px 0 8px" }}>Ikke planlagt i dag</div>
+              <div style={{ margin: "16px 0 8px" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Ikke planlagt i dag</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                  Disse følger en annen renholdsplan og trengs ikke i dag — du kan likevel åpne og gjøre dem om nødvendig.
+                </div>
+              </div>
               {notPlannedRooms.map((room) => (
                 <div key={room.id}>
                   <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} muted />
