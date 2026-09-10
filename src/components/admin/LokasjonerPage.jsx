@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText } from "lucide-react";
+import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText, CalendarCheck } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, AddressAutocomplete, DocumentsList, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
+import MonthlyItemsView from "./MonthlyItemsView";
 
 const WEEKDAYS = [
   { value: 1, label: "Man" },
@@ -63,6 +64,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [qrPreview, setQrPreview] = useState(null); // { siteId, siteName, checkInUrl, qrImage }
   const [historySite, setHistorySite] = useState(null);
+  const [monthlyItemsSite, setMonthlyItemsSite] = useState(null);
   const [historyDeviations, setHistoryDeviations] = useState([]);
   const [loadingQrSiteId, setLoadingQrSiteId] = useState(null);
   const [importingPdf, setImportingPdf] = useState(false);
@@ -782,6 +784,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     <button onClick={() => openHistory(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                       <History size={12} /> Historikk
                     </button>
+                    <button onClick={() => setMonthlyItemsSite(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                      <CalendarCheck size={12} /> Månedlige oppgaver
+                    </button>
                     <button onClick={() => toggleDocsSite(site.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                       <FileText size={12} /> {expandedDocsSite === site.id ? "Skjul dokumenter" : "Dokumenter"}
                     </button>
@@ -1190,6 +1195,13 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           onApproved={(updated) => setHistoryDeviations((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
           setError={setError}
           onClose={() => setHistorySite(null)}
+        />
+      )}
+
+      {monthlyItemsSite && (
+        <MonthlyItemsView
+          token={token} site={monthlyItemsSite} setError={setError}
+          onClose={() => setMonthlyItemsSite(null)}
         />
       )}
     </div>
