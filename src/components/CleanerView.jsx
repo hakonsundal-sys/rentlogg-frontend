@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
 import { Card, StatusBadge, DocumentsList } from "./shared";
 import QrScanner from "./QrScanner";
 import CleanerHistoryView from "./CleanerHistoryView";
+import RoomGrid from "./RoomGrid";
+import RunDetailModal from "./RunDetailModal";
+
+function currentMonth() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
+}
 
 function tabBtnStyle(active) {
   return {
@@ -104,6 +110,10 @@ export default function CleanerView({ token, user }) {
   const [pendingRoomPhotos, setPendingRoomPhotos] = useState([]); // photos queued offline: { tempId, previewUrl }
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDismissed());
+  const [showVaskeplan, setShowVaskeplan] = useState(false);
+  const [vaskeplanMonth, setVaskeplanMonth] = useState(currentMonth);
+  const [vaskeplanGrid, setVaskeplanGrid] = useState(null);
+  const [openRun, setOpenRun] = useState(null); // { runId, roomId } — roomId is which one to scroll to
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const deviationFileInputRef = useRef(null);
@@ -158,6 +168,16 @@ export default function CleanerView({ token, user }) {
     });
     return unsubscribe;
   }, [expandedRoomId, token]);
+
+  // Only fetched while the panel is actually open, and re-fetched on month change — same
+  // "vaskeplan" grid admin/customer see, scoped to whichever site is currently checked into.
+  useEffect(() => {
+    if (!showVaskeplan || !run?.site) return;
+    setVaskeplanGrid(null);
+    apiFetch(`/sites/${run.site.id}/rooms/monthly-grid?month=${vaskeplanMonth}`, { token })
+      .then(setVaskeplanGrid)
+      .catch((err) => setError(err.message));
+  }, [showVaskeplan, run?.site, vaskeplanMonth, token]);
 
   function showUndo(label, onUndo) {
     clearTimeout(undoTimeoutRef.current);
@@ -503,6 +523,8 @@ export default function CleanerView({ token, user }) {
       await queueableFetch(`/checklists/runs/${run.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       setRun(null);
       setRooms(null);
+      setShowVaskeplan(false);
+      setOpenRun(null);
       clearTimeout(undoTimeoutRef.current);
       setUndoAction(null);
     } catch (err) {
@@ -751,7 +773,7 @@ export default function CleanerView({ token, user }) {
     <div>
       {viewTabs}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <button onClick={() => { setRun(null); setRooms(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
+        <button onClick={() => { setRun(null); setRooms(null); setShowVaskeplan(false); setOpenRun(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
           display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
           color: "var(--text-secondary)", fontSize: 13, cursor: "pointer",
         }}>
@@ -830,17 +852,28 @@ export default function CleanerView({ token, user }) {
           <Card style={{ marginBottom: 16 }}>
             <div style={{ fontWeight: 500 }}>Dagens plan</div>
             <div style={{ fontSize: 20, fontWeight: 600, marginTop: 4 }}>{dueDoneCount} av {dueRooms.length} rom ferdig</div>
-            {mapUrlFor(run.site) && (
-              <a
-                href={mapUrlFor(run.site)} target="_blank" rel="noreferrer"
+            <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
+              {mapUrlFor(run.site) && (
+                <a
+                  href={mapUrlFor(run.site)} target="_blank" rel="noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    fontSize: 13, color: "var(--accent-orange-dark)", textDecoration: "none",
+                  }}
+                >
+                  <MapPin size={13} /> Åpne kart
+                </a>
+              )}
+              <button
+                onClick={() => setShowVaskeplan(true)}
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8,
-                  fontSize: 13, color: "var(--accent-orange-dark)", textDecoration: "none",
+                  display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0,
+                  fontSize: 13, color: "var(--accent-orange-dark)", cursor: "pointer",
                 }}
               >
-                <MapPin size={13} /> Åpne kart
-              </a>
-            )}
+                <CalendarDays size={13} /> Vaskeplan
+              </button>
+            </div>
           </Card>
 
           {dueRooms.length > 0 && dueDoneCount < dueRooms.length && (
@@ -1034,6 +1067,57 @@ export default function CleanerView({ token, user }) {
       }}>
         {isRoomEnabled ? "Avslutt besøk" : "Fullfør oppdrag"}
       </button>
+
+      {showVaskeplan && (
+        <div
+          onClick={() => setShowVaskeplan(false)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 20,
+              maxWidth: 760, width: "100%", maxHeight: "85vh", overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontWeight: 600, fontSize: 16 }}>Vaskeplan — {run.site.name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="month" value={vaskeplanMonth} onChange={(e) => setVaskeplanMonth(e.target.value)}
+                  style={{
+                    padding: "6px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                    background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13,
+                  }}
+                />
+                <button onClick={() => setShowVaskeplan(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            {!vaskeplanGrid && <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Laster...</div>}
+            {vaskeplanGrid && vaskeplanGrid.rooms.length > 0 && (
+              <RoomGrid
+                grid={vaskeplanGrid} month={vaskeplanMonth}
+                onOpenRun={(runId, roomId) => setOpenRun({ runId, roomId })}
+              />
+            )}
+            {vaskeplanGrid && vaskeplanGrid.rooms.length === 0 && (
+              <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Ingen rom å vise for denne lokasjonen.</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {openRun && (
+        <RunDetailModal
+          token={token} runId={openRun.runId} highlightRoomId={openRun.roomId}
+          defaultInitials={initials} onClose={() => setOpenRun(null)} setError={setError}
+        />
+      )}
     </div>
   );
 }
