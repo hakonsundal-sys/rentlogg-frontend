@@ -17,6 +17,18 @@ function yesterdayInOslo() {
 
 const STATUS_LABEL = { completed: "Fullført", in_progress: "Pågår", missing: "Manglende" };
 
+const GRID_STATUS = {
+  completed: { color: "var(--c-teal)", label: "Fullført" },
+  in_progress: { color: "var(--accent-orange-bg)", label: "Pågår" },
+  missing: { color: "var(--bg-danger)", label: "Ikke gjort" },
+  not_due: { color: "var(--surface-2)", label: "Ikke planlagt" },
+};
+
+function daysInMonth(monthStr) {
+  const [y, m] = monthStr.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
 export default function RapporterPage({ token }) {
   const [sites, setSites] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -24,6 +36,7 @@ export default function RapporterPage({ token }) {
   const [siteId, setSiteId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [report, setReport] = useState(null);
+  const [grid, setGrid] = useState(null);
   const [error, setError] = useState("");
   const [digestDate, setDigestDate] = useState(yesterdayInOslo());
   const [digestSiteId, setDigestSiteId] = useState("");
@@ -59,6 +72,16 @@ export default function RapporterPage({ token }) {
     });
     apiFetch(`/reports/summary?${params}`, { token }).then(setReport).catch((err) => setError(err.message));
   }, [token, month, siteId, departmentId]);
+
+  // The room x day "vaskeplan" grid only makes sense for one location at a time — 32 rooms x
+  // 30 days is already a lot of cells, showing every location's rooms at once would be unreadable.
+  useEffect(() => {
+    if (!siteId) {
+      setGrid(null);
+      return;
+    }
+    apiFetch(`/sites/${siteId}/rooms/monthly-grid?month=${month}`, { token }).then(setGrid).catch((err) => setError(err.message));
+  }, [token, siteId, month]);
 
   function exportCsv() {
     const params = new URLSearchParams({
@@ -208,9 +231,81 @@ export default function RapporterPage({ token }) {
               </div>
             )}
           </Card>
+
+          {siteId && grid && <RoomGrid grid={grid} month={month} siteName={sites.find((s) => s.id === Number(siteId))?.name} />}
+          {siteId && grid && grid.length === 0 && (
+            <div style={{ marginTop: 12, color: "var(--text-secondary)", fontSize: 13 }}>
+              Denne lokasjonen har ingen rom å vise vaskeplan for.
+            </div>
+          )}
         </>
       )}
     </div>
+  );
+}
+
+// Room x day grid: at a glance, which rooms were actually done on which days this month —
+// separate from the "Alle oppdrag"/monthly-table views, which only show one number per
+// site+day, not the per-room breakdown a "vaskeplan" needs.
+function RoomGrid({ grid, month, siteName }) {
+  const days = Array.from({ length: daysInMonth(month) }, (_, i) => i + 1);
+
+  return (
+    <Card style={{ marginTop: 20, padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "12px 16px", fontWeight: 600, borderBottom: "1px solid var(--border)" }}>
+        Vaskeplan{siteName ? ` — ${siteName}` : ""}
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ ...gridThStyle, position: "sticky", left: 0, background: "var(--surface-0)", textAlign: "left", minWidth: 170 }}>
+                Rom
+              </th>
+              {days.map((d) => (
+                <th key={d} style={{ ...gridThStyle, textAlign: "center", minWidth: 22 }}>{d}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {grid.map((room) => (
+              <tr key={room.id} style={{ borderTop: "1px solid var(--border)" }}>
+                <td style={{
+                  padding: "4px 8px", position: "sticky", left: 0, background: "var(--surface-1)",
+                  whiteSpace: "nowrap", borderRight: "1px solid var(--border)",
+                }}>
+                  {room.name}
+                </td>
+                {days.map((d) => {
+                  const dateStr = `${month}-${String(d).padStart(2, "0")}`;
+                  const status = room.days[dateStr];
+                  const info = GRID_STATUS[status];
+                  return (
+                    <td key={d} style={{ textAlign: "center", padding: 2 }}>
+                      <div
+                        title={`${room.name} — ${dateStr}: ${info ? info.label : "Fremtidig"}`}
+                        style={{
+                          width: 14, height: 14, borderRadius: 3, margin: "0 auto",
+                          background: info ? info.color : "transparent",
+                        }}
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", padding: "10px 16px", borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-secondary)" }}>
+        {Object.entries(GRID_STATUS).map(([key, info]) => (
+          <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: info.color }} />
+            {info.label}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -230,3 +325,4 @@ const inputStyle = {
 };
 const thStyle = { padding: 12, fontWeight: 500 };
 const tdStyle = { padding: 12 };
+const gridThStyle = { padding: "6px 4px", fontWeight: 500, fontSize: 11, color: "var(--text-secondary)" };
