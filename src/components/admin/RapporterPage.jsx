@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { Download, CheckCircle2, FileText, Clock, AlertTriangle, Send } from "lucide-react";
-import { apiFetch, downloadCsv } from "../../api";
+import { Download, CheckCircle2, FileText, Clock, AlertTriangle, Send, X, Pencil } from "lucide-react";
+import { apiFetch, downloadCsv, downloadPdf, viewHtmlReport, API_URL } from "../../api";
+import { isNetworkError } from "../../offlineQueue";
 import { Card, primaryBtnStyle } from "../shared";
+import RoomGrid from "../RoomGrid";
+import RunRoomsAndItems from "../RunRoomsAndItems";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
@@ -17,16 +20,9 @@ function yesterdayInOslo() {
 
 const STATUS_LABEL = { completed: "Fullført", in_progress: "Pågår", missing: "Manglende" };
 
-const GRID_STATUS = {
-  completed: { color: "var(--c-teal)", label: "Fullført" },
-  in_progress: { color: "var(--accent-orange-bg)", label: "Pågår" },
-  missing: { color: "var(--bg-danger)", label: "Ikke gjort" },
-  not_due: { color: "var(--surface-2)", label: "Ikke planlagt" },
-};
-
-function daysInMonth(monthStr) {
-  const [y, m] = monthStr.split("-").map(Number);
-  return new Date(y, m, 0).getDate();
+function photoUrl(filePath) {
+  const filename = filePath.split(/[\\/]/).pop();
+  return `${API_URL}/uploads/${filename}`;
 }
 
 export default function RapporterPage({ token }) {
@@ -43,6 +39,11 @@ export default function RapporterPage({ token }) {
   const [digestRecipients, setDigestRecipients] = useState([]); // checked subset of the selected site's own recipients
   const [digestSending, setDigestSending] = useState(false);
   const [digestResult, setDigestResult] = useState(null);
+  const [selectedRunId, setSelectedRunId] = useState(null);
+  const [runDetail, setRunDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [isEditingRun, setIsEditingRun] = useState(false);
+  const [editInitials, setEditInitials] = useState("");
 
   useEffect(() => {
     apiFetch("/sites", { token }).then(setSites).catch((err) => setError(err.message));
@@ -82,6 +83,45 @@ export default function RapporterPage({ token }) {
     }
     apiFetch(`/sites/${siteId}/rooms/monthly-grid?month=${month}`, { token }).then(setGrid).catch((err) => setError(err.message));
   }, [token, siteId, month]);
+
+  // Opens the same day's checklist a vaskeplan cell was clicked for, then scrolls straight to
+  // the room that was actually clicked — with 32 rooms in a run, hunting for the right one
+  // would defeat the point of linking the grid to the checklist in the first place.
+  async function openRunDetail(runId, roomId) {
+    setSelectedRunId(runId);
+    setIsEditingRun(false);
+    setEditInitials("");
+    setLoadingDetail(true);
+    try {
+      const data = await apiFetch(`/checklists/runs/${runId}`, { token });
+      setRunDetail(data);
+      if (roomId) {
+        setTimeout(() => {
+          document.getElementById(`room-${roomId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
+
+  function closeRunDetail() {
+    setSelectedRunId(null);
+    setRunDetail(null);
+    setIsEditingRun(false);
+  }
+
+  async function refreshRunDetail() {
+    try {
+      setRunDetail(await apiFetch(`/checklists/runs/${selectedRunId}`, { token }));
+    } catch (err) {
+      // A mutation just made via RunRoomsAndItems may have been queued offline rather than sent
+      // — there's nothing new to fetch yet, so a network failure here isn't a real error to show.
+      if (!isNetworkError(err)) setError(err.message);
+    }
+  }
 
   function exportCsv() {
     const params = new URLSearchParams({
@@ -232,80 +272,132 @@ export default function RapporterPage({ token }) {
             )}
           </Card>
 
-          {siteId && grid && <RoomGrid grid={grid} month={month} siteName={sites.find((s) => s.id === Number(siteId))?.name} />}
-          {siteId && grid && grid.length === 0 && (
+          {siteId && grid && grid.rooms.length > 0 && (
+            <RoomGrid
+              grid={grid} month={month}
+              siteName={sites.find((s) => s.id === Number(siteId))?.name}
+              onOpenRun={openRunDetail}
+            />
+          )}
+          {siteId && grid && grid.rooms.length === 0 && (
             <div style={{ marginTop: 12, color: "var(--text-secondary)", fontSize: 13 }}>
               Denne lokasjonen har ingen rom å vise vaskeplan for.
             </div>
           )}
         </>
       )}
-    </div>
-  );
-}
 
-// Room x day grid: at a glance, which rooms were actually done on which days this month —
-// separate from the "Alle oppdrag"/monthly-table views, which only show one number per
-// site+day, not the per-room breakdown a "vaskeplan" needs.
-function RoomGrid({ grid, month, siteName }) {
-  const days = Array.from({ length: daysInMonth(month) }, (_, i) => i + 1);
+      {selectedRunId && (
+        <div
+          onClick={closeRunDetail}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 24,
+            maxWidth: 480, width: "100%", maxHeight: "85vh", overflowY: "auto",
+          }}>
+            {loadingDetail && <div style={{ color: "var(--text-secondary)" }}>Laster...</div>}
+            {runDetail && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 16 }}>{runDetail.site_name}</div>
+                    {runDetail.site_address && <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{runDetail.site_address}</div>}
+                  </div>
+                  <button onClick={closeRunDetail} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
+                    <X size={18} />
+                  </button>
+                </div>
 
-  return (
-    <Card style={{ marginTop: 20, padding: 0, overflow: "hidden" }}>
-      <div style={{ padding: "12px 16px", fontWeight: 600, borderBottom: "1px solid var(--border)" }}>
-        Vaskeplan{siteName ? ` — ${siteName}` : ""}
-      </div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
-          <thead>
-            <tr>
-              <th style={{ ...gridThStyle, position: "sticky", left: 0, background: "var(--surface-0)", textAlign: "left", minWidth: 170 }}>
-                Rom
-              </th>
-              {days.map((d) => (
-                <th key={d} style={{ ...gridThStyle, textAlign: "center", minWidth: 22 }}>{d}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {grid.map((room) => (
-              <tr key={room.id} style={{ borderTop: "1px solid var(--border)" }}>
-                <td style={{
-                  padding: "4px 8px", position: "sticky", left: 0, background: "var(--surface-1)",
-                  whiteSpace: "nowrap", borderRight: "1px solid var(--border)",
-                }}>
-                  {room.name}
-                </td>
-                {days.map((d) => {
-                  const dateStr = `${month}-${String(d).padStart(2, "0")}`;
-                  const status = room.days[dateStr];
-                  const info = GRID_STATUS[status];
-                  return (
-                    <td key={d} style={{ textAlign: "center", padding: 2 }}>
-                      <div
-                        title={`${room.name} — ${dateStr}: ${info ? info.label : "Fremtidig"}`}
-                        style={{
-                          width: 14, height: 14, borderRadius: 3, margin: "0 auto",
-                          background: info ? info.color : "transparent",
-                        }}
-                      />
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", padding: "10px 16px", borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-secondary)" }}>
-        {Object.entries(GRID_STATUS).map(([key, info]) => (
-          <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: info.color }} />
-            {info.label}
+                <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)", display: "grid", gap: 4 }}>
+                  <div>Renholder: <strong style={{ color: "var(--text-primary)" }}>{runDetail.cleaner_name}</strong></div>
+                  <div>Startet: {runDetail.started_at.slice(0, 16)}</div>
+                  {runDetail.completed_at && <div>Fullført: {runDetail.completed_at.slice(0, 16)}</div>}
+                  {runDetail.signed_initials && (
+                    <div>Signert: <strong style={{ color: "var(--text-primary)" }}>{runDetail.signed_initials}</strong></div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                  <button
+                    onClick={() => viewHtmlReport(`/reports/runs/${runDetail.id}/html`, token).catch((err) => setError(err.message))}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                      padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                    }}
+                  >
+                    <FileText size={14} /> Vis rapport
+                  </button>
+                  <button
+                    onClick={() => downloadPdf(`/reports/runs/${runDetail.id}/pdf`, token, `rapport-besok-${runDetail.id}.pdf`).catch((err) => setError(err.message))}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                      padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                    }}
+                  >
+                    <Download size={14} /> Last ned PDF
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
+                  {!isEditingRun ? (
+                    <button
+                      onClick={() => setIsEditingRun(true)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
+                        color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                      }}
+                    >
+                      <Pencil size={12} /> Rediger
+                    </button>
+                  ) : (
+                    <button onClick={() => setIsEditingRun(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
+                      Ferdig
+                    </button>
+                  )}
+                </div>
+                {isEditingRun && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Signatur (navn)</label>
+                    <input
+                      value={editInitials} onChange={(e) => setEditInitials(e.target.value)}
+                      placeholder="Fullt navn" maxLength={60}
+                      style={{
+                        padding: "4px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                        background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 12, width: 150,
+                      }}
+                    />
+                  </div>
+                )}
+                <RunRoomsAndItems
+                  token={token} runDetail={runDetail} editable={isEditingRun} editInitials={editInitials}
+                  onChanged={refreshRunDetail} setError={setError}
+                />
+
+                {runDetail.photos.length > 0 && runDetail.rooms?.length > 0 && (
+                  <>
+                    <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Bilder</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                      {runDetail.photos.map((p) => (
+                        <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
+                          <img src={photoUrl(p.file_path)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                        </a>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
-        ))}
-      </div>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -325,4 +417,3 @@ const inputStyle = {
 };
 const thStyle = { padding: 12, fontWeight: 500 };
 const tdStyle = { padding: 12 };
-const gridThStyle = { padding: "6px 4px", fontWeight: 500, fontSize: 11, color: "var(--text-secondary)" };

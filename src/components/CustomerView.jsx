@@ -1,9 +1,60 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Clock, Download, History } from "lucide-react";
+import { AlertTriangle, Clock, Download, History, CalendarDays, X } from "lucide-react";
 import { apiFetch, downloadPdf, downloadZip } from "../api";
 import { Card, StatusBadge, Loading } from "./shared";
 import { DeviationItem } from "./DeviationItem";
 import SiteHistoryView from "./SiteHistoryView";
+import RoomGrid from "./RoomGrid";
+
+function currentMonth() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
+}
+
+// Read-only counterpart to the admin Rapporter page's vaskeplan grid — same room x day view,
+// scoped to the customer's own site (the backend already restricts monthly-grid to a
+// customer's own client via getSiteScopedForRooms), but no onOpenRun: a customer can look, not edit.
+function SiteVaskeplanView({ token, site, onClose, setError }) {
+  const [month, setMonth] = useState(currentMonth);
+  const [grid, setGrid] = useState(null);
+
+  useEffect(() => {
+    setGrid(null);
+    apiFetch(`/sites/${site.id}/rooms/monthly-grid?month=${month}`, { token }).then(setGrid).catch((err) => setError(err.message));
+  }, [token, site.id, month]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 20,
+          maxWidth: 760, width: "100%", maxHeight: "85vh", overflowY: "auto",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+          <div style={{ fontWeight: 600, fontSize: 16 }}>Vaskeplan — {site.name}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={selectStyle} />
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+        {!grid && <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Laster...</div>}
+        {grid && grid.rooms.length > 0 && <RoomGrid grid={grid} month={month} />}
+        {grid && grid.rooms.length === 0 && (
+          <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Ingen rom å vise for denne lokasjonen.</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function CustomerView({ token, user }) {
   const [sites, setSites] = useState([]);
@@ -12,6 +63,7 @@ export default function CustomerView({ token, user }) {
   const [error, setError] = useState("");
 
   const [historySite, setHistorySite] = useState(null);
+  const [vaskeplanSite, setVaskeplanSite] = useState(null);
 
   const [openFormSiteId, setOpenFormSiteId] = useState(null);
   const [formRooms, setFormRooms] = useState(null);
@@ -176,6 +228,9 @@ export default function CustomerView({ token, user }) {
                 <button onClick={() => setHistorySite(s)} style={{ ...secondaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}>
                   <History size={13} /> Se historikk
                 </button>
+                <button onClick={() => setVaskeplanSite(s)} style={{ ...secondaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}>
+                  <CalendarDays size={13} /> Vaskeplan
+                </button>
               </div>
             )}
 
@@ -207,6 +262,13 @@ export default function CustomerView({ token, user }) {
           onApproved={(updated) => setDeviations((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
           setError={setError}
           onClose={() => setHistorySite(null)}
+        />
+      )}
+
+      {vaskeplanSite && (
+        <SiteVaskeplanView
+          token={token} site={vaskeplanSite} setError={setError}
+          onClose={() => setVaskeplanSite(null)}
         />
       )}
     </div>

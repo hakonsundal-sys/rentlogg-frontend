@@ -253,7 +253,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
           const status = room.completed_at ? "FULLFØRT" : room.items.length > 0 ? "PÅGÅR" : "IKKE STARTET";
           const key = `room-${room.roomRunId}`;
           return (
-            <div key={room.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+            <div key={room.id} id={`room-${room.id}`} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 13, fontWeight: 500 }}>{room.name}</span>
                 <span style={{
