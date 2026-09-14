@@ -28,7 +28,10 @@ function todayWeekday() {
   return new Date(`${todayStr}T00:00:00`).getDay();
 }
 
-const emptyForm = { name: "", client_id: "", department_id: "", address: "", report_recipients: "" };
+const emptyForm = { name: "", client_id: "", department_id: "", address: "", report_recipients: "", report_send_hour: "" };
+
+// Standard er kl. 07:00 (report_send_hour = null/tom) — kun steder som trenger noe annet setter en verdi.
+const SEND_HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => h);
 
 // Flat (non-room) checklists are hidden for now — locations use only the room-based setup.
 // Flip back to true to re-enable; nothing else needs to change.
@@ -411,6 +414,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
         body: JSON.stringify({
           name: form.name, client_id: Number(form.client_id), department_id: form.department_id ? Number(form.department_id) : null,
           address: form.address || null, report_recipients: form.report_recipients || null,
+          report_send_hour: form.report_send_hour === "" ? null : Number(form.report_send_hour),
         }),
       });
       setForm(emptyForm);
@@ -430,6 +434,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
       department_id: site.department_id || "",
       address: site.address || "",
       report_recipients: site.report_recipients || "",
+      report_send_hour: site.report_send_hour ?? "",
     });
   }
 
@@ -443,6 +448,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           name: editSiteForm.name, client_id: Number(editSiteForm.client_id),
           department_id: editSiteForm.department_id ? Number(editSiteForm.department_id) : null,
           address: editSiteForm.address || null, report_recipients: editSiteForm.report_recipients || null,
+          report_send_hour: editSiteForm.report_send_hour === "" ? null : Number(editSiteForm.report_send_hour),
         }),
       });
       setEditingSiteId(null);
@@ -651,6 +657,16 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                 style={inputStyle}
               />
             </Field>
+            <Field label="Sendes kl. (valgfritt, standard 07:00)">
+              <select
+                value={form.report_send_hour}
+                onChange={(e) => setForm({ ...form, report_send_hour: e.target.value })}
+                style={inputStyle}
+              >
+                <option value="">Standard (07:00)</option>
+                {SEND_HOUR_OPTIONS.map((h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+              </select>
+            </Field>
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett lokasjon</button>
           </form>
         </Card>
@@ -688,6 +704,16 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     onChange={(e) => setEditSiteForm({ ...editSiteForm, report_recipients: e.target.value })}
                     style={inputStyle}
                   />
+                </Field>
+                <Field label="Sendes kl. (valgfritt, standard 07:00)">
+                  <select
+                    value={editSiteForm.report_send_hour}
+                    onChange={(e) => setEditSiteForm({ ...editSiteForm, report_send_hour: e.target.value })}
+                    style={inputStyle}
+                  >
+                    <option value="">Standard (07:00)</option>
+                    {SEND_HOUR_OPTIONS.map((h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+                  </select>
                 </Field>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
