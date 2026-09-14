@@ -1,21 +1,26 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, Clock, Download, History, CalendarDays, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, Camera, Clock, Download, History, CalendarDays, X } from "lucide-react";
 import { apiFetch, downloadPdf, downloadZip } from "../api";
 import { Card, StatusBadge, Loading } from "./shared";
 import { DeviationItem } from "./DeviationItem";
 import SiteHistoryView from "./SiteHistoryView";
 import RoomGrid from "./RoomGrid";
+import RunDetailModal from "./RunDetailModal";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
 }
 
-// Read-only counterpart to the admin Rapporter page's vaskeplan grid — same room x day view,
-// scoped to the customer's own site (the backend already restricts monthly-grid to a
-// customer's own client via getSiteScopedForRooms), but no onOpenRun: a customer can look, not edit.
-function SiteVaskeplanView({ token, site, onClose, setError }) {
+// Counterpart to the admin Rapporter page's vaskeplan grid — same room x day view, scoped to the
+// customer's own site (the backend already restricts monthly-grid to a customer's own client via
+// getSiteScopedForRooms). Opening a day is read-only for the checklist itself (RunDetailModal's
+// readOnly drops the "Rediger" toggle entirely), but each room gets a "Meld avvik" button via
+// onReportDeviation — a customer can look back at any past day and report against the specific
+// room they're looking at, not just "Generelt" from the disconnected form below.
+function SiteVaskeplanView({ token, site, onReportDeviation, onClose, setError }) {
   const [month, setMonth] = useState(currentMonth);
   const [grid, setGrid] = useState(null);
+  const [openDate, setOpenDate] = useState(null);
 
   useEffect(() => {
     setGrid(null);
@@ -23,36 +28,51 @@ function SiteVaskeplanView({ token, site, onClose, setError }) {
   }, [token, site.id, month]);
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100,
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-      }}
-    >
+    <>
       <div
-        onClick={(e) => e.stopPropagation()}
+        onClick={onClose}
         style={{
-          background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 20,
-          maxWidth: 760, width: "100%", maxHeight: "85vh", overflowY: "auto",
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontWeight: 600, fontSize: 16 }}>Vaskeplan — {site.name}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={selectStyle} />
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
-              <X size={18} />
-            </button>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 20,
+            maxWidth: 760, width: "100%", maxHeight: "85vh", overflowY: "auto",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div style={{ fontWeight: 600, fontSize: 16 }}>Vaskeplan — {site.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={selectStyle} />
+              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
+                <X size={18} />
+              </button>
+            </div>
           </div>
+          {!grid && <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Laster...</div>}
+          {grid && grid.rooms.length > 0 && (
+            <RoomGrid grid={grid} month={month} onOpenRun={(date) => setOpenDate(date)} />
+          )}
+          {grid && grid.rooms.length === 0 && (
+            <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Ingen rom å vise for denne lokasjonen.</div>
+          )}
         </div>
-        {!grid && <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Laster...</div>}
-        {grid && grid.rooms.length > 0 && <RoomGrid grid={grid} month={month} />}
-        {grid && grid.rooms.length === 0 && (
-          <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Ingen rom å vise for denne lokasjonen.</div>
-        )}
       </div>
-    </div>
+
+      {/* Rendered as a sibling, not nested inside the overlay above — RunDetailModal has its
+          own click-outside-to-close overlay, and nesting it inside another one would make a
+          click on its background bubble up and close both at once. */}
+      {openDate && (
+        <RunDetailModal
+          token={token} siteId={site.id} date={openDate} readOnly
+          onReportDeviation={(room) => { setOpenDate(null); onClose(); onReportDeviation(room.id); }}
+          onClose={() => setOpenDate(null)} setError={setError}
+        />
+      )}
+    </>
   );
 }
 
@@ -73,6 +93,8 @@ export default function CustomerView({ token, user }) {
   const [formDescription, setFormDescription] = useState("");
   const [formPriority, setFormPriority] = useState("medium");
   const [formInitials, setFormInitials] = useState("");
+  const [formPhoto, setFormPhoto] = useState(null);
+  const formFileInputRef = useRef(null);
 
   useEffect(() => {
     Promise.all([apiFetch("/sites", { token }), apiFetch("/deviations", { token })])
@@ -84,19 +106,30 @@ export default function CustomerView({ token, user }) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  async function openReportForm(site) {
+  // prefillRoomId comes from the vaskeplan's per-room "Meld avvik" button (see
+  // SiteVaskeplanView below) — same form, just pre-pointed at the room they were just looking at
+  // instead of starting from "Generelt".
+  async function openReportForm(site, prefillRoomId) {
     setOpenFormSiteId(site.id);
-    setFormRoomId("");
+    setFormRoomId(prefillRoomId || "");
     setFormTasks([]);
     setFormTaskLabel("");
     setFormDescription("");
     setFormPriority("medium");
     setFormInitials(user?.name || "");
+    setFormPhoto(null);
     setFormRooms(null);
     try {
-      setFormRooms(await apiFetch(`/sites/${site.id}/rooms`, { token }));
+      const rooms = await apiFetch(`/sites/${site.id}/rooms`, { token });
+      setFormRooms(rooms);
+      if (prefillRoomId) {
+        setFormTasks(await apiFetch(`/rooms/${prefillRoomId}/items`, { token }));
+      }
     } catch {
       setFormRooms([]);
+    }
+    if (prefillRoomId) {
+      setTimeout(() => document.getElementById(`site-${site.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
     }
   }
 
@@ -121,7 +154,7 @@ export default function CustomerView({ token, user }) {
       return;
     }
     try {
-      await apiFetch("/deviations", {
+      const created = await apiFetch("/deviations", {
         token, method: "POST",
         body: JSON.stringify({
           site_id: site.id,
@@ -132,6 +165,18 @@ export default function CustomerView({ token, user }) {
           initials: formInitials.trim(),
         }),
       });
+      // A separate call, same as the cleaner's reply-with-photo flow — a photo can't be attached
+      // in the same request as the JSON body. The deviation itself is already created at this
+      // point, so a photo failure shouldn't look like the whole report failed.
+      if (formPhoto) {
+        const form = new FormData();
+        form.append("photo", formPhoto);
+        try {
+          await apiFetch(`/deviations/${created.id}/photos`, { token, method: "POST", body: form });
+        } catch (err) {
+          setError(`Avviket ble meldt, men bildet kunne ikke lastes opp: ${err.message}`);
+        }
+      }
       setOpenFormSiteId(null);
       setDeviations(await apiFetch("/deviations", { token }));
     } catch (err) {
@@ -152,7 +197,7 @@ export default function CustomerView({ token, user }) {
           (d) => d.site_id === s.id && (d.status !== "resolved" || !d.customer_approved_at)
         );
         return (
-          <Card key={s.id} style={{ marginBottom: 12 }}>
+          <Card key={s.id} id={`site-${s.id}`} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <div style={{ fontWeight: 500 }}>{s.name}</div>
@@ -202,6 +247,10 @@ export default function CustomerView({ token, user }) {
                     color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box",
                   }}
                 />
+                <input
+                  ref={formFileInputRef} type="file" accept="image/*"
+                  onChange={(e) => setFormPhoto(e.target.files[0] || null)} style={{ display: "none" }}
+                />
                 <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
                   <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)} style={selectStyle}>
                     <option value="low">Lav</option>
@@ -216,6 +265,12 @@ export default function CustomerView({ token, user }) {
                       background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13, width: 160,
                     }}
                   />
+                  <button
+                    type="button" onClick={() => formFileInputRef.current.click()}
+                    style={{ ...secondaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <Camera size={13} /> {formPhoto ? formPhoto.name : "Legg ved bilde"}
+                  </button>
                   <button onClick={() => setOpenFormSiteId(null)} style={{ ...secondaryBtnStyle }}>Avbryt</button>
                   <button onClick={() => submitReport(s)} style={primaryBtnStyle}>Send avvik</button>
                 </div>
@@ -269,6 +324,7 @@ export default function CustomerView({ token, user }) {
         <SiteVaskeplanView
           token={token} site={vaskeplanSite} setError={setError}
           onClose={() => setVaskeplanSite(null)}
+          onReportDeviation={(roomId) => openReportForm(vaskeplanSite, roomId)}
         />
       )}
     </div>

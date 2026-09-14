@@ -15,13 +15,16 @@ function photoUrl(filePath, token) {
 
 // One day's checklist for one site, viewable and (behind a "Rediger" toggle) editable — the
 // piece a vaskeplan grid day-column button links to, wherever that grid shows up (admin
-// Rapporter, a cleaner's own view). Shared instead of copied so both keep behaving identically
-// as this evolves. Fetches by site+date rather than a run id, since a room-based site's day can
-// have real room data even when no site-level checklist_runs row was ever created for it — the
-// backend falls back to synthesizing the same shape from whatever room_runs actually exist
-// (runDetail.id comes back null in that case, which just hides the PDF/report buttons below,
-// since there's no real run to generate those from).
-export default function RunDetailModal({ token, siteId, date, defaultInitials, onClose, setError }) {
+// Rapporter, a cleaner's own view, and — read-only — the customer portal). Shared instead of
+// copied so all three keep behaving identically as this evolves. Fetches by site+date rather
+// than a run id, since a room-based site's day can have real room data even when no site-level
+// checklist_runs row was ever created for it — the backend falls back to synthesizing the same
+// shape from whatever room_runs actually exist (runDetail.id comes back null in that case, which
+// just hides the PDF/report buttons below, since there's no real run to generate those from).
+// `readOnly` (customer) drops the "Rediger" toggle entirely — no edit affordance ever appears,
+// not just a hidden one — and `onReportDeviation`, when given, adds a "Meld avvik" button to
+// every room regardless of edit mode (used by the customer portal; admin/cleaner don't pass it).
+export default function RunDetailModal({ token, siteId, date, defaultInitials, readOnly, onReportDeviation, onClose, setError }) {
   const [runDetail, setRunDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -148,7 +151,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, o
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
-              {!isEditing ? (
+              {!readOnly && (!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
                   style={{
@@ -162,7 +165,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, o
                 <button onClick={() => setIsEditing(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
                   Ferdig
                 </button>
-              )}
+              ))}
             </div>
             {isEditing && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -179,7 +182,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, o
             )}
             <RunRoomsAndItems
               token={token} runDetail={runDetail} editable={isEditing} editInitials={editInitials}
-              onChanged={refresh} setError={setError}
+              onChanged={refresh} setError={setError} onReportDeviation={onReportDeviation}
             />
 
             {runDetail.photos.length > 0 && runDetail.rooms?.length > 0 && (

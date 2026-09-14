@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2, Circle, PlayCircle, X } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, Circle, PlayCircle, X } from "lucide-react";
 import { API_URL } from "../api";
 import { queueableFetch } from "../offlineQueue";
 
@@ -163,7 +163,7 @@ function EditedBadge({ editedAt, editedBy }) {
 // otherwise would've been triplicated. `editable` reveals item-toggle/photo upload/delete
 // controls, gated by `editInitials` being sent with every mutation so the backend can stamp
 // edited_at/edited_by_initials when the run was already completed (a genuine retroactive edit).
-export default function RunRoomsAndItems({ token, runDetail, editable, editInitials, onChanged, setError }) {
+export default function RunRoomsAndItems({ token, runDetail, editable, editInitials, onChanged, setError, onReportDeviation }) {
   const fileInputsRef = useRef({});
 
   function endpointFor(roomRunId, suffix) {
@@ -327,6 +327,20 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
               {editable && !room.roomRunId && (
                 <div style={{ marginTop: 6 }}>
                   <StartRoomButton onClick={() => startRoom(room.id)} />
+                </div>
+              )}
+              {onReportDeviation && (
+                <div style={{ marginTop: 6 }}>
+                  <button
+                    onClick={() => onReportDeviation(room)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      background: "none", border: "1px solid var(--border)",
+                      padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-danger)",
+                    }}
+                  >
+                    <AlertTriangle size={13} /> Meld avvik
+                  </button>
                 </div>
               )}
               <EditedBadge editedAt={room.edited_at} editedBy={room.edited_by_initials} />
