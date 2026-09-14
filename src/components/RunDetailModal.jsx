@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Pencil, FileText, Download } from "lucide-react";
+import { X, Pencil, FileText, Download, ClipboardCheck, TriangleAlert } from "lucide-react";
 import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
 import RunRoomsAndItems from "./RunRoomsAndItems";
@@ -46,6 +46,18 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, o
     }
   }
 
+  // Turns this day's "no check-in happened" view into a real, reportable visit — backdated to
+  // this exact date (see POST /checklists/site/:siteId/date/:date), never to today, with
+  // `backdated` staying set so the report/log this unlocks keeps saying it was entered late
+  // rather than quietly passing as a same-day check-in.
+  async function checkInLate() {
+    try {
+      setRunDetail(await apiFetch(`/checklists/site/${siteId}/date/${date}`, { token, method: "POST" }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div
       onClick={onClose}
@@ -71,6 +83,15 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, o
               </button>
             </div>
 
+            {runDetail.backdated && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6, marginTop: 10, padding: "6px 10px",
+                borderRadius: "var(--radius)", background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)", fontSize: 12,
+              }}>
+                <TriangleAlert size={13} /> Sjekket inn i etterkant — ingen faktisk innsjekking ble gjort denne dagen.
+              </div>
+            )}
+
             <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)", display: "grid", gap: 4 }}>
               {runDetail.id ? (
                 <>
@@ -82,7 +103,21 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, o
                   )}
                 </>
               ) : (
-                <div>Dato: {date} — ingen innsjekking denne dagen, viser rom med egen registrert aktivitet.</div>
+                <div>
+                  <div>Dato: {date} — ingen innsjekking denne dagen, viser rom med egen registrert aktivitet.</div>
+                  {isEditing && (
+                    <button
+                      onClick={checkInLate}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6, marginTop: 8,
+                        background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                        padding: "6px 10px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                      }}
+                    >
+                      <ClipboardCheck size={13} /> Sjekk inn i etterkant
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
