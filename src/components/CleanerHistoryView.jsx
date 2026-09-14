@@ -94,6 +94,7 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{run.site_name}</div>
                 <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                   {run.started_at.slice(0, 16)} · {run.completed_at ? "Fullført" : "Pågår"}
+                  {run.backdated && <span style={{ color: "var(--accent-orange-dark)", fontWeight: 600 }}> · sjekket inn i etterkant</span>}
                 </div>
               </div>
             </div>
