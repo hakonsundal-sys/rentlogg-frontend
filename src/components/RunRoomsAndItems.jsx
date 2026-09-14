@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2, Circle, X } from "lucide-react";
+import { Camera, CheckCircle2, Circle, PlayCircle, X } from "lucide-react";
 import { API_URL } from "../api";
 import { queueableFetch } from "../offlineQueue";
 
@@ -99,6 +99,21 @@ function CompleteButton({ onClick, label }) {
       }}
     >
       <CheckCircle2 size={13} /> {label}
+    </button>
+  );
+}
+
+function StartRoomButton({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        background: "var(--surface-0)", border: "1px solid var(--border)",
+        padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+      }}
+    >
+      <PlayCircle size={13} /> Åpne rom
     </button>
   );
 }
@@ -231,6 +246,21 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     }
   }
 
+  // A room with no roomRunId yet has nothing to click at all — "IKKE STARTET" was previously a
+  // dead end when opening a day retroactively (see GET /checklists/site/:siteId/date/:date),
+  // since only the live check-in flow (always "today") could ever create a room_run. This lets
+  // that same creation happen for whichever day is actually being viewed, current or past.
+  async function startRoom(roomId) {
+    try {
+      await queueableFetch(`/rooms/${roomId}/checkin-date`, {
+        token, method: "POST", body: JSON.stringify({ date: runDetail.started_at.slice(0, 10) }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function completeFlatRun() {
     if (!editInitials?.trim()) {
       setError("Skriv inn navnet ditt for å fullføre besøket.");
@@ -292,6 +322,11 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                   {!room.completed_at && (
                     <CompleteButton onClick={() => completeRoom(room.roomRunId)} label="Fullfør rom" />
                   )}
+                </div>
+              )}
+              {editable && !room.roomRunId && (
+                <div style={{ marginTop: 6 }}>
+                  <StartRoomButton onClick={() => startRoom(room.id)} />
                 </div>
               )}
               <EditedBadge editedAt={room.edited_at} editedBy={room.edited_by_initials} />
