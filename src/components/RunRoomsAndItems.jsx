@@ -3,9 +3,10 @@ import { Camera, CheckCircle2, Circle, X } from "lucide-react";
 import { API_URL } from "../api";
 import { queueableFetch } from "../offlineQueue";
 
-function photoUrl(filePath) {
+// See RunDetailModal.jsx's photoUrl for why the token rides in the query string here.
+function photoUrl(filePath, token) {
   const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
+  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
 function ItemRow({ item, variant, onToggle }) {
@@ -42,13 +43,13 @@ function ItemRow({ item, variant, onToggle }) {
   );
 }
 
-function PhotosRow({ photos, onDelete }) {
+function PhotosRow({ photos, onDelete, token }) {
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, paddingLeft: 4 }}>
       {photos.map((p) => (
         <div key={p.id} style={{ position: "relative" }}>
-          <a href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-            <img src={photoUrl(p.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+          <a href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+            <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
           </a>
           {onDelete && (
             <button
@@ -276,7 +277,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                 />
               ))}
               {room.photos.length > 0 && (
-                <PhotosRow photos={room.photos} onDelete={editable ? (id) => deletePhoto(room.roomRunId, id) : null} />
+                <PhotosRow photos={room.photos} onDelete={editable ? (id) => deletePhoto(room.roomRunId, id) : null} token={token} />
               )}
               {room.roomRunId && (
                 <NoteField
@@ -311,7 +312,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
         />
       ))}
       {runDetail.photos?.length > 0 && (
-        <PhotosRow photos={runDetail.photos} onDelete={editable ? (id) => deletePhoto(null, id) : null} />
+        <PhotosRow photos={runDetail.photos} onDelete={editable ? (id) => deletePhoto(null, id) : null} token={token} />
       )}
       <NoteField value={runDetail.note} editable={editable} onSave={(note) => saveNote(null, note)} />
       {editable && (

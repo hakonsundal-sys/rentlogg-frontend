@@ -92,7 +92,7 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
           <button onClick={() => setTab("documents")} style={tabBtnStyle(tab === "documents")}>Dokumenter ({documents.length})</button>
         </div>
 
-        {tab === "documents" && <DocumentsList documents={documents} />}
+        {tab === "documents" && <DocumentsList documents={documents} token={token} />}
 
         {tab === "visits" && (
           <>

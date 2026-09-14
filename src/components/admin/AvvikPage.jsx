@@ -3,9 +3,11 @@ import { Info, AlertTriangle, CircleAlert, MapPin, Clock } from "lucide-react";
 import { apiFetch, API_URL } from "../../api";
 import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 
-function photoUrl(filePath) {
+// /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
+// Authorization header, so the token rides along as a query param instead.
+function photoUrl(filePath, token) {
   const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
+  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
 const PRIORITY = {
@@ -168,8 +170,8 @@ export default function AvvikPage({ token, refreshSummary }) {
                     {dev.photos?.length > 0 && (
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                         {dev.photos.map((ph) => (
-                          <a key={ph.id} href={photoUrl(ph.file_path)} target="_blank" rel="noreferrer">
-                            <img src={photoUrl(ph.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                          <a key={ph.id} href={photoUrl(ph.file_path, token)} target="_blank" rel="noreferrer">
+                            <img src={photoUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                           </a>
                         ))}
                       </div>

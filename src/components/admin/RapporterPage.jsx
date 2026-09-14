@@ -33,7 +33,7 @@ export default function RapporterPage({ token }) {
   const [digestRecipients, setDigestRecipients] = useState([]); // checked subset of the selected site's own recipients
   const [digestSending, setDigestSending] = useState(false);
   const [digestResult, setDigestResult] = useState(null);
-  const [openRun, setOpenRun] = useState(null); // { runId, roomId } — roomId is which one to scroll to
+  const [openDate, setOpenDate] = useState(null); // "YYYY-MM-DD" — which grid day's checklist is open
 
   useEffect(() => {
     apiFetch("/sites", { token }).then(setSites).catch((err) => setError(err.message));
@@ -227,7 +227,7 @@ export default function RapporterPage({ token }) {
             <RoomGrid
               grid={grid} month={month}
               siteName={sites.find((s) => s.id === Number(siteId))?.name}
-              onOpenRun={(runId, roomId) => setOpenRun({ runId, roomId })}
+              onOpenRun={(date) => setOpenDate(date)}
             />
           )}
           {siteId && grid && grid.rooms.length === 0 && (
@@ -238,10 +238,10 @@ export default function RapporterPage({ token }) {
         </>
       )}
 
-      {openRun && (
+      {openDate && (
         <RunDetailModal
-          token={token} runId={openRun.runId} highlightRoomId={openRun.roomId}
-          onClose={() => setOpenRun(null)} setError={setError}
+          token={token} siteId={siteId} date={openDate}
+          onClose={() => setOpenDate(null)} setError={setError}
         />
       )}
     </div>

@@ -840,7 +840,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
 
             {expandedDocsSite === site.id && (
               <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                <DocumentsList documents={documents[site.id] || []} onDelete={(docId) => deleteDocument(site.id, docId)} />
+                <DocumentsList documents={documents[site.id] || []} onDelete={(docId) => deleteDocument(site.id, docId)} token={token} />
                 <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
                   <input
                     placeholder="Navn (valgfritt)" value={newDocName}

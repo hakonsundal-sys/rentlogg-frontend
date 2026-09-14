@@ -13,9 +13,11 @@ const RUN_FILTERS = [
   { key: "completed", label: "Fullført" },
 ];
 
-function photoUrl(filePath) {
+// /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
+// Authorization header, so the token rides along as a query param instead.
+function photoUrl(filePath, token) {
   const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
+  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
 export default function DashboardPage({ token, user, summary }) {
@@ -335,8 +337,8 @@ export default function DashboardPage({ token, user, summary }) {
                     <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Bilder</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                       {runDetail.photos.map((p) => (
-                        <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                          <img src={photoUrl(p.file_path)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                        <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                          <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                         </a>
                       ))}
                     </div>
@@ -353,8 +355,8 @@ export default function DashboardPage({ token, user, summary }) {
                         {d.photos?.length > 0 && (
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                             {d.photos.map((ph) => (
-                              <a key={ph.id} href={photoUrl(ph.file_path)} target="_blank" rel="noreferrer">
-                                <img src={photoUrl(ph.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                              <a key={ph.id} href={photoUrl(ph.file_path, token)} target="_blank" rel="noreferrer">
+                                <img src={photoUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                               </a>
                             ))}
                           </div>

@@ -4,16 +4,24 @@ import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 
-function photoUrl(filePath) {
+// /uploads is now an authenticated route (it used to be served with no auth at all, which let
+// anyone who knew or guessed a filename read across tenants) — a plain <img src> or <a href>
+// can't attach an Authorization header the way apiFetch's fetch() calls can, so the token rides
+// along as a query param instead, which the backend accepts as a fallback for this route only.
+function photoUrl(filePath, token) {
   const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
+  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
-// One checklist visit, viewable and (behind a "Rediger" toggle) editable, with an optional
-// scroll-to-room on open — the piece a vaskeplan grid cell links to, wherever that grid shows
-// up (admin Rapporter, a cleaner's own view). Shared instead of copied so all three keep
-// behaving identically as this evolves.
-export default function RunDetailModal({ token, runId, highlightRoomId, defaultInitials, onClose, setError }) {
+// One day's checklist for one site, viewable and (behind a "Rediger" toggle) editable — the
+// piece a vaskeplan grid day-column button links to, wherever that grid shows up (admin
+// Rapporter, a cleaner's own view). Shared instead of copied so both keep behaving identically
+// as this evolves. Fetches by site+date rather than a run id, since a room-based site's day can
+// have real room data even when no site-level checklist_runs row was ever created for it — the
+// backend falls back to synthesizing the same shape from whatever room_runs actually exist
+// (runDetail.id comes back null in that case, which just hides the PDF/report buttons below,
+// since there's no real run to generate those from).
+export default function RunDetailModal({ token, siteId, date, defaultInitials, onClose, setError }) {
   const [runDetail, setRunDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -21,23 +29,16 @@ export default function RunDetailModal({ token, runId, highlightRoomId, defaultI
 
   useEffect(() => {
     setLoading(true);
-    apiFetch(`/checklists/runs/${runId}`, { token })
-      .then((data) => {
-        setRunDetail(data);
-        if (highlightRoomId) {
-          setTimeout(() => {
-            document.getElementById(`room-${highlightRoomId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-          }, 50);
-        }
-      })
+    apiFetch(`/checklists/site/${siteId}/date/${date}`, { token })
+      .then(setRunDetail)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, runId]);
+  }, [token, siteId, date]);
 
   async function refresh() {
     try {
-      setRunDetail(await apiFetch(`/checklists/runs/${runId}`, { token }));
+      setRunDetail(await apiFetch(`/checklists/site/${siteId}/date/${date}`, { token }));
     } catch (err) {
       // A mutation just made via RunRoomsAndItems may have been queued offline rather than sent
       // — there's nothing new to fetch yet, so a network failure here isn't a real error to show.
@@ -71,36 +72,44 @@ export default function RunDetailModal({ token, runId, highlightRoomId, defaultI
             </div>
 
             <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)", display: "grid", gap: 4 }}>
-              <div>Renholder: <strong style={{ color: "var(--text-primary)" }}>{runDetail.cleaner_name}</strong></div>
-              <div>Startet: {runDetail.started_at.slice(0, 16)}</div>
-              {runDetail.completed_at && <div>Fullført: {runDetail.completed_at.slice(0, 16)}</div>}
-              {runDetail.signed_initials && (
-                <div>Signert: <strong style={{ color: "var(--text-primary)" }}>{runDetail.signed_initials}</strong></div>
+              {runDetail.id ? (
+                <>
+                  <div>Renholder: <strong style={{ color: "var(--text-primary)" }}>{runDetail.cleaner_name}</strong></div>
+                  <div>Startet: {runDetail.started_at.slice(0, 16)}</div>
+                  {runDetail.completed_at && <div>Fullført: {runDetail.completed_at.slice(0, 16)}</div>}
+                  {runDetail.signed_initials && (
+                    <div>Signert: <strong style={{ color: "var(--text-primary)" }}>{runDetail.signed_initials}</strong></div>
+                  )}
+                </>
+              ) : (
+                <div>Dato: {date} — ingen innsjekking denne dagen, viser rom med egen registrert aktivitet.</div>
               )}
             </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-              <button
-                onClick={() => viewHtmlReport(`/reports/runs/${runDetail.id}/html`, token).catch((err) => setError(err.message))}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-                  padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
-                }}
-              >
-                <FileText size={14} /> Vis rapport
-              </button>
-              <button
-                onClick={() => downloadPdf(`/reports/runs/${runDetail.id}/pdf`, token, `rapport-besok-${runDetail.id}.pdf`).catch((err) => setError(err.message))}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-                  padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
-                }}
-              >
-                <Download size={14} /> Last ned PDF
-              </button>
-            </div>
+            {runDetail.id && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                <button
+                  onClick={() => viewHtmlReport(`/reports/runs/${runDetail.id}/html`, token).catch((err) => setError(err.message))}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                    padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                  }}
+                >
+                  <FileText size={14} /> Vis rapport
+                </button>
+                <button
+                  onClick={() => downloadPdf(`/reports/runs/${runDetail.id}/pdf`, token, `rapport-besok-${runDetail.id}.pdf`).catch((err) => setError(err.message))}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                    padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
+                  }}
+                >
+                  <Download size={14} /> Last ned PDF
+                </button>
+              </div>
+            )}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
@@ -143,8 +152,8 @@ export default function RunDetailModal({ token, runId, highlightRoomId, defaultI
                 <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Bilder</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   {runDetail.photos.map((p) => (
-                    <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                      <img src={photoUrl(p.file_path)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                    <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                      <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                     </a>
                   ))}
                 </div>

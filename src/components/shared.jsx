@@ -86,14 +86,16 @@ export const inputStyle = {
   background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box", width: "100%",
 };
 
-function documentUrl(filePath) {
+// /uploads is an authenticated route now — a plain <a href> can't attach an Authorization
+// header, so the token rides along as a query param instead.
+function documentUrl(filePath, token) {
   const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
+  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
 // Shared read/edit list for a site's document library — used by admin (with onDelete), and
 // read-only by the customer and cleaner surfaces.
-export function DocumentsList({ documents, onDelete }) {
+export function DocumentsList({ documents, onDelete, token }) {
   if (!documents.length) {
     return <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Ingen dokumenter ennå.</div>;
   }
@@ -104,7 +106,7 @@ export function DocumentsList({ documents, onDelete }) {
           display: "flex", justifyContent: "space-between", alignItems: "center",
           padding: "6px 0", borderTop: "1px solid var(--border)",
         }}>
-          <a href={documentUrl(d.file_path)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent-orange-dark)" }}>
+          <a href={documentUrl(d.file_path, token)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent-orange-dark)" }}>
             {d.name}
           </a>
           {onDelete && (

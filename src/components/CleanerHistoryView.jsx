@@ -5,9 +5,11 @@ import { isNetworkError } from "../offlineQueue";
 import { Card } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 
-function photoUrl(filePath) {
+// /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
+// Authorization header, so the token rides along as a query param instead.
+function photoUrl(filePath, token) {
   const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
+  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
 const REPLY_ACTIONS = [
@@ -264,8 +266,8 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           {deviation.photos?.length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
               {deviation.photos.map((p) => (
-                <a key={p.id} href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                  <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                 </a>
               ))}
             </div>

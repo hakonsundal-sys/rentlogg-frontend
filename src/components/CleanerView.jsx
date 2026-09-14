@@ -29,9 +29,11 @@ const deviationSelectStyle = {
   background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13,
 };
 
-function photoUrl(filePath) {
+// /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
+// Authorization header, so the token rides along as a query param instead.
+function photoUrl(filePath, token) {
   const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}`;
+  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
 // Prefers the site's own coordinates (exact) over its free-text address (geocoded by Maps at
@@ -113,7 +115,7 @@ export default function CleanerView({ token, user }) {
   const [showVaskeplan, setShowVaskeplan] = useState(false);
   const [vaskeplanMonth, setVaskeplanMonth] = useState(currentMonth);
   const [vaskeplanGrid, setVaskeplanGrid] = useState(null);
-  const [openRun, setOpenRun] = useState(null); // { runId, roomId } — roomId is which one to scroll to
+  const [openDate, setOpenDate] = useState(null); // "YYYY-MM-DD" — which grid day's checklist is open
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const deviationFileInputRef = useRef(null);
@@ -524,7 +526,7 @@ export default function CleanerView({ token, user }) {
       setRun(null);
       setRooms(null);
       setShowVaskeplan(false);
-      setOpenRun(null);
+      setOpenDate(null);
       clearTimeout(undoTimeoutRef.current);
       setUndoAction(null);
     } catch (err) {
@@ -700,8 +702,8 @@ export default function CleanerView({ token, user }) {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
             {roomRun.photos.map((p) => (
               <div key={p.id} style={{ position: "relative" }}>
-                <a href={photoUrl(p.file_path)} target="_blank" rel="noreferrer">
-                  <img src={photoUrl(p.file_path)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                <a href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                  <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                 </a>
                 <button
                   onClick={() => deleteRoomPhoto(p.id)}
@@ -773,7 +775,7 @@ export default function CleanerView({ token, user }) {
     <div>
       {viewTabs}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <button onClick={() => { setRun(null); setRooms(null); setShowVaskeplan(false); setOpenRun(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
+        <button onClick={() => { setRun(null); setRooms(null); setShowVaskeplan(false); setOpenDate(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
           display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
           color: "var(--text-secondary)", fontSize: 13, cursor: "pointer",
         }}>
@@ -830,7 +832,7 @@ export default function CleanerView({ token, user }) {
             >
               <FileText size={13} /> Dokumenter ({documents.length})
             </button>
-            {showDocuments && <div style={{ marginTop: 6 }}><DocumentsList documents={documents} /></div>}
+            {showDocuments && <div style={{ marginTop: 6 }}><DocumentsList documents={documents} token={token} /></div>}
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
@@ -1102,7 +1104,7 @@ export default function CleanerView({ token, user }) {
             {vaskeplanGrid && vaskeplanGrid.rooms.length > 0 && (
               <RoomGrid
                 grid={vaskeplanGrid} month={vaskeplanMonth}
-                onOpenRun={(runId, roomId) => setOpenRun({ runId, roomId })}
+                onOpenRun={(date) => setOpenDate(date)}
               />
             )}
             {vaskeplanGrid && vaskeplanGrid.rooms.length === 0 && (
@@ -1112,10 +1114,10 @@ export default function CleanerView({ token, user }) {
         </div>
       )}
 
-      {openRun && (
+      {openDate && (
         <RunDetailModal
-          token={token} runId={openRun.runId} highlightRoomId={openRun.roomId}
-          defaultInitials={initials} onClose={() => setOpenRun(null)} setError={setError}
+          token={token} siteId={run.site.id} date={openDate}
+          defaultInitials={initials} onClose={() => setOpenDate(null)} setError={setError}
         />
       )}
     </div>

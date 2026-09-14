@@ -66,7 +66,7 @@ export default function MinProfilPage({ token }) {
               border: "1px solid var(--border)",
             }}>
               {profile.avatar_url ? (
-                <img src={`${API_URL}${profile.avatar_url}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={`${API_URL}${profile.avatar_url}?token=${encodeURIComponent(token)}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <UserCircle2 size={36} style={{ color: "var(--text-muted)" }} />
               )}
