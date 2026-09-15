@@ -148,7 +148,7 @@ export default function AvvikPage({ token, refreshSummary }) {
                     </div>
                     {(dev.room_name || dev.room_task_label) && (
                       <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
-                        {dev.room_name}{dev.room_task_label ? ` · ${dev.room_task_label}` : ""}
+                        {dev.room_name}{dev.room_responsible === "customer" ? " (Kunde)" : ""}{dev.room_task_label ? ` · ${dev.room_task_label}` : ""}
                       </div>
                     )}
                     {dev.reported_by_initials && (

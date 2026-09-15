@@ -45,7 +45,7 @@ export function DeviationItem({ token, user, deviation: d, onApproved, setError 
       </div>
       {(d.room_name || d.room_task_label) && (
         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20 }}>
-          {d.room_name}{d.room_task_label ? ` · ${d.room_task_label}` : ""}
+          {d.room_name}{d.room_responsible === "customer" ? " (Dere)" : ""}{d.room_task_label ? ` · ${d.room_task_label}` : ""}
         </div>
       )}
       {d.reported_by_initials && (

@@ -250,7 +250,7 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
         <div style={{ flex: 1 }}>
           {deviation.room_name && (
             <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              {deviation.room_name}{deviation.room_task_label ? ` · ${deviation.room_task_label}` : ""}
+              {deviation.room_name}{deviation.room_responsible === "customer" ? " (Kunde)" : ""}{deviation.room_task_label ? ` · ${deviation.room_task_label}` : ""}
             </div>
           )}
           <div style={{ fontSize: 13 }}>{deviation.description}</div>
