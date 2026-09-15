@@ -2,7 +2,7 @@ import { useState } from "react";
 import { apiFetch } from "../api";
 import { Card } from "./shared";
 
-export default function LoginView({ onLogin }) {
+export default function LoginView({ onLogin, checkinPending }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -28,6 +28,14 @@ export default function LoginView({ onLogin }) {
   return (
     <div style={{ maxWidth: 360, margin: "40px auto 0" }}>
       <Card>
+        {checkinPending && (
+          <div style={{
+            fontSize: 13, color: "var(--text-secondary)", background: "var(--surface-0)",
+            border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 10px", marginBottom: 14,
+          }}>
+            Logg inn for å sjekke inn på lokasjonen du skannet.
+          </div>
+        )}
         <form onSubmit={submit}>
           <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>E-post</label>
           <input

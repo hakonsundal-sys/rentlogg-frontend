@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import LoginView from "./components/LoginView";
 import AcceptInvitePage from "./components/AcceptInvitePage";
@@ -12,13 +12,26 @@ function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
 }
 
+// Set by the backend's GET /checkin/:qrToken redirect — what a site's printed QR code opens
+// when scanned with a phone's plain camera app (previously that link 404'd; the in-app scanner
+// itself never used a URL, it just read the token straight out of the QR image).
+function checkinTokenFromUrl() {
+  return new URLSearchParams(window.location.search).get("checkin");
+}
+
 export default function App() {
   const [auth, setAuth] = useState(null); // { token, user }
   const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
+  const [checkinToken, setCheckinToken] = useState(checkinTokenFromUrl);
 
   function clearInviteParam() {
     window.history.replaceState(null, "", window.location.pathname);
     setInviteToken(null);
+  }
+
+  function clearCheckinParam() {
+    window.history.replaceState(null, "", window.location.pathname);
+    setCheckinToken(null);
   }
 
   function handleAuthenticated(token, user) {
@@ -26,12 +39,20 @@ export default function App() {
     setAuth({ token, user });
   }
 
+  // A ?checkin= link only means anything for a cleaner (it's their check-in flow) — for any
+  // other role it's just dead weight sitting in the address bar, so drop it once we know who
+  // actually logged in rather than leaving it there indefinitely.
+  useEffect(() => {
+    if (auth && checkinToken && auth.user.role !== "cleaner") clearCheckinParam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, checkinToken]);
+
   if (inviteToken) {
     return <Shell><AcceptInvitePage token={inviteToken} onLogin={handleAuthenticated} onCancel={clearInviteParam} /></Shell>;
   }
 
   if (!auth) {
-    return <Shell><LoginView onLogin={handleAuthenticated} /></Shell>;
+    return <Shell><LoginView onLogin={handleAuthenticated} checkinPending={!!checkinToken} /></Shell>;
   }
 
   const { token, user } = auth;
@@ -58,7 +79,9 @@ export default function App() {
           <LogOut size={14} /> Logg ut
         </button>
       </div>
-      {user.role === "cleaner" && <CleanerView token={token} user={user} />}
+      {user.role === "cleaner" && (
+        <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={clearCheckinParam} />
+      )}
       {user.role === "customer" && <CustomerView token={token} user={user} />}
     </Shell>
   );

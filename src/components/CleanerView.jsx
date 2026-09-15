@@ -84,7 +84,7 @@ function isOnboardingDismissed() {
   }
 }
 
-export default function CleanerView({ token, user }) {
+export default function CleanerView({ token, user, pendingCheckinToken, onCheckinHandled }) {
   const [run, setRun] = useState(null);
   const [rooms, setRooms] = useState(null); // null = not room-enabled site (or not yet loaded)
   const [expandedRoomId, setExpandedRoomId] = useState(null);
@@ -132,6 +132,17 @@ export default function CleanerView({ token, user }) {
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
     };
+  }, []);
+
+  // Arriving here via a scanned site QR's native-camera link (?checkin=<token>, see App.jsx)
+  // finishes the same check-in a manual scan does — same checkInWithToken, just triggered once
+  // on mount instead of from the in-app scanner. Cleared either way (success or failure) so a
+  // later reload of this same tab doesn't keep re-attempting it.
+  useEffect(() => {
+    if (pendingCheckinToken) {
+      checkInWithToken(pendingCheckinToken).finally(() => onCheckinHandled?.());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reconciles a queued room photo once it actually reaches the server: drop the local blob
