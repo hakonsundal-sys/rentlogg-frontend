@@ -21,14 +21,20 @@ function photoUrl(filePath, token) {
 // checklist_runs row was ever created for it — the backend falls back to synthesizing the same
 // shape from whatever room_runs actually exist (runDetail.id comes back null in that case, which
 // just hides the PDF/report buttons below, since there's no real run to generate those from).
-// `readOnly` (customer) drops the "Rediger" toggle entirely — no edit affordance ever appears,
-// not just a hidden one — and `onReportDeviation`, when given, adds a "Meld avvik" button to
-// every room regardless of edit mode (used by the customer portal; admin/cleaner don't pass it).
-export default function RunDetailModal({ token, siteId, date, defaultInitials, readOnly, onReportDeviation, onClose, setError }) {
+// `userRole` (passed as "customer" by the customer portal) hides the "Rediger" toggle unless the
+// day has at least one room the customer owns (`responsible === "customer"`) — a customer with
+// no such rooms on this site gets no edit affordance at all, not just a hidden one. When the
+// toggle is shown, RunRoomsAndItems still only lets a customer touch their own rooms, never OKV's.
+// `onReportDeviation`, when given, adds a "Meld avvik" button to every room regardless of edit
+// mode (used by the customer portal; admin/cleaner don't pass it).
+export default function RunDetailModal({ token, siteId, date, defaultInitials, userRole, onReportDeviation, onClose, setError }) {
   const [runDetail, setRunDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editInitials, setEditInitials] = useState(defaultInitials || "");
+
+  const hasCustomerEditableRooms = runDetail?.rooms?.some((r) => r.responsible === "customer");
+  const canToggleEdit = userRole !== "customer" || hasCustomerEditableRooms;
 
   useEffect(() => {
     setLoading(true);
@@ -108,7 +114,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, r
               ) : (
                 <div>
                   <div>Dato: {date} — ingen innsjekking denne dagen, viser rom med egen registrert aktivitet.</div>
-                  {isEditing && (
+                  {isEditing && userRole !== "customer" && (
                     <button
                       onClick={checkInLate}
                       style={{
@@ -151,7 +157,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, r
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
-              {!readOnly && (!isEditing ? (
+              {canToggleEdit && (!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
                   style={{
@@ -182,7 +188,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, r
             )}
             <RunRoomsAndItems
               token={token} runDetail={runDetail} editable={isEditing} editInitials={editInitials}
-              onChanged={refresh} setError={setError} onReportDeviation={onReportDeviation}
+              onChanged={refresh} setError={setError} onReportDeviation={onReportDeviation} userRole={userRole}
             />
 
             {runDetail.photos.length > 0 && runDetail.rooms?.length > 0 && (

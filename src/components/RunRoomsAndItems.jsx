@@ -163,7 +163,7 @@ function EditedBadge({ editedAt, editedBy }) {
 // otherwise would've been triplicated. `editable` reveals item-toggle/photo upload/delete
 // controls, gated by `editInitials` being sent with every mutation so the backend can stamp
 // edited_at/edited_by_initials when the run was already completed (a genuine retroactive edit).
-export default function RunRoomsAndItems({ token, runDetail, editable, editInitials, onChanged, setError, onReportDeviation }) {
+export default function RunRoomsAndItems({ token, runDetail, editable, editInitials, onChanged, setError, onReportDeviation, userRole }) {
   const fileInputsRef = useRef({});
 
   function endpointFor(roomRunId, suffix) {
@@ -283,6 +283,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
           const doneCount = room.items.filter((i) => i.done).length;
           const status = room.completed_at ? "FULLFØRT" : room.items.length > 0 ? "PÅGÅR" : "IKKE STARTET";
           const key = `room-${room.roomRunId}`;
+          const canEditThisRoom = editable && (userRole !== "customer" || room.responsible === "customer");
           return (
             <div key={room.id} id={`room-${room.id}`} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -303,20 +304,20 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
               {room.items.map((item) => (
                 <ItemRow
                   key={item.id} item={item} variant="room"
-                  onToggle={editable ? (i) => toggleItem(room.roomRunId, i) : null}
+                  onToggle={canEditThisRoom ? (i) => toggleItem(room.roomRunId, i) : null}
                 />
               ))}
               {room.photos.length > 0 && (
-                <PhotosRow photos={room.photos} onDelete={editable ? (id) => deletePhoto(room.roomRunId, id) : null} token={token} />
+                <PhotosRow photos={room.photos} onDelete={canEditThisRoom ? (id) => deletePhoto(room.roomRunId, id) : null} token={token} />
               )}
               {room.roomRunId && (
                 <NoteField
                   value={room.note}
-                  editable={editable}
+                  editable={canEditThisRoom}
                   onSave={(note) => saveNote(room.roomRunId, note)}
                 />
               )}
-              {editable && room.roomRunId && (
+              {canEditThisRoom && room.roomRunId && (
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 6 }}>
                   <AddPhotoButton inputRef={inputRefFor(key)} onUpload={(e) => uploadPhoto(room.roomRunId, e)} />
                   {!room.completed_at && (
@@ -324,7 +325,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                   )}
                 </div>
               )}
-              {editable && !room.roomRunId && (
+              {canEditThisRoom && !room.roomRunId && (
                 <div style={{ marginTop: 6 }}>
                   <StartRoomButton onClick={() => startRoom(room.id)} />
                 </div>

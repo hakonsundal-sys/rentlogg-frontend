@@ -13,11 +13,13 @@ function currentMonth() {
 
 // Counterpart to the admin Rapporter page's vaskeplan grid — same room x day view, scoped to the
 // customer's own site (the backend already restricts monthly-grid to a customer's own client via
-// getSiteScopedForRooms). Opening a day is read-only for the checklist itself (RunDetailModal's
-// readOnly drops the "Rediger" toggle entirely), but each room gets a "Meld avvik" button via
-// onReportDeviation — a customer can look back at any past day and report against the specific
-// room they're looking at, not just "Generelt" from the disconnected form below.
-function SiteVaskeplanView({ token, site, onReportDeviation, onClose, setError }) {
+// getSiteScopedForRooms). Opening a day passes userRole="customer" to RunDetailModal, which only
+// offers the "Rediger" toggle when this site has rooms the customer themselves is responsible for
+// (see rooms.responsible) — otherwise it's read-only same as before. Every room also gets a "Meld
+// avvik" button via onReportDeviation regardless of edit mode — a customer can look back at any
+// past day and report against the specific room they're looking at, not just "Generelt" from the
+// disconnected form below.
+function SiteVaskeplanView({ token, site, user, onReportDeviation, onClose, setError }) {
   const [month, setMonth] = useState(currentMonth);
   const [grid, setGrid] = useState(null);
   const [openDate, setOpenDate] = useState(null);
@@ -67,7 +69,7 @@ function SiteVaskeplanView({ token, site, onReportDeviation, onClose, setError }
           click on its background bubble up and close both at once. */}
       {openDate && (
         <RunDetailModal
-          token={token} siteId={site.id} date={openDate} readOnly
+          token={token} siteId={site.id} date={openDate} userRole="customer" defaultInitials={user?.name}
           onReportDeviation={(room) => { setOpenDate(null); onClose(); onReportDeviation(room.id); }}
           onClose={() => setOpenDate(null)} setError={setError}
         />
@@ -322,7 +324,7 @@ export default function CustomerView({ token, user }) {
 
       {vaskeplanSite && (
         <SiteVaskeplanView
-          token={token} site={vaskeplanSite} setError={setError}
+          token={token} site={vaskeplanSite} user={user} setError={setError}
           onClose={() => setVaskeplanSite(null)}
           onReportDeviation={(roomId) => openReportForm(vaskeplanSite, roomId)}
         />
