@@ -26,9 +26,9 @@ export default function SuperAdminLayout({ token, user, onLogout }) {
   const PageComponent = PAGES[currentPage] || SelskaperPage;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--page-bg)" }}>
+    <div className="admin-shell">
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} user={user} onLogout={onLogout} navItems={NAV_ITEMS} />
-      <div style={{ flex: 1, padding: "24px 32px", boxSizing: "border-box", minWidth: 0 }}>
+      <div className="admin-content">
         <PageComponent token={token} user={user} />
       </div>
     </div>

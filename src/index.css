@@ -31,6 +31,11 @@
   --accent-orange-bg: #fff1e6;
   --brand-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark));
   --banner-gradient: linear-gradient(90deg, #ffede0, #fff6ee);
+  /* Reserved for "the customer's own" (rooms.responsible='customer') so it never has to compete
+     with orange, which is already both the brand/CTA color and the "in progress" status color. */
+  --accent-blue: #3b82f6;
+  --accent-blue-dark: #2563eb;
+  --accent-blue-bg: #eff6ff;
 
   font: 15px/145% system-ui, "Segoe UI", Roboto, sans-serif;
   color: var(--text-primary);
@@ -62,4 +67,68 @@ body {
 
 button {
   font-family: inherit;
+}
+
+/* Admin shell layout (AdminLayout, SuperAdminLayout + Sidebar). Desktop behavior below 769px is
+   untouched — the sidebar stays a normal static 260px column exactly as before this existed; the
+   media query only changes anything at 768px and under, where it becomes a slide-in drawer
+   instead of silently overflowing the viewport (there were previously zero @media rules in this
+   app at all, so every admin page just broke sideways below ~900px). */
+.admin-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--page-bg);
+}
+.admin-content {
+  flex: 1;
+  padding: 24px 32px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+.admin-hamburger {
+  display: none;
+}
+.admin-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .admin-content {
+    padding: 16px;
+    padding-top: 68px;
+  }
+  .admin-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 60;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    cursor: pointer;
+  }
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    height: 100vh;
+    z-index: 55;
+    transition: left 0.2s ease;
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.15);
+  }
+  .admin-sidebar.open {
+    left: 0;
+  }
+  .admin-sidebar-backdrop.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 50;
+  }
 }
