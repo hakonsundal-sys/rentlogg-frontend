@@ -185,6 +185,21 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     return roomRunId ? `/rooms/runs/${roomRunId}/${suffix}` : `/checklists/runs/${runDetail.id}/${suffix}`;
   }
 
+  // Lets a room's every remaining item get checked off in one tap instead of one at a time —
+  // same shortcut the cleaner's own live "Dagens plan" already has per-room, just not previously
+  // wired up in this shared day-detail view any of its callers (admin, cleaner history, customer)
+  // used.
+  async function completeAllRoomItems(roomRunId) {
+    try {
+      await queueableFetch(endpointFor(roomRunId, "items/complete-all"), {
+        token, method: "POST", body: JSON.stringify({ initials: editInitials }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function toggleItem(roomRunId, item) {
     const done = !item.done;
     try {
@@ -339,8 +354,19 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                 </span>
               </div>
               {room.items.length > 0 && (
-                <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
+                <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 8 }}>
                   {doneCount}/{room.items.length} oppgaver utført
+                  {canEditThisRoom && doneCount < room.items.length && (
+                    <button
+                      onClick={() => completeAllRoomItems(room.roomRunId)}
+                      style={{
+                        background: "none", border: "none", padding: 0, margin: 0,
+                        color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                      }}
+                    >
+                      Huk av alle
+                    </button>
+                  )}
                 </div>
               )}
               {room.items.map((item) => (

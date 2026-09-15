@@ -37,6 +37,15 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
 
   const hasCustomerEditableRooms = runDetail?.rooms?.some((r) => r.responsible === "customer");
   const canToggleEdit = userRole !== "customer" || hasCustomerEditableRooms;
+  // The bulk-complete button always acts on today (see POST /sites/:id/rooms/complete-all-due —
+  // it has no date param, it's always "today's due rooms"), so only show/count it when this
+  // modal is actually showing today — otherwise a customer looking back at a past day could
+  // click it and be confused when it silently completes today's rooms instead of the ones on
+  // screen.
+  const isToday = date === new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
+  const ownRoomsRemaining = userRole === "customer" && isToday
+    ? runDetail?.rooms?.filter((r) => r.responsible === "customer" && r.due && !r.completed_at).length ?? 0
+    : 0;
 
   useEffect(() => {
     setLoading(true);
@@ -67,6 +76,25 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
       // A mutation just made via RunRoomsAndItems may have been queued offline rather than sent
       // — there's nothing new to fetch yet, so a network failure here isn't a real error to show.
       if (!isNetworkError(err)) setError(err.message);
+    }
+  }
+
+  // Customer counterpart to the cleaner's own "Huk av alle dagens oppgaver" — completes and
+  // signs every one of the customer's own rooms that's due today in one tap, same endpoint the
+  // cleaner uses (POST /sites/:id/rooms/complete-all-due), which scopes itself to the caller's
+  // own side (customer vs. company) so this can never touch OKV's rooms.
+  async function bulkCompleteAllOwnRooms() {
+    if (!editInitials?.trim()) {
+      setError("Skriv inn navnet ditt for å fullføre oppgavene.");
+      return;
+    }
+    try {
+      await apiFetch(`/sites/${siteId}/rooms/complete-all-due`, {
+        token, method: "POST", body: JSON.stringify({ initials: editInitials.trim() }),
+      });
+      refresh();
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -200,6 +228,18 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                   }}
                 />
               </div>
+            )}
+            {isEditing && ownRoomsRemaining > 0 && (
+              <button
+                onClick={bulkCompleteAllOwnRooms}
+                style={{
+                  width: "100%", background: "var(--accent-orange)", color: "white", border: "none",
+                  padding: "10px", borderRadius: "var(--radius)", fontSize: 13, fontWeight: 600,
+                  cursor: "pointer", marginBottom: 10,
+                }}
+              >
+                Fullfør alle dagens oppgaver ({ownRoomsRemaining})
+              </button>
             )}
             <RunRoomsAndItems
               token={token} runDetail={runDetail} editable={isEditing} editInitials={editInitials}
