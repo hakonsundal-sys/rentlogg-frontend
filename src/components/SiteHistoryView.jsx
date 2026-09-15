@@ -142,7 +142,7 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
                       <>
                         <RunRoomsAndItems
                           token={token} runDetail={runDetails[run.id]} editable={false}
-                          editInitials="" onChanged={() => {}} setError={setError}
+                          editInitials="" onChanged={() => {}} setError={setError} userRole="customer"
                         />
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                           <button

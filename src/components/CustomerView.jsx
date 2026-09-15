@@ -56,7 +56,7 @@ function SiteVaskeplanView({ token, site, user, onReportDeviation, onClose, setE
           </div>
           {!grid && <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Laster...</div>}
           {grid && grid.rooms.length > 0 && (
-            <RoomGrid grid={grid} month={month} onOpenRun={(date) => setOpenDate(date)} />
+            <RoomGrid grid={grid} month={month} onOpenRun={(date) => setOpenDate(date)} userRole="customer" />
           )}
           {grid && grid.rooms.length === 0 && (
             <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 12 }}>Ingen rom å vise for denne lokasjonen.</div>

@@ -35,7 +35,7 @@ const gridThStyle = { padding: "6px 4px", fontWeight: 500, fontSize: 11, color: 
 // read-only customer portal view (onOpenRun omitted — no open affordance at all, purely
 // informational). Every day this grid renders is already <= today (the backend never returns a
 // future day), so there's no need to separately gate on whether a run happens to exist yet.
-export default function RoomGrid({ grid, month, siteName, onOpenRun }) {
+export default function RoomGrid({ grid, month, siteName, onOpenRun, userRole }) {
   const days = Array.from({ length: daysInMonth(month) }, (_, i) => i + 1);
   const rooms = grid.rooms || [];
   const today = todayInOslo();
@@ -84,6 +84,15 @@ export default function RoomGrid({ grid, month, siteName, onOpenRun }) {
                   whiteSpace: "nowrap", borderRight: "1px solid var(--border)",
                 }}>
                   {room.name}
+                  {userRole === "customer" && (
+                    <span style={{
+                      marginLeft: 6, fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 999,
+                      background: room.responsible === "customer" ? "var(--accent-orange-bg)" : "var(--surface-2)",
+                      color: room.responsible === "customer" ? "var(--accent-orange-dark)" : "var(--text-muted)",
+                    }}>
+                      {room.responsible === "customer" ? "Dere" : "Renholder"}
+                    </span>
+                  )}
                 </td>
                 {days.map((d) => {
                   const dateStr = `${month}-${String(d).padStart(2, "0")}`;
