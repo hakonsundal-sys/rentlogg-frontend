@@ -228,6 +228,18 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  // Which party fills out this room's checklist — 'company' (default, OKV's own cleaner) or
+  // 'customer' (that site's own client, e.g. Domstein's own zone). Deliberately per-room, not
+  // per-site: a site can mix both (see rooms.responsible).
+  async function setRoomResponsible(siteId, roomId, responsible) {
+    try {
+      await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ responsible }) });
+      refreshRoomsForSite(siteId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function setRoomIntervalMode(siteId, roomId, days) {
     try {
       await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ interval_days: days }) });
@@ -1023,7 +1035,16 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                         </button>
                       )}
                       {editingRoomId !== room.id && (
-                        <div style={{ display: "flex", gap: 2 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <select
+                            value={room.responsible || "company"}
+                            onChange={(e) => setRoomResponsible(site.id, room.id, e.target.value)}
+                            title="Hvem fyller ut sjekklisten for dette rommet?"
+                            style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 108 }}
+                          >
+                            <option value="company">Vi vasker</option>
+                            <option value="customer">Kunden vasker</option>
+                          </select>
                           <button onClick={() => startEditRoom(room)} style={iconBtnStyle}><Pencil size={13} /></button>
                           <button onClick={() => deleteRoom(site.id, room.id)} style={iconBtnStyle}><Trash2 size={13} /></button>
                         </div>
