@@ -287,7 +287,19 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
           return (
             <div key={room.id} id={`room-${room.id}`} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{room.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
+                  {room.name}
+                  {userRole === "customer" && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 999,
+                      background: room.responsible === "customer" ? "var(--accent-orange-bg)" : "var(--surface-2)",
+                      color: room.responsible === "customer" ? "var(--accent-orange-dark)" : "var(--text-muted)",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {room.responsible === "customer" ? "Dere" : "Renholder"}
+                    </span>
+                  )}
+                </span>
                 <span style={{
                   fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
                   background: room.completed_at ? "var(--c-teal)" : room.items.length > 0 ? "var(--accent-orange-bg)" : "var(--surface-2)",

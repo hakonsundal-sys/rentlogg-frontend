@@ -229,7 +229,18 @@ export default function CustomerView({ token, user }) {
                   <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
                     <select value={formRoomId} onChange={(e) => onRoomChange(e.target.value)} style={selectStyle}>
                       <option value="">Generelt (ikke rom-spesifikt)</option>
-                      {formRooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      {formRooms.some((r) => r.responsible === "customer") ? (
+                        <>
+                          <optgroup label="Deres rom">
+                            {formRooms.filter((r) => r.responsible === "customer").map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </optgroup>
+                          <optgroup label="Renholders rom">
+                            {formRooms.filter((r) => r.responsible !== "customer").map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </optgroup>
+                        </>
+                      ) : (
+                        formRooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)
+                      )}
                     </select>
                     {formRoomId && (
                       <select value={formTaskLabel} onChange={(e) => setFormTaskLabel(e.target.value)} style={selectStyle}>
