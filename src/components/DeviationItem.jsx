@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
+import { ResponsibleBadge } from "./shared";
 
 export const ASSIGNED_LABEL = { manager: "sendt til driftsleder", customer: "sendt til deg" };
 
@@ -44,8 +45,9 @@ export function DeviationItem({ token, user, deviation: d, onApproved, setError 
         <AlertTriangle size={14} /> {d.description} ({d.priority})
       </div>
       {(d.room_name || d.room_task_label) && (
-        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20 }}>
-          {d.room_name}{d.room_responsible === "customer" ? " (Dere)" : ""}{d.room_task_label ? ` · ${d.room_task_label}` : ""}
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 20, display: "flex", alignItems: "center", gap: 6 }}>
+          {d.room_name}{d.room_task_label ? ` · ${d.room_task_label}` : ""}
+          {d.room_name && <ResponsibleBadge responsible={d.room_responsible} perspective="customer" />}
         </div>
       )}
       {d.reported_by_initials && (

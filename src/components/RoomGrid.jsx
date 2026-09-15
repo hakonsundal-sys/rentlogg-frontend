@@ -1,5 +1,5 @@
 import { ExternalLink } from "lucide-react";
-import { Card } from "./shared";
+import { Card, ResponsibleBadge } from "./shared";
 
 export const GRID_STATUS = {
   completed: { color: "var(--c-teal)", label: "Fullført" },
@@ -55,10 +55,17 @@ export default function RoomGrid({ grid, month, siteName, onOpenRun, userRole })
               {days.map((d) => {
                 const dateStr = `${month}-${String(d).padStart(2, "0")}`;
                 const openable = !!onOpenRun && dateStr <= today;
+                const isToday = dateStr === today;
                 return (
-                  <th key={d} style={{ ...gridThStyle, textAlign: "center", minWidth: 22 }}>
-                    <div style={{ color: "var(--text-muted)", fontSize: 9 }}>{weekdayAbbr(dateStr)}</div>
-                    <div>{d}</div>
+                  <th key={d} style={{
+                    ...gridThStyle, textAlign: "center", minWidth: 22,
+                    background: isToday ? "var(--accent-orange-bg)" : undefined,
+                    borderRadius: isToday ? "var(--radius-sm) var(--radius-sm) 0 0" : undefined,
+                  }}>
+                    <div style={{ color: isToday ? "var(--accent-orange-dark)" : "var(--text-muted)", fontSize: 9, fontWeight: isToday ? 700 : 400 }}>
+                      {weekdayAbbr(dateStr)}
+                    </div>
+                    <div style={{ color: isToday ? "var(--accent-orange-dark)" : undefined, fontWeight: isToday ? 700 : undefined }}>{d}</div>
                     {openable && (
                       <button
                         onClick={() => onOpenRun(dateStr)}
@@ -85,12 +92,8 @@ export default function RoomGrid({ grid, month, siteName, onOpenRun, userRole })
                 }}>
                   {room.name}
                   {userRole === "customer" && (
-                    <span style={{
-                      marginLeft: 6, fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 999,
-                      background: room.responsible === "customer" ? "var(--accent-orange-bg)" : "var(--surface-2)",
-                      color: room.responsible === "customer" ? "var(--accent-orange-dark)" : "var(--text-muted)",
-                    }}>
-                      {room.responsible === "customer" ? "Dere" : "Renholder"}
+                    <span style={{ marginLeft: 6, display: "inline-block" }}>
+                      <ResponsibleBadge responsible={room.responsible} perspective="customer" />
                     </span>
                   )}
                 </td>
@@ -98,13 +101,15 @@ export default function RoomGrid({ grid, month, siteName, onOpenRun, userRole })
                   const dateStr = `${month}-${String(d).padStart(2, "0")}`;
                   const status = room.days[dateStr];
                   const info = GRID_STATUS[status];
+                  const isToday = dateStr === today;
                   return (
-                    <td key={d} style={{ textAlign: "center", padding: 2 }}>
+                    <td key={d} style={{ textAlign: "center", padding: 2, background: isToday ? "var(--accent-orange-bg)" : undefined }}>
                       <div
                         title={`${room.name} — ${dateStr}: ${info ? info.label : "Fremtidig"}`}
                         style={{
-                          width: 14, height: 14, borderRadius: 3, margin: "0 auto",
+                          width: 16, height: 16, borderRadius: 4, margin: "0 auto",
                           background: info ? info.color : "transparent",
+                          border: info ? "1px solid rgba(0,0,0,0.08)" : "1px dashed var(--border)",
                         }}
                       />
                     </td>

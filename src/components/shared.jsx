@@ -40,6 +40,31 @@ export function RoleBadge({ role }) {
   );
 }
 
+// Who's responsible for a room (rooms.responsible: 'company' or 'customer') — one shared visual
+// language instead of the badge being hand-rolled per surface, which is how it first shipped
+// (four separate copies across RunRoomsAndItems/RoomGrid/DeviationItem/CleanerHistoryView/
+// AvvikPage, one of which was missed entirely until a later pass caught it). Deliberately its own
+// blue rather than orange, which is already both the brand/CTA color and the "in progress" status
+// pill color — a third meaning on the same hue made all three harder to tell apart at a glance.
+// `perspective="customer"` (the customer's own views) always renders, labelling both sides
+// ("Dere"/"Renholder") since a customer needs to tell their own rooms apart from OKV's in a
+// single mixed list. `perspective="staff"` (default; cleaner/admin views) renders nothing for a
+// company room — staff's default assumption is "it's ours", so only the exception needs a flag.
+export function ResponsibleBadge({ responsible, perspective = "staff" }) {
+  const isCustomer = responsible === "customer";
+  if (perspective === "staff" && !isCustomer) return null;
+  const label = perspective === "customer" ? (isCustomer ? "Dere" : "Renholder") : "Kunde";
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap",
+      background: isCustomer ? "var(--accent-blue-bg)" : "var(--surface-2)",
+      color: isCustomer ? "var(--accent-blue-dark)" : "var(--text-muted)",
+    }}>
+      {label}
+    </span>
+  );
+}
+
 export function Card({ children, style }) {
   return (
     <div style={{

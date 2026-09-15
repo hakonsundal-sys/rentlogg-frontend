@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle, Pencil, FileText, Download, Camera } from "lucide-react";
 import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
-import { Card } from "./shared";
+import { Card, ResponsibleBadge } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 
 // /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
@@ -249,8 +249,9 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
         <AlertTriangle size={14} style={{ color: "var(--text-danger)", marginTop: 2, flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           {deviation.room_name && (
-            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              {deviation.room_name}{deviation.room_responsible === "customer" ? " (Kunde)" : ""}{deviation.room_task_label ? ` · ${deviation.room_task_label}` : ""}
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6 }}>
+              {deviation.room_name}{deviation.room_task_label ? ` · ${deviation.room_task_label}` : ""}
+              <ResponsibleBadge responsible={deviation.room_responsible} />
             </div>
           )}
           <div style={{ fontSize: 13 }}>{deviation.description}</div>

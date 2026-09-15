@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Info, AlertTriangle, CircleAlert, MapPin, Clock } from "lucide-react";
 import { apiFetch, API_URL } from "../../api";
-import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle, ResponsibleBadge } from "../shared";
 
 // /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
 // Authorization header, so the token rides along as a query param instead.
@@ -147,8 +147,9 @@ export default function AvvikPage({ token, refreshSummary }) {
                       <span style={{ fontWeight: 600, color: p.color }}>{p.label}</span>
                     </div>
                     {(dev.room_name || dev.room_task_label) && (
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
-                        {dev.room_name}{dev.room_responsible === "customer" ? " (Kunde)" : ""}{dev.room_task_label ? ` · ${dev.room_task_label}` : ""}
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                        {dev.room_name}{dev.room_task_label ? ` · ${dev.room_task_label}` : ""}
+                        <ResponsibleBadge responsible={dev.room_responsible} />
                       </div>
                     )}
                     {dev.reported_by_initials && (
