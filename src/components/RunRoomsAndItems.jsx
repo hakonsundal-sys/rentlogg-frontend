@@ -103,6 +103,21 @@ function CompleteButton({ onClick, label }) {
   );
 }
 
+function UndoButton({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        background: "none", border: "1px solid var(--border)",
+        padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-danger)",
+      }}
+    >
+      <X size={13} /> Angre fullføring
+    </button>
+  );
+}
+
 function StartRoomButton({ onClick }) {
   return (
     <button
@@ -261,6 +276,21 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     }
   }
 
+  // Undo for a room completed by mistake — e.g. a cleaner's bulk "Fullfør alle" catching a room
+  // it shouldn't have. Only works for today's run server-side (see POST /rooms/:id/reopen), so
+  // this is a no-op with a clear error if used on a past day's already-completed room.
+  async function reopenRoom(roomId) {
+    if (!window.confirm("Angre fullføring av dette rommet?")) return;
+    try {
+      await queueableFetch(`/rooms/${roomId}/reopen`, {
+        token, method: "POST", body: JSON.stringify({ resetItems: true }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function completeFlatRun() {
     if (!editInitials?.trim()) {
       setError("Skriv inn navnet ditt for å fullføre besøket.");
@@ -330,10 +360,13 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                 />
               )}
               {canEditThisRoom && room.roomRunId && (
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 6 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 6, flexWrap: "wrap" }}>
                   <AddPhotoButton inputRef={inputRefFor(key)} onUpload={(e) => uploadPhoto(room.roomRunId, e)} />
                   {!room.completed_at && (
                     <CompleteButton onClick={() => completeRoom(room.roomRunId)} label="Fullfør rom" />
+                  )}
+                  {room.completed_at && userRole !== "customer" && (
+                    <UndoButton onClick={() => reopenRoom(room.id)} />
                   )}
                 </div>
               )}
