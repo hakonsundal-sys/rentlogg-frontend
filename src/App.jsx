@@ -39,11 +39,11 @@ export default function App() {
     setAuth({ token, user });
   }
 
-  // A ?checkin= link only means anything for a cleaner (it's their check-in flow) — for any
-  // other role it's just dead weight sitting in the address bar, so drop it once we know who
-  // actually logged in rather than leaving it there indefinitely.
+  // A ?checkin= link means something for a cleaner (their check-in flow) or a customer (jumps
+  // to that site's "Fyll ut sjekkliste i dag") — for every other role it's just dead weight
+  // sitting in the address bar, so drop it once we know who actually logged in.
   useEffect(() => {
-    if (auth && checkinToken && auth.user.role !== "cleaner") clearCheckinParam();
+    if (auth && checkinToken && auth.user.role !== "cleaner" && auth.user.role !== "customer") clearCheckinParam();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, checkinToken]);
 
@@ -82,7 +82,9 @@ export default function App() {
       {user.role === "cleaner" && (
         <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={clearCheckinParam} />
       )}
-      {user.role === "customer" && <CustomerView token={token} user={user} />}
+      {user.role === "customer" && (
+        <CustomerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={clearCheckinParam} />
+      )}
     </Shell>
   );
 }

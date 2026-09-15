@@ -82,7 +82,7 @@ function SiteVaskeplanView({ token, site, user, onReportDeviation, onClose, setE
   );
 }
 
-export default function CustomerView({ token, user }) {
+export default function CustomerView({ token, user, pendingCheckinToken, onCheckinHandled }) {
   const [sites, setSites] = useState([]);
   const [deviations, setDeviations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +102,21 @@ export default function CustomerView({ token, user }) {
   const [formInitials, setFormInitials] = useState("");
   const [formPhoto, setFormPhoto] = useState(null);
   const formFileInputRef = useRef(null);
+
+  // Arriving here via a scanned site QR's native-camera link (?checkin=<token>, see App.jsx)
+  // jumps straight into that site's checklist — same "Fyll ut sjekkliste i dag" shortcut as the
+  // dashboard button, just triggered by the scan instead of a click. Silently does nothing if
+  // the site has no rooms for this customer to fill out (e.g. a customer's own staff scanning a
+  // sticker at a site that's 100% the cleaning company's responsibility) — there's nothing to
+  // jump to in that case, same as if the shortcut button just isn't shown on the dashboard.
+  useEffect(() => {
+    if (!pendingCheckinToken) return;
+    apiFetch(`/sites/checkin/${pendingCheckinToken}`, { token })
+      .then(({ site }) => { if (site.has_customer_rooms) setChecklistSite(site); })
+      .catch((err) => setError(err.message))
+      .finally(() => onCheckinHandled?.());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     Promise.all([apiFetch("/sites", { token }), apiFetch("/deviations", { token })])
