@@ -26,11 +26,13 @@ function photoUrl(filePath, token) {
 // no such rooms on this site gets no edit affordance at all, not just a hidden one. When the
 // toggle is shown, RunRoomsAndItems still only lets a customer touch their own rooms, never OKV's.
 // `onReportDeviation`, when given, adds a "Meld avvik" button to every room regardless of edit
-// mode (used by the customer portal; admin/cleaner don't pass it).
-export default function RunDetailModal({ token, siteId, date, defaultInitials, userRole, onReportDeviation, onClose, setError }) {
+// mode (used by the customer portal; admin/cleaner don't pass it). `autoEdit` starts the modal
+// already in edit mode — used by the customer portal's "Fyll ut sjekkliste i dag" shortcut, so a
+// customer arriving specifically to do that doesn't need a second click to find the toggle.
+export default function RunDetailModal({ token, siteId, date, defaultInitials, userRole, autoEdit, onReportDeviation, onClose, setError }) {
   const [runDetail, setRunDetail] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(!!autoEdit);
   const [editInitials, setEditInitials] = useState(defaultInitials || "");
 
   const hasCustomerEditableRooms = runDetail?.rooms?.some((r) => r.responsible === "customer");
@@ -44,6 +46,19 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, siteId, date]);
+
+  // The "Fyll ut sjekkliste i dag" shortcut opens straight into edit mode, but a customer's own
+  // rooms can sit anywhere in a mixed site's room list (OKV's rooms usually come first, since
+  // they were imported first) — jump straight to the first one instead of leaving them to scroll
+  // past however many read-only rooms come before it.
+  useEffect(() => {
+    if (!autoEdit || !runDetail?.rooms) return;
+    const firstOwnRoom = runDetail.rooms.find((r) => r.responsible === "customer");
+    if (firstOwnRoom) {
+      setTimeout(() => document.getElementById(`room-${firstOwnRoom.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runDetail]);
 
   async function refresh() {
     try {

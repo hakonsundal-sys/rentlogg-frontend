@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Camera, Clock, Download, History, CalendarDays, X } from "lucide-react";
+import { AlertTriangle, Camera, Clock, Download, History, CalendarDays, ClipboardCheck, X } from "lucide-react";
 import { apiFetch, downloadPdf, downloadZip } from "../api";
 import { Card, StatusBadge, Loading } from "./shared";
 import { DeviationItem } from "./DeviationItem";
@@ -9,6 +9,10 @@ import RunDetailModal from "./RunDetailModal";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
+}
+
+function todayInOslo() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
 }
 
 // Counterpart to the admin Rapporter page's vaskeplan grid — same room x day view, scoped to the
@@ -86,6 +90,7 @@ export default function CustomerView({ token, user }) {
 
   const [historySite, setHistorySite] = useState(null);
   const [vaskeplanSite, setVaskeplanSite] = useState(null);
+  const [checklistSite, setChecklistSite] = useState(null);
 
   const [openFormSiteId, setOpenFormSiteId] = useState(null);
   const [formRooms, setFormRooms] = useState(null);
@@ -290,6 +295,11 @@ export default function CustomerView({ token, user }) {
               </div>
             ) : (
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                {s.has_customer_rooms && (
+                  <button onClick={() => setChecklistSite(s)} style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}>
+                    <ClipboardCheck size={13} /> Fyll ut sjekkliste i dag
+                  </button>
+                )}
                 <button onClick={() => openReportForm(s)} style={{ ...secondaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}>
                   <AlertTriangle size={13} /> Meld avvik
                 </button>
@@ -338,6 +348,15 @@ export default function CustomerView({ token, user }) {
           token={token} site={vaskeplanSite} user={user} setError={setError}
           onClose={() => setVaskeplanSite(null)}
           onReportDeviation={(roomId) => openReportForm(vaskeplanSite, roomId)}
+        />
+      )}
+
+      {checklistSite && (
+        <RunDetailModal
+          token={token} siteId={checklistSite.id} date={todayInOslo()} userRole="customer" autoEdit
+          defaultInitials={user?.name}
+          onReportDeviation={(room) => { setChecklistSite(null); openReportForm(checklistSite, room.id); }}
+          onClose={() => setChecklistSite(null)} setError={setError}
         />
       )}
     </div>
