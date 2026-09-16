@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutGrid, MapPin, Users, Building2, AlertTriangle, UserPlus, FileText, CircleUser, LogOut, Menu, X } from "lucide-react";
+import { LayoutGrid, MapPin, Users, Building2, UserCog, AlertTriangle, UserPlus, FileText, CircleUser, LogOut, Menu, X } from "lucide-react";
 import { RoleBadge } from "../shared";
 
 const NAV_ITEMS = [
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { id: "lokasjoner", label: "Lokasjoner", icon: MapPin },
   { id: "kunder", label: "Kunder", icon: Users },
   { id: "avdelinger", label: "Avdelinger", icon: Building2 },
+  { id: "ansatte", label: "Ansatte", icon: UserCog },
   { id: "avvik", label: "Avvik", icon: AlertTriangle },
   { id: "inviter", label: "Inviter brukere", icon: UserPlus },
   { id: "rapporter", label: "Rapporter", icon: FileText },
