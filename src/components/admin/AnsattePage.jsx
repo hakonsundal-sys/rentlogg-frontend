@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useState } from "react";
-import { KeyRound } from "lucide-react";
+import { KeyRound, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, Field, Loading, RoleBadge, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+
+const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "Renholder" };
 
 // Only cleaner/manager accounts can have their password reset from here — matches the backend's
 // own restriction (PATCH /auth/users/:id/password), which deliberately excludes admin accounts
@@ -10,7 +12,7 @@ function canResetPassword(role) {
   return role === "cleaner" || role === "manager";
 }
 
-export default function AnsattePage({ token }) {
+export default function AnsattePage({ token, user }) {
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +22,7 @@ export default function AnsattePage({ token }) {
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
   const [resetSuccessId, setResetSuccessId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   function loadAll() {
     Promise.all([apiFetch("/auth/users", { token }), apiFetch("/departments", { token })])
@@ -33,18 +36,61 @@ export default function AnsattePage({ token }) {
 
   useEffect(loadAll, [token]);
 
+  function replaceUser(updated) {
+    setUsers((list) => list.map((u) => (u.id === updated.id ? updated : u)));
+  }
+
   async function changeDepartment(userId, departmentId) {
     setError("");
     setSavingUserId(userId);
     try {
-      const updated = await apiFetch(`/auth/users/${userId}`, {
+      replaceUser(await apiFetch(`/auth/users/${userId}`, {
         token, method: "PATCH", body: JSON.stringify({ department_id: departmentId || null }),
-      });
-      setUsers((list) => list.map((u) => (u.id === userId ? updated : u)));
+      }));
     } catch (err) {
       setError(err.message);
     } finally {
       setSavingUserId(null);
+    }
+  }
+
+  async function changeRole(userId, role) {
+    setError("");
+    setSavingUserId(userId);
+    try {
+      replaceUser(await apiFetch(`/auth/users/${userId}/role`, {
+        token, method: "PATCH", body: JSON.stringify({ role }),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function toggleActive(u) {
+    setError("");
+    setSavingUserId(u.id);
+    try {
+      replaceUser(await apiFetch(`/auth/users/${u.id}/active`, {
+        token, method: "PATCH", body: JSON.stringify({ active: !u.active }),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function deleteUser(userId) {
+    setError("");
+    try {
+      await apiFetch(`/auth/users/${userId}`, { token, method: "DELETE" });
+      setConfirmDeleteId(null);
+      setUsers((list) => list.filter((u) => u.id !== userId));
+    } catch (err) {
+      setError(err.message);
+      setConfirmDeleteId(null);
     }
   }
 
@@ -78,7 +124,7 @@ export default function AnsattePage({ token }) {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Ansatte</h1>
         <div style={{ color: "var(--text-secondary)" }}>
-          {users.length} ansatte &middot; tildel avdeling eller sett nytt passord for renholdere og driftsledere
+          {users.length} ansatte &middot; endre rolle, avdeling, aktiv status eller passord
         </div>
       </div>
 
@@ -94,16 +140,33 @@ export default function AnsattePage({ token }) {
                 <th style={{ padding: "10px 14px" }}>Rolle</th>
                 <th style={{ padding: "10px 14px" }}>Telefon</th>
                 <th style={{ padding: "10px 14px" }}>Avdeling</th>
+                <th style={{ padding: "10px 14px" }}>Status</th>
+                <th style={{ padding: "10px 14px" }}></th>
                 <th style={{ padding: "10px 14px" }}></th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {users.map((u) => {
+                const isSelf = u.id === user?.id;
+                return (
                 <Fragment key={u.id}>
-                  <tr style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: "10px 14px", fontWeight: 500 }}>{u.name}</td>
+                  <tr style={{ borderTop: "1px solid var(--border)", opacity: u.active ? 1 : 0.55 }}>
+                    <td style={{ padding: "10px 14px", fontWeight: 500 }}>{u.name}{isSelf ? " (deg)" : ""}</td>
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.email}</td>
-                    <td style={{ padding: "10px 14px" }}><RoleBadge role={u.role} /></td>
+                    <td style={{ padding: "10px 14px" }}>
+                      {isSelf ? (
+                        ROLE_LABEL[u.role] || u.role
+                      ) : (
+                        <select
+                          value={u.role}
+                          disabled={savingUserId === u.id}
+                          onChange={(e) => changeRole(u.id, e.target.value)}
+                          style={{ ...inputStyle, padding: "4px 8px", fontSize: 12, width: 120 }}
+                        >
+                          {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                      )}
+                    </td>
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.phone || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
                       <select
@@ -116,6 +179,19 @@ export default function AnsattePage({ token }) {
                         {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
                     </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      {isSelf ? (
+                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Aktiv</span>
+                      ) : (
+                        <button
+                          onClick={() => toggleActive(u)}
+                          disabled={savingUserId === u.id}
+                          style={{ ...linkBtnStyle, color: u.active ? "var(--text-secondary)" : "var(--text-success)" }}
+                        >
+                          {u.active ? "Deaktiver" : "Aktiver"}
+                        </button>
+                      )}
+                    </td>
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
                       {canResetPassword(u.role) && (
                         <button onClick={() => startReset(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
@@ -123,10 +199,17 @@ export default function AnsattePage({ token }) {
                         </button>
                       )}
                     </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      {!isSelf && (
+                        <button onClick={() => setConfirmDeleteId(u.id)} style={{ ...linkBtnStyle, color: "var(--text-danger)", display: "flex", alignItems: "center", gap: 4 }}>
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                   {resetUserId === u.id && (
                     <tr style={{ background: "var(--surface-0)" }}>
-                      <td colSpan={6} style={{ padding: "10px 14px" }}>
+                      <td colSpan={8} style={{ padding: "10px 14px" }}>
                         <form onSubmit={(e) => submitReset(e, u.id)} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <Field label={`Nytt passord for ${u.name}`} style={{ margin: 0 }}>
                             <input
@@ -144,8 +227,20 @@ export default function AnsattePage({ token }) {
                       </td>
                     </tr>
                   )}
+                  {confirmDeleteId === u.id && (
+                    <tr style={{ background: "var(--bg-danger)" }}>
+                      <td colSpan={8} style={{ padding: "10px 14px", fontSize: 13 }}>
+                        Slette {u.name} permanent? Dette går ikke an å angre.
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <button onClick={() => deleteUser(u.id)} style={{ ...primaryBtnStyle, background: "var(--text-danger)" }}>Ja, slett</button>
+                          <button onClick={() => setConfirmDeleteId(null)} style={linkBtnStyle}>Avbryt</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
