@@ -4,7 +4,7 @@ import LoginView from "./components/LoginView";
 import AcceptInvitePage from "./components/AcceptInvitePage";
 import AdminLayout from "./components/admin/AdminLayout";
 import SuperAdminLayout from "./components/admin/SuperAdminLayout";
-import CleanerView from "./components/CleanerView";
+import CleanerView, { clearCleanerContext } from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
 import { RoleBadge } from "./components/shared";
 
@@ -19,10 +19,41 @@ function checkinTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("checkin");
 }
 
+// sessionStorage, not localStorage: survives the specific problem this exists for (a mobile OS
+// discarding this tab's whole JS state while the native camera is open, or the screen is locked
+// mid-upload, which forces a full reload — previously that silently dropped a cleaner or customer
+// straight back to the login screen, mid-checklist, with no memory of where they'd been) without
+// keeping the session alive indefinitely or sharing it across tabs the way localStorage would —
+// it's cleared the moment the tab/browser actually closes, same lifetime the in-memory version
+// already had for every *other* case (closing the tab on purpose, switching devices).
+const AUTH_STORAGE_KEY = "rentlogg_auth";
+
+function authFromStorage() {
+  try {
+    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null; // corrupt JSON, or sessionStorage unavailable (private browsing) — just log in fresh
+  }
+}
+
 export default function App() {
-  const [auth, setAuth] = useState(null); // { token, user }
+  const [auth, setAuthState] = useState(authFromStorage);
   const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
   const [checkinToken, setCheckinToken] = useState(checkinTokenFromUrl);
+
+  function setAuth(value) {
+    setAuthState(value);
+    try {
+      if (value) sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(value));
+      else sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch {
+      // sessionStorage unavailable — the app still works, it just can't survive a forced reload
+    }
+    // A cleaner's device is usually shared (one work phone, not one per person) — don't let the
+    // next person who logs in on it inherit whichever site/room the previous cleaner had open.
+    if (!value) clearCleanerContext();
+  }
 
   function clearInviteParam() {
     window.history.replaceState(null, "", window.location.pathname);

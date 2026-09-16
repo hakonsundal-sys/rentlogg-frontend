@@ -14,6 +14,41 @@ function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
 }
 
+// Which site/room a cleaner is mid-checklist on — sessionStorage, not React state alone, because
+// a phone's OS routinely discards this tab's whole JS state while the native camera is open (or
+// the screen locks mid-upload) and reloads it fresh once control returns. Before this existed,
+// that dropped a cleaner straight back to "Skann QR-kode" with no memory of which room they were
+// in, mid-round — the actual photo usually survived fine (the offline queue is IndexedDB-backed),
+// it was purely the navigation that got lost. Kept separate from App.jsx's auth persistence since
+// this is CleanerView-specific state, not something every role needs. Cleared once a room/visit
+// is genuinely finished so a stale entry doesn't reopen an old room next time.
+const CONTEXT_STORAGE_KEY = "rentlogg_cleaner_context";
+
+function contextFromStorage() {
+  try {
+    const raw = sessionStorage.getItem(CONTEXT_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveContext(value) {
+  try {
+    if (value) sessionStorage.setItem(CONTEXT_STORAGE_KEY, JSON.stringify(value));
+    else sessionStorage.removeItem(CONTEXT_STORAGE_KEY);
+  } catch {
+    // sessionStorage unavailable — restoration just won't work after a forced reload
+  }
+}
+
+// Called from App.jsx on logout — a device shared between cleaners (common; it's usually one
+// work phone, not one per person) shouldn't have the next person who logs in silently auto-check
+// themselves into whichever site the previous cleaner had open.
+export function clearCleanerContext() {
+  saveContext(null);
+}
+
 function tabBtnStyle(active) {
   return {
     padding: "6px 14px", borderRadius: 999, fontSize: 13, cursor: "pointer",
@@ -141,6 +176,17 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   useEffect(() => {
     if (pendingCheckinToken) {
       checkInWithToken(pendingCheckinToken).finally(() => onCheckinHandled?.());
+      return;
+    }
+    // No fresh scan/deep-link to handle — see if this mount is actually a forced reload mid-visit
+    // (the mobile-camera/screen-lock scenario CONTEXT_STORAGE_KEY exists for) rather than a
+    // genuinely fresh open, and if so jump straight back to the room instead of "Skann QR-kode".
+    const saved = contextFromStorage();
+    if (saved?.qrToken) {
+      checkInWithToken(saved.qrToken).then((siteRooms) => {
+        const room = saved.roomId && siteRooms?.find((r) => r.id === saved.roomId);
+        if (room) openRoom(room);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -234,17 +280,21 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       setRoomRun(null);
       clearTimeout(undoTimeoutRef.current);
       setUndoAction(null);
+      saveContext({ qrToken, roomId: null });
 
       const siteRooms = await apiFetch(`/sites/${checkin.site.id}/rooms`, { token });
       setRooms(siteRooms);
 
       setShowDocuments(false);
       apiFetch(`/sites/${checkin.site.id}/documents`, { token }).then(setDocuments).catch(() => setDocuments([]));
+      return siteRooms; // used by the mount-time restore effect below, which needs the freshly
+      // fetched list right away rather than waiting a render for `rooms` state to catch up
     } catch (err) {
       // Check-in needs the server's checklist back to render anything, so it can't just be
       // queued like the in-visit mutations below — give a clear reason instead of a raw
       // "Failed to fetch" when there's simply no connection yet.
       setError(isNetworkError(err) ? "Ingen nettforbindelse. Prøv igjen når du har dekning." : err.message);
+      return null;
     } finally {
       setScanning(false);
     }
@@ -280,6 +330,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       const data = await apiFetch(`/rooms/${room.id}/checkin`, { token, method: "POST" });
       setRoomRun(data);
       setExpandedRoomId(room.id);
+      if (run?.site?.qr_token) saveContext({ qrToken: run.site.qr_token, roomId: room.id });
     } catch (err) {
       // Same reasoning as checkInWithToken — opening a room needs its item list back to render
       // at all, so this can't be handed to the offline queue.
@@ -293,6 +344,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     if (expandedRoomId === room.id) {
       setExpandedRoomId(null);
       setRoomRun(null);
+      if (run?.site?.qr_token) saveContext({ qrToken: run.site.qr_token, roomId: null });
       return;
     }
     openRoom(room);
