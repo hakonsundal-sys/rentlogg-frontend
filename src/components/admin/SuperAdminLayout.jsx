@@ -1,22 +1,25 @@
 import { useState } from "react";
-import { Building2, UserPlus, CircleUser } from "lucide-react";
+import { Building2, UserCog, UserPlus, CircleUser } from "lucide-react";
 import Sidebar from "./Sidebar";
 import SelskaperPage from "./SelskaperPage";
+import AnsattePage from "./AnsattePage";
 import InviterBrukerePage from "./InviterBrukerePage";
 import MinProfilPage from "./MinProfilPage";
 
 // super_admin has no company of its own, so none of AdminLayout's company-scoped pages
 // (Dashboard, Lokasjoner, Kunder, Avvik, Rapporter) apply — this is a separate, much shorter
-// layout for the one thing a super_admin actually does: create companies and invite their
-// first admin.
+// layout for what a super_admin actually does: create companies, invite their first admin, and
+// manage staff (role/department/active/password/delete) across every company from "Ansatte".
 const NAV_ITEMS = [
   { id: "firmaer", label: "Firmaer", icon: Building2 },
+  { id: "ansatte", label: "Ansatte", icon: UserCog },
   { id: "inviter", label: "Inviter brukere", icon: UserPlus },
   { id: "profil", label: "Min profil", icon: CircleUser },
 ];
 
 const PAGES = {
   firmaer: SelskaperPage,
+  ansatte: AnsattePage,
   inviter: InviterBrukerePage,
   profil: MinProfilPage,
 };

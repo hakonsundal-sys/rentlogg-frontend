@@ -13,6 +13,12 @@ function canResetPassword(role) {
 }
 
 export default function AnsattePage({ token, user }) {
+  // super_admin has no company of its own and manages staff across every company from here —
+  // the backend already returns every company's users/departments for it (see auth.js's
+  // GET /users and departments.js's GET /), this just adds a "Firma" column and makes sure each
+  // row's department <select> only offers that row's own company's departments, not every
+  // company's mixed together.
+  const isSuperAdmin = user?.role === "super_admin";
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +44,10 @@ export default function AnsattePage({ token, user }) {
 
   function replaceUser(updated) {
     setUsers((list) => list.map((u) => (u.id === updated.id ? updated : u)));
+  }
+
+  function departmentsForUser(u) {
+    return isSuperAdmin ? departments.filter((d) => d.company_id === u.company_id) : departments;
   }
 
   async function changeDepartment(userId, departmentId) {
@@ -136,6 +146,7 @@ export default function AnsattePage({ token, user }) {
             <thead>
               <tr style={{ textAlign: "left", color: "var(--text-secondary)", fontSize: 11 }}>
                 <th style={{ padding: "10px 14px" }}>Navn</th>
+                {isSuperAdmin && <th style={{ padding: "10px 14px" }}>Firma</th>}
                 <th style={{ padding: "10px 14px" }}>E-post</th>
                 <th style={{ padding: "10px 14px" }}>Rolle</th>
                 <th style={{ padding: "10px 14px" }}>Telefon</th>
@@ -152,6 +163,7 @@ export default function AnsattePage({ token, user }) {
                 <Fragment key={u.id}>
                   <tr style={{ borderTop: "1px solid var(--border)", opacity: u.active ? 1 : 0.55 }}>
                     <td style={{ padding: "10px 14px", fontWeight: 500 }}>{u.name}{isSelf ? " (deg)" : ""}</td>
+                    {isSuperAdmin && <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.company_name || "—"}</td>}
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.email}</td>
                     <td style={{ padding: "10px 14px" }}>
                       {isSelf ? (
@@ -176,7 +188,7 @@ export default function AnsattePage({ token, user }) {
                         style={{ ...inputStyle, padding: "4px 8px", fontSize: 12, width: 140 }}
                       >
                         <option value="">Ingen</option>
-                        {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        {departmentsForUser(u).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
@@ -209,7 +221,7 @@ export default function AnsattePage({ token, user }) {
                   </tr>
                   {resetUserId === u.id && (
                     <tr style={{ background: "var(--surface-0)" }}>
-                      <td colSpan={8} style={{ padding: "10px 14px" }}>
+                      <td colSpan={isSuperAdmin ? 9 : 8} style={{ padding: "10px 14px" }}>
                         <form onSubmit={(e) => submitReset(e, u.id)} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <Field label={`Nytt passord for ${u.name}`} style={{ margin: 0 }}>
                             <input
@@ -229,7 +241,7 @@ export default function AnsattePage({ token, user }) {
                   )}
                   {confirmDeleteId === u.id && (
                     <tr style={{ background: "var(--bg-danger)" }}>
-                      <td colSpan={8} style={{ padding: "10px 14px", fontSize: 13 }}>
+                      <td colSpan={isSuperAdmin ? 9 : 8} style={{ padding: "10px 14px", fontSize: 13 }}>
                         Slette {u.name} permanent? Dette går ikke an å angre.
                         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                           <button onClick={() => deleteUser(u.id)} style={{ ...primaryBtnStyle, background: "var(--text-danger)" }}>Ja, slett</button>
