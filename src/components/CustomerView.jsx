@@ -85,6 +85,7 @@ function SiteVaskeplanView({ token, site, user, onReportDeviation, onClose, setE
 export default function CustomerView({ token, user, pendingCheckinToken, onCheckinHandled }) {
   const [sites, setSites] = useState([]);
   const [deviations, setDeviations] = useState([]);
+  const [roomsAwaitingApproval, setRoomsAwaitingApproval] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -120,9 +121,21 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
 
   useEffect(() => {
     Promise.all([apiFetch("/sites", { token }), apiFetch("/deviations", { token })])
-      .then(([sites, deviations]) => {
+      .then(async ([sites, deviations]) => {
         setSites(sites);
         setDeviations(deviations);
+        // No dedicated cross-site "needs my approval" endpoint exists yet — this reuses the same
+        // per-site rooms fetch openReportForm already calls on demand, just eagerly for every
+        // site so today's dashboard can surface a queue without opening each site one by one.
+        // Fine at the scale a single customer account actually has (a handful of sites).
+        const perSite = await Promise.all(
+          sites.map((s) =>
+            apiFetch(`/sites/${s.id}/rooms`, { token })
+              .then((rooms) => rooms.filter((r) => r.status === "awaiting_approval").map((r) => ({ ...r, site: s })))
+              .catch(() => [])
+          )
+        );
+        setRoomsAwaitingApproval(perSite.flat());
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -211,6 +224,24 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
 
   return (
     <div>
+      {roomsAwaitingApproval.length > 0 && (
+        <Card style={{ marginBottom: 12, borderLeft: "3px solid var(--accent-blue)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
+            <ClipboardCheck size={15} style={{ color: "var(--accent-blue)" }} />
+            {roomsAwaitingApproval.length} rom venter på din godkjenning
+          </div>
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+            {roomsAwaitingApproval.map((r) => (
+              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+                <span>{r.site.name} — {r.name}</span>
+                <button onClick={() => setChecklistSite(r.site)} style={{ ...secondaryBtnStyle, padding: "4px 10px", fontSize: 12 }}>
+                  Se og godkjenn
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
       {sites.map((s) => {
         // A resolved avvik keeps showing until the customer actively approves it — that
         // signed confirmation is the point, not just letting it quietly disappear once the

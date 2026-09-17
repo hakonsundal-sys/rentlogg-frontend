@@ -10,36 +10,51 @@ function photoUrl(filePath, token) {
   return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
-function ItemRow({ item, variant, onToggle }) {
+// `onToggleApprove` renders a second, independent checkbox for the customer-approval gate
+// (see RunRoomsAndItems' own header comment) — deliberately separate from `onToggle`/`item.done`,
+// which stays the cleaner's own field throughout: an approver reviews what the cleaner already
+// checked, they don't get to change it.
+function ItemRow({ item, variant, onToggle, onToggleApprove }) {
   const size = variant === "flat" ? 15 : 13;
   const fontSize = variant === "flat" ? 13 : 12;
   return (
     <div
-      onClick={onToggle ? () => onToggle(item) : undefined}
       style={{
         display: "flex", alignItems: "center", gap: 8,
         padding: variant === "flat" ? "6px 0" : "3px 0 3px 4px",
         borderTop: variant === "flat" ? "1px solid var(--border)" : "none",
-        cursor: onToggle ? "pointer" : "default",
       }}
     >
-      {item.done
-        ? <CheckCircle2 size={size} style={{ color: "var(--text-success)" }} />
-        : <Circle size={size} style={{ color: "var(--text-muted)" }} />}
-      <span style={{
-        fontSize, textDecoration: item.done ? "line-through" : "none",
-        color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
-      }}>
-        {item.label}
-      </span>
-      {item.monthly ? (
+      <div
+        onClick={onToggle ? () => onToggle(item) : undefined}
+        style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, cursor: onToggle ? "pointer" : "default" }}
+      >
+        {item.done
+          ? <CheckCircle2 size={size} style={{ color: "var(--text-success)" }} />
+          : <Circle size={size} style={{ color: "var(--text-muted)" }} />}
         <span style={{
-          fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
-          background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
+          fontSize, textDecoration: item.done ? "line-through" : "none",
+          color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
         }}>
-          Månedlig
+          {item.label}
         </span>
-      ) : null}
+        {item.monthly ? (
+          <span style={{
+            fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+            background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
+          }}>
+            Månedlig
+          </span>
+        ) : null}
+      </div>
+      {onToggleApprove && (
+        <label
+          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
+        >
+          <input type="checkbox" checked={!!item.approved} onChange={() => onToggleApprove(item)} />
+          Godkjent
+        </label>
+      )}
     </div>
   );
 }
@@ -213,6 +228,18 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     }
   }
 
+  async function toggleApprove(roomRunId, item) {
+    const approved = !item.approved;
+    try {
+      await queueableFetch(endpointFor(roomRunId, `items/${item.id}/approve`), {
+        token, method: "PATCH", body: JSON.stringify({ approved }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function uploadPhoto(roomRunId, e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -277,6 +304,24 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     }
   }
 
+  // The customer's (or admin/manager's, as the escape hatch if the customer is unreachable)
+  // sign-off on a requires_approval room — this is what actually sets completed_at, see
+  // POST /rooms/runs/:runId/approve's own comment on the backend.
+  async function approveRoom(roomRunId) {
+    if (!editInitials?.trim()) {
+      setError("Skriv inn navnet ditt for å godkjenne rommet.");
+      return;
+    }
+    try {
+      await queueableFetch(`/rooms/runs/${roomRunId}/approve`, {
+        token, method: "POST", body: JSON.stringify({ initials: editInitials.trim() }),
+      });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   // A room with no roomRunId yet has nothing to click at all — "IKKE STARTET" was previously a
   // dead end when opening a day retroactively (see GET /checklists/site/:siteId/date/:date),
   // since only the live check-in flow (always "today") could ever create a room_run. This lets
@@ -327,9 +372,14 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
       <>
         {runDetail.rooms.map((room) => {
           const doneCount = room.items.filter((i) => i.done).length;
-          const status = room.completed_at ? "FULLFØRT" : room.items.length > 0 ? "PÅGÅR" : "IKKE STARTET";
+          const awaitingApproval = room.requires_approval && room.ready_for_approval_at && !room.completed_at;
+          const status = room.completed_at ? "FULLFØRT" : awaitingApproval ? "VENTER PÅ GODKJENNING" : room.items.length > 0 ? "PÅGÅR" : "IKKE STARTET";
           const key = `room-${room.roomRunId}`;
           const canEditThisRoom = editable && (userRole !== "customer" || room.responsible === "customer");
+          // Who may act on the approval gate itself — the customer (the whole point of the
+          // feature) plus admin/manager as a fallback if the customer's approver is unreachable
+          // (see the backend route's own comment on POST /runs/:runId/approve).
+          const canApproveThisRoom = editable && awaitingApproval && ["customer", "admin", "manager"].includes(userRole);
           return (
             <div key={room.id} id={`room-${room.id}`} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -339,8 +389,8 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
-                  background: room.completed_at ? "var(--c-teal)" : room.items.length > 0 ? "var(--accent-orange-bg)" : "var(--surface-2)",
-                  color: room.completed_at ? "var(--text-success)" : room.items.length > 0 ? "var(--accent-orange-dark)" : "var(--text-muted)",
+                  background: room.completed_at ? "var(--c-teal)" : awaitingApproval ? "var(--accent-blue-bg)" : room.items.length > 0 ? "var(--accent-orange-bg)" : "var(--surface-2)",
+                  color: room.completed_at ? "var(--text-success)" : awaitingApproval ? "var(--accent-blue-dark)" : room.items.length > 0 ? "var(--accent-orange-dark)" : "var(--text-muted)",
                 }}>
                   {status}
                 </span>
@@ -365,6 +415,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                 <ItemRow
                   key={item.id} item={item} variant="room"
                   onToggle={canEditThisRoom ? (i) => toggleItem(room.roomRunId, i) : null}
+                  onToggleApprove={canApproveThisRoom ? (i) => toggleApprove(room.roomRunId, i) : null}
                 />
               ))}
               {room.photos.length > 0 && (
@@ -377,15 +428,31 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                   onSave={(note) => saveNote(room.roomRunId, note)}
                 />
               )}
-              {canEditThisRoom && room.roomRunId && (
+              {(canEditThisRoom || canApproveThisRoom) && room.roomRunId && (
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 6, flexWrap: "wrap" }}>
-                  <AddPhotoButton inputRef={inputRefFor(key)} onUpload={(e) => uploadPhoto(room.roomRunId, e)} />
-                  {!room.completed_at && (
-                    <CompleteButton onClick={() => completeRoom(room.roomRunId)} label="Fullfør rom" />
+                  {canEditThisRoom && <AddPhotoButton inputRef={inputRefFor(key)} onUpload={(e) => uploadPhoto(room.roomRunId, e)} />}
+                  {canEditThisRoom && !room.completed_at && !awaitingApproval && (
+                    <CompleteButton
+                      onClick={() => completeRoom(room.roomRunId)}
+                      label={room.requires_approval ? "Send til godkjenning" : "Fullfør rom"}
+                    />
                   )}
-                  {room.completed_at && userRole !== "customer" && (
+                  {canApproveThisRoom && (
+                    <CompleteButton onClick={() => approveRoom(room.roomRunId)} label="Godkjenn rom" />
+                  )}
+                  {canEditThisRoom && room.completed_at && userRole !== "customer" && (
                     <UndoButton onClick={() => reopenRoom(room.id)} />
                   )}
+                </div>
+              )}
+              {awaitingApproval && !canApproveThisRoom && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }}>
+                  Sendt til kundegodkjenning av {room.signed_initials} — venter på svar.
+                </div>
+              )}
+              {room.approved_at && (
+                <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-secondary)" }}>
+                  Godkjent av {room.approved_by_initials} · {room.approved_at.slice(0, 16)}
                 </div>
               )}
               {canEditThisRoom && !room.roomRunId && (

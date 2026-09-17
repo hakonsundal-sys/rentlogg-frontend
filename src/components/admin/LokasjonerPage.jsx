@@ -240,6 +240,18 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  // Gates a 'company' room so a customer-side user must approve the cleaner's checklist before
+  // the room counts as complete — separate from `responsible`, which is about who does the
+  // cleaning itself (see rooms/runs/:runId/approve on the backend).
+  async function setRoomRequiresApproval(siteId, roomId, requiresApproval) {
+    try {
+      await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ requires_approval: requiresApproval }) });
+      refreshRoomsForSite(siteId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function setRoomIntervalMode(siteId, roomId, days) {
     try {
       await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ interval_days: days }) });
@@ -1045,6 +1057,19 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                             <option value="company">Vi vasker</option>
                             <option value="customer">Kunden vasker</option>
                           </select>
+                          {(room.responsible || "company") === "company" && (
+                            <label
+                              title="Krever at en kundebruker godkjenner sjekklisten før rommet regnes som fullført"
+                              style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!room.requires_approval}
+                                onChange={(e) => setRoomRequiresApproval(site.id, room.id, e.target.checked)}
+                              />
+                              Krever godkjenning
+                            </label>
+                          )}
                           <button onClick={() => startEditRoom(room)} style={iconBtnStyle}><Pencil size={13} /></button>
                           <button onClick={() => deleteRoom(site.id, room.id)} style={iconBtnStyle}><Trash2 size={13} /></button>
                         </div>

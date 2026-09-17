@@ -36,7 +36,11 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
   const [editInitials, setEditInitials] = useState(defaultInitials || "");
 
   const hasCustomerEditableRooms = runDetail?.rooms?.some((r) => r.responsible === "customer");
-  const canToggleEdit = userRole !== "customer" || hasCustomerEditableRooms;
+  // A customer with nothing of their own to edit, but a room awaiting their approval, still needs
+  // the "Rediger" toggle — RunRoomsAndItems' own canApproveThisRoom check handles which room(s)
+  // actually get approval controls once this opens the view.
+  const hasRoomsAwaitingMyApproval = runDetail?.rooms?.some((r) => r.requires_approval && r.ready_for_approval_at && !r.completed_at);
+  const canToggleEdit = userRole !== "customer" || hasCustomerEditableRooms || hasRoomsAwaitingMyApproval;
   // The bulk-complete button always acts on today (see POST /sites/:id/rooms/complete-all-due —
   // it has no date param, it's always "today's due rooms"), so only show/count it when this
   // modal is actually showing today — otherwise a customer looking back at a past day could
