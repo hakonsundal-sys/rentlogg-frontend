@@ -1,13 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="nb">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rentlogg</title>
+
+    <title>Rentlogg — dokumentasjon av renhold</title>
+    <meta
+      name="description"
+      content="Rentlogg er et norsk fagsystem for dokumentasjon av renhold. Renholderen sjekker inn på lokasjonen med QR-kode, kvitterer ut oppgavene rom for rom, og kunden får dagsrapport på e-post."
+    />
+    <link rel="canonical" href="https://www.rentlogg.no/" />
+    <meta name="robots" content="index, follow" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Rentlogg" />
+    <meta property="og:url" content="https://www.rentlogg.no/" />
+    <meta property="og:locale" content="nb_NO" />
+    <meta property="og:title" content="Rentlogg — dokumentasjon av renhold" />
+    <meta
+      property="og:description"
+      content="Fagsystem for renholdsbedrifter: QR-innsjekk, sjekklister med bildedokumentasjon, avviksmeldinger og dagsrapport til kunden."
+    />
   </head>
   <body>
     <div id="root"></div>
+
+    <!--
+      Web-kategoriseringstjenester (Microsoft Defender/SmartScreen, Cisco Talos, Zscaler m.fl.)
+      kjører som regel ikke JavaScript. Uten dette ser de bare et tomt <div id="root">, og et
+      innholdsløst, nyregistrert domene blir stående som "ukategorisert" — som igjen er nok til at
+      bedriftsfiltre blokkerer det for kundene våre. Denne blokken er den eneste teksten de får se,
+      så den skal beskrive tjenesten ærlig og gjenspeile /om.html.
+    -->
+    <noscript>
+      <div style="max-width: 640px; margin: 0 auto; padding: 40px 16px; font: 16px/1.6 system-ui, 'Segoe UI', Roboto, sans-serif; color: #18181b;">
+        <h1 style="font-size: 28px; margin: 0 0 4px;">Rentlogg</h1>
+        <p style="color: #71717a; margin: 0 0 24px;">Dokumentasjon av renhold</p>
+
+        <p>
+          Rentlogg er et norsk fagsystem som lar renholdsbedrifter dokumentere arbeidet de utfører,
+          og lar kunden se det samme. Renholderen sjekker inn på lokasjonen ved å skanne en
+          QR-kode, kvitterer ut oppgavene rom for rom med bilde der det trengs, og melder avvik
+          underveis. Kunden får en dagsrapport på e-post med hva som faktisk ble gjort.
+        </p>
+
+        <p>
+          Tjenesten krever innlogging og er kun for ansatte og kunder hos renholdsbedrifter som
+          allerede bruker Rentlogg. Den er ikke åpen for registrering.
+        </p>
+
+        <p>
+          <a href="/om.html" style="color: #ea580c;">Les mer om tjenesten, personvern og kontaktinformasjon</a>
+        </p>
+
+        <p style="color: #71717a; font-size: 14px; margin-top: 32px;">
+          Denne siden krever JavaScript for å kunne brukes.
+        </p>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

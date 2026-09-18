@@ -1,0 +1,14 @@
+# Rentlogg — https://www.rentlogg.no
+# Appen krever innlogging og har ikke noe offentlig innhold å indeksere utover
+# forsiden og /om.html, men domenet må være crawlbart for at web-kategoriserings-
+# tjenester skal kunne klassifisere det. Et domene de ikke får lese blir stående
+# som "ukategorisert", og bedriftsfiltre (f.eks. Microsoft Defender) blokkerer da
+# tilgang for kundene våre. Derfor ingen Disallow her.
+#
+# /checkin og /uploads ligger på API-domenet (Render), ikke her, så de har ingen
+# regel i denne filen.
+
+User-agent: *
+Disallow:
+
+Sitemap: https://www.rentlogg.no/sitemap.xml

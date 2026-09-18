@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Om Rentlogg — dokumentasjon av renhold</title>
+    <meta
+      name="description"
+      content="Om Rentlogg: hva tjenesten gjør, hvilke opplysninger som lagres, hvem som driver den og hvordan du kommer i kontakt."
+    />
+    <link rel="canonical" href="https://www.rentlogg.no/om.html" />
+    <meta name="robots" content="index, follow" />
+    <style>
+      :root {
+        --page-bg: #fdfbf7;
+        --surface: #ffffff;
+        --border: #f0e4d4;
+        --text-primary: #18181b;
+        --text-secondary: #71717a;
+        --accent-orange: #f97316;
+        --accent-orange-dark: #ea580c;
+        --accent-orange-bg: #fff1e6;
+        --radius: 10px;
+        --radius-lg: 16px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 16px/1.65 system-ui, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-primary);
+        background: var(--page-bg);
+      }
+      .wrap { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; }
+      header { margin-bottom: 40px; }
+      .logo {
+        display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: .04em;
+        text-transform: uppercase; color: var(--accent-orange-dark);
+        background: var(--accent-orange-bg); border-radius: 999px; padding: 5px 12px; margin-bottom: 16px;
+      }
+      h1 { font-size: 30px; line-height: 1.25; margin: 0 0 8px; }
+      .lede { font-size: 18px; color: var(--text-secondary); margin: 0; }
+      h2 { font-size: 20px; margin: 40px 0 12px; }
+      p, li { color: #3f3f46; }
+      ol.steps { padding-left: 0; list-style: none; counter-reset: step; }
+      ol.steps li {
+        counter-increment: step; position: relative; padding-left: 40px; margin-bottom: 16px;
+      }
+      ol.steps li::before {
+        content: counter(step); position: absolute; left: 0; top: 1px;
+        width: 26px; height: 26px; border-radius: 50%; background: var(--accent-orange);
+        color: #fff; font-size: 14px; font-weight: 600; display: grid; place-items: center;
+      }
+      .card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); padding: 20px 22px; margin-top: 16px;
+      }
+      .card p:first-child { margin-top: 0; }
+      .card p:last-child { margin-bottom: 0; }
+      dt { font-weight: 600; margin-top: 14px; }
+      dd { margin: 2px 0 0; color: var(--text-secondary); }
+      dl.org dd { color: var(--text-primary); }
+      a { color: var(--accent-orange-dark); }
+      footer {
+        margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border);
+        font-size: 14px; color: var(--text-secondary);
+      }
+      @media (max-width: 520px) { h1 { font-size: 25px; } .wrap { padding-top: 32px; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="logo">Rentlogg</div>
+        <h1>Dokumentasjon av renhold</h1>
+        <p class="lede">
+          Et norsk fagsystem som lar renholdsbedrifter dokumentere arbeidet de utfører — og lar
+          kunden se det samme.
+        </p>
+      </header>
+
+      <h2>Hva tjenesten gjør</h2>
+      <p>
+        Renhold er vanskelig å etterprøve. Var rommet faktisk vasket i går? Ble avviket meldt?
+        Rentlogg gjør arbeidet som utføres synlig for begge parter, uten at renholderen må fylle ut
+        skjemaer i etterkant.
+      </p>
+      <ol class="steps">
+        <li>
+          Renholderen skanner en QR-kode på lokasjonen og sjekkes inn. Koden kan skannes både i
+          appen og med telefonens vanlige kamera.
+        </li>
+        <li>
+          Oppgavene kvitteres ut rom for rom, med bilde der det er nødvendig. Avvik meldes
+          underveis, med bilde og beskrivelse.
+        </li>
+        <li>
+          Kunden får en dagsrapport på e-post med hva som faktisk ble gjort, og kan følge med
+          fortløpende i sin egen innlogging.
+        </li>
+      </ol>
+
+      <h2>Hvem tjenesten er for</h2>
+      <p>
+        Rentlogg brukes av renholdsbedrifter og deres kunder — i praksis butikker, kontorbygg og
+        næringslokaler. Tjenesten krever innlogging, og kontoer opprettes av renholdsbedriften selv.
+        <strong>Det er ingen åpen registrering, og ingen offentlig del av appen utover denne siden.</strong>
+      </p>
+
+      <h2>Personvern</h2>
+      <div class="card">
+        <p>Rentlogg lagrer opplysningene som trengs for å dokumentere utført renhold:</p>
+        <dl>
+          <dt>Om ansatte</dt>
+          <dd>Navn, e-postadresse, telefonnummer, rolle og hvilken avdeling de tilhører.</dd>
+
+          <dt>Om utført arbeid</dt>
+          <dd>Tidspunkt for innsjekk, hvilke oppgaver som er kvittert ut, og når.</dd>
+
+          <dt>Bilder</dt>
+          <dd>
+            Bilder tatt som dokumentasjon av rom og av meldte avvik. Bildene er kun tilgjengelige
+            for innloggede brukere hos den bedriften de tilhører, og for bedriftens egen kunde.
+          </dd>
+        </dl>
+        <p>
+          Opplysningene deles ikke med andre enn renholdsbedriften og dens kunde. Tjenesten kjører
+          hos Vercel (nettside) og Render (database og API), og e-post sendes via Resend. Disse er
+          databehandlere for tjenesten.
+        </p>
+        <p>
+          Har du spørsmål om opplysninger som er lagret om deg, eller vil du ha dem slettet, ta
+          kontakt på adressen under.
+        </p>
+      </div>
+
+      <h2>Hvem som driver tjenesten</h2>
+      <div class="card">
+        <dl class="org">
+          <dt>Ansvarlig</dt>
+          <dd>
+            Rentlogg.no — et prosjekt fra
+            <a href="https://okv-gruppen.no" rel="noopener">OKV Gruppen</a>
+          </dd>
+
+          <dt>Organisasjonsnummer</dt>
+          <dd>998 084 172 (OKV-GRUPPEN AS)</dd>
+
+          <dt>Kontakt</dt>
+          <dd><a href="mailto:hakon@okv-gruppen.no">hakon@okv-gruppen.no</a></dd>
+        </dl>
+      </div>
+
+      <footer>
+        <p>
+          <a href="/">Tilbake til innlogging</a>
+        </p>
+        <p>Rentlogg — rentlogg.no</p>
+      </footer>
+    </div>
+  </body>
+</html>
