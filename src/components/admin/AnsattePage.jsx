@@ -1,9 +1,13 @@
 import { Fragment, useEffect, useState } from "react";
-import { KeyRound, Trash2 } from "lucide-react";
+import { KeyRound, Trash2, UserPlus } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 
 const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "Renholder" };
+
+// Renholder is what this form creates nearly every time — an admin or driftsleder is rare enough
+// to be worth deliberately changing the dropdown for.
+const EMPTY_NEW_USER = { name: "", email: "", password: "", role: "cleaner", department_id: "", company_id: "" };
 
 // Only cleaner/manager accounts can have their password reset from here — matches the backend's
 // own restriction (PATCH /auth/users/:id/password), which deliberately excludes admin accounts
@@ -29,12 +33,24 @@ export default function AnsattePage({ token, user }) {
   const [resetting, setResetting] = useState(false);
   const [resetSuccessId, setResetSuccessId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [showNewUser, setShowNewUser] = useState(false);
+  const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
+  const [creating, setCreating] = useState(false);
+  const [createdName, setCreatedName] = useState("");
 
   function loadAll() {
-    Promise.all([apiFetch("/auth/users", { token }), apiFetch("/departments", { token })])
-      .then(([usersData, departmentsData]) => {
+    // Only super_admin can read /companies — and it's also the only one that needs them: it has no
+    // company of its own, so creating an account means saying which company the account lands in.
+    Promise.all([
+      apiFetch("/auth/users", { token }),
+      apiFetch("/departments", { token }),
+      isSuperAdmin ? apiFetch("/companies", { token }) : Promise.resolve([]),
+    ])
+      .then(([usersData, departmentsData, companiesData]) => {
         setUsers(usersData);
         setDepartments(departmentsData);
+        setCompanies(companiesData);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -48,6 +64,46 @@ export default function AnsattePage({ token, user }) {
 
   function departmentsForUser(u) {
     return isSuperAdmin ? departments.filter((d) => d.company_id === u.company_id) : departments;
+  }
+
+  // Same rule as the rows above, but keyed off the company picked in the form rather than an
+  // existing user's. An admin/manager only ever gets its own company's departments back anyway.
+  const newUserDepartments = isSuperAdmin
+    ? departments.filter((d) => String(d.company_id) === String(newUser.company_id))
+    : departments;
+
+  function updateNewUser(field, value) {
+    setNewUser((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function createUser(e) {
+    e.preventDefault();
+    setError("");
+    setCreating(true);
+    try {
+      const created = await apiFetch("/auth/users", {
+        token,
+        method: "POST",
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          password: newUser.password,
+          role: newUser.role,
+          department_id: newUser.department_id ? Number(newUser.department_id) : null,
+          ...(isSuperAdmin ? { company_id: Number(newUser.company_id) } : {}),
+        }),
+      });
+      // The backend returns the same row shape GET /users does, so the new account can go straight
+      // into the list — re-sorted by name to keep the order the backend itself sorts by.
+      setUsers((list) => [...list, created].sort((a, b) => a.name.localeCompare(b.name, "nb")));
+      setCreatedName(created.name);
+      setNewUser(EMPTY_NEW_USER);
+      setShowNewUser(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
   }
 
   async function changeDepartment(userId, departmentId) {
@@ -131,14 +187,78 @@ export default function AnsattePage({ token, user }) {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Ansatte</h1>
-        <div style={{ color: "var(--text-secondary)" }}>
-          {users.length} ansatte &middot; endre rolle, avdeling, aktiv status eller passord
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Ansatte</h1>
+          <div style={{ color: "var(--text-secondary)" }}>
+            {users.length} ansatte &middot; endre rolle, avdeling, aktiv status eller passord
+          </div>
         </div>
+        <button
+          onClick={() => { setShowNewUser((open) => !open); setCreatedName(""); setError(""); }}
+          style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <UserPlus size={15} /> Ny ansatt
+        </button>
       </div>
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
+
+      {createdName && !showNewUser && (
+        <Card style={{ marginBottom: 16, fontSize: 13 }}>
+          Konto opprettet for <strong>{createdName}</strong>. Gi e-posten og passordet videre til {createdName} selv
+          &mdash; passordet vises ikke igjen her.
+        </Card>
+      )}
+
+      {showNewUser && (
+        <Card style={{ marginBottom: 16 }}>
+          <form onSubmit={createUser}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Field label="Fullt navn" style={{ flex: 1, minWidth: 180 }}>
+                <input required autoFocus value={newUser.name} onChange={(e) => updateNewUser("name", e.target.value)} style={inputStyle} />
+              </Field>
+              <Field label="E-post / brukernavn" style={{ flex: 1, minWidth: 220 }}>
+                <input required type="email" placeholder="navn@example.com" value={newUser.email} onChange={(e) => updateNewUser("email", e.target.value)} style={inputStyle} />
+              </Field>
+              <Field label="Passord" style={{ flex: 1, minWidth: 140 }}>
+                <input required type="text" minLength={6} placeholder="Minst 6 tegn" value={newUser.password} onChange={(e) => updateNewUser("password", e.target.value)} style={inputStyle} />
+              </Field>
+              <Field label="Rolle" style={{ minWidth: 140 }}>
+                <select value={newUser.role} onChange={(e) => updateNewUser("role", e.target.value)} style={inputStyle}>
+                  {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </Field>
+              {isSuperAdmin && (
+                <Field label="Firma" style={{ minWidth: 160 }}>
+                  <select
+                    required
+                    value={newUser.company_id}
+                    onChange={(e) => setNewUser((prev) => ({ ...prev, company_id: e.target.value, department_id: "" }))}
+                    style={inputStyle}
+                  >
+                    <option value="">Velg firma</option>
+                    {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </Field>
+              )}
+              <Field label="Avdeling" style={{ minWidth: 140 }}>
+                <select value={newUser.department_id} onChange={(e) => updateNewUser("department_id", e.target.value)} style={inputStyle}>
+                  <option value="">Ingen</option>
+                  {newUserDepartments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </Field>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14, flexWrap: "wrap" }}>
+              <button type="submit" disabled={creating} style={primaryBtnStyle}>{creating ? "Oppretter..." : "Opprett bruker"}</button>
+              <button type="button" onClick={() => setShowNewUser(false)} style={linkBtnStyle}>Avbryt</button>
+              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                Brukeren kan logge inn med en gang &mdash; ingen invitasjonslenke sendes.
+              </span>
+            </div>
+          </form>
+        </Card>
+      )}
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
