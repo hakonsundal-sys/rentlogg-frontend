@@ -56,6 +56,17 @@ export default function LoginView({ onLogin, checkinPending }) {
           </button>
         </form>
       </Card>
+
+      {/* App.jsx rendrer allerede "Rentlogg / Dokumentert etterkontroll" over dette, så navnet
+          gjentas ikke her. Det som mangler for en utenforstående er hvorfor det ikke finnes noen
+          "opprett konto"-lenke, og en vei videre til noe som faktisk beskriver tjenesten: en naken
+          e-post/passord-boks uten avsender er nøyaktig formen en phishing-side har, og det er en
+          medvirkende grunn til at bedriftsfiltre blokkerte domenet for kundene våre. */}
+      <p style={{ textAlign: "center", fontSize: 12.5, color: "var(--text-muted)", marginTop: 16, lineHeight: 1.5 }}>
+        Kontoer opprettes av arbeidsgiveren din — det er ingen åpen registrering.
+        <br />
+        <a href="/om.html" style={{ color: "var(--text-secondary)" }}>Om tjenesten og personvern</a>
+      </p>
     </div>
   );
 }
