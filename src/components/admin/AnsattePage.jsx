@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { KeyRound, Trash2, UserPlus } from "lucide-react";
+import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 
@@ -8,6 +8,9 @@ const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "R
 // Renholder is what this form creates nearly every time — an admin or driftsleder is rare enough
 // to be worth deliberately changing the dropdown for.
 const EMPTY_NEW_USER = { name: "", email: "", password: "", role: "cleaner", department_id: "", company_id: "" };
+
+// The list arrives sorted by name from the backend; keep that order as rows are added or renamed.
+const byName = (a, b) => a.name.localeCompare(b.name, "nb");
 
 // Only cleaner/manager accounts can have their password reset from here — matches the backend's
 // own restriction (PATCH /auth/users/:id/password), which deliberately excludes admin accounts
@@ -38,6 +41,9 @@ export default function AnsattePage({ token, user }) {
   const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
   const [creating, setCreating] = useState(false);
   const [createdName, setCreatedName] = useState("");
+  const [editUserId, setEditUserId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   function loadAll() {
     // Only super_admin can read /companies — and it's also the only one that needs them: it has no
@@ -94,8 +100,8 @@ export default function AnsattePage({ token, user }) {
         }),
       });
       // The backend returns the same row shape GET /users does, so the new account can go straight
-      // into the list — re-sorted by name to keep the order the backend itself sorts by.
-      setUsers((list) => [...list, created].sort((a, b) => a.name.localeCompare(b.name, "nb")));
+      // into the list, re-sorted into place.
+      setUsers((list) => [...list, created].sort(byName));
       setCreatedName(created.name);
       setNewUser(EMPTY_NEW_USER);
       setShowNewUser(false);
@@ -157,6 +163,31 @@ export default function AnsattePage({ token, user }) {
     } catch (err) {
       setError(err.message);
       setConfirmDeleteId(null);
+    }
+  }
+
+  function startEdit(u) {
+    setEditUserId(u.id);
+    setEditForm({ name: u.name, email: u.email, phone: u.phone || "" });
+    setResetUserId(null);
+    setError("");
+  }
+
+  async function submitEdit(e, userId) {
+    e.preventDefault();
+    setError("");
+    setSavingEdit(true);
+    try {
+      const updated = await apiFetch(`/auth/users/${userId}`, {
+        token, method: "PATCH", body: JSON.stringify(editForm),
+      });
+      // Renaming moves the row, so this re-sorts rather than replacing in place.
+      setUsers((list) => list.map((u) => (u.id === updated.id ? updated : u)).sort(byName));
+      setEditUserId(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -325,11 +356,16 @@ export default function AnsattePage({ token, user }) {
                       )}
                     </td>
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
-                      {canResetPassword(u.role) && (
-                        <button onClick={() => startReset(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
-                          <KeyRound size={13} /> {resetSuccessId === u.id ? "Passord satt ✓" : "Sett nytt passord"}
+                      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                        <button onClick={() => startEdit(u)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Pencil size={13} /> Rediger
                         </button>
-                      )}
+                        {canResetPassword(u.role) && (
+                          <button onClick={() => startReset(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                            <KeyRound size={13} /> {resetSuccessId === u.id ? "Passord satt ✓" : "Sett nytt passord"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
                       {!isSelf && (
@@ -339,6 +375,40 @@ export default function AnsattePage({ token, user }) {
                       )}
                     </td>
                   </tr>
+                  {editUserId === u.id && (
+                    <tr style={{ background: "var(--surface-0)" }}>
+                      <td colSpan={isSuperAdmin ? 9 : 8} style={{ padding: "10px 14px" }}>
+                        <form onSubmit={(e) => submitEdit(e, u.id)} style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                          <Field label="Navn" style={{ margin: 0 }}>
+                            <input
+                              required autoFocus value={editForm.name}
+                              onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                              style={{ ...inputStyle, width: 200 }}
+                            />
+                          </Field>
+                          <Field label="E-post / brukernavn" style={{ margin: 0 }}>
+                            <input
+                              required type="email" value={editForm.email}
+                              onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                              style={{ ...inputStyle, width: 240 }}
+                            />
+                          </Field>
+                          <Field label="Telefon" style={{ margin: 0 }}>
+                            <input
+                              value={editForm.phone}
+                              onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                              style={{ ...inputStyle, width: 140 }}
+                            />
+                          </Field>
+                          <button type="submit" disabled={savingEdit} style={primaryBtnStyle}>Lagre</button>
+                          <button type="button" onClick={() => setEditUserId(null)} style={linkBtnStyle}>Avbryt</button>
+                        </form>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>
+                          E-posten er også brukernavnet &mdash; endrer du den, må {u.name} logge inn med den nye.
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {resetUserId === u.id && (
                     <tr style={{ background: "var(--surface-0)" }}>
                       <td colSpan={isSuperAdmin ? 9 : 8} style={{ padding: "10px 14px" }}>
