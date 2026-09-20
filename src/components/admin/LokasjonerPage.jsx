@@ -1031,50 +1031,55 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                 )}
                 {(rooms[site.id] || []).map((room) => (
                   <div key={room.id} style={{ marginBottom: 6 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
                       {editingRoomId === room.id ? (
-                        <div style={{ display: "flex", gap: 4, flex: 1 }}>
+                        <div style={{ display: "flex", gap: 4, flex: 1, minWidth: 0 }}>
                           <input
                             value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)}
-                            autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12 }}
+                            autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0 }}
                           />
                           <button onClick={() => saveRoomName(site.id, room.id)} style={linkBtnStyle}>Lagre</button>
                           <button onClick={() => setEditingRoomId(null)} style={linkBtnStyle}>Avbryt</button>
                         </div>
                       ) : (
-                        <button onClick={() => toggleRoomExpand(room.id)} style={{ ...linkBtnStyle, color: "var(--text-primary)", fontWeight: 500, textAlign: "left" }}>
-                          {room.name} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>({room.itemCount} oppgaver)</span>
-                        </button>
-                      )}
-                      {editingRoomId !== room.id && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <select
-                            value={room.responsible || "company"}
-                            onChange={(e) => setRoomResponsible(site.id, room.id, e.target.value)}
-                            title="Hvem fyller ut sjekklisten for dette rommet?"
-                            style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 108 }}
+                        <>
+                          <button
+                            onClick={() => toggleRoomExpand(room.id)}
+                            style={{ ...linkBtnStyle, color: "var(--text-primary)", fontWeight: 500, textAlign: "left", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                           >
-                            <option value="company">Vi vasker</option>
-                            <option value="customer">Kunden vasker</option>
-                          </select>
-                          {(room.responsible || "company") === "company" && (
-                            <label
-                              title="Krever at en kundebruker godkjenner sjekklisten før rommet regnes som fullført"
-                              style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={!!room.requires_approval}
-                                onChange={(e) => setRoomRequiresApproval(site.id, room.id, e.target.checked)}
-                              />
-                              Krever godkjenning
-                            </label>
-                          )}
-                          <button onClick={() => startEditRoom(room)} style={iconBtnStyle}><Pencil size={13} /></button>
-                          <button onClick={() => deleteRoom(site.id, room.id)} style={iconBtnStyle}><Trash2 size={13} /></button>
-                        </div>
+                            {room.name} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>({room.itemCount} oppgaver)</span>
+                          </button>
+                          <button onClick={() => startEditRoom(room)} style={{ ...iconBtnStyle, flexShrink: 0 }}><Pencil size={13} /></button>
+                          <button onClick={() => deleteRoom(site.id, room.id)} style={{ ...iconBtnStyle, flexShrink: 0 }}><Trash2 size={13} /></button>
+                        </>
                       )}
                     </div>
+                    {editingRoomId !== room.id && (
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, rowGap: 4, marginTop: 4 }}>
+                        <select
+                          value={room.responsible || "company"}
+                          onChange={(e) => setRoomResponsible(site.id, room.id, e.target.value)}
+                          title="Hvem fyller ut sjekklisten for dette rommet?"
+                          style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 108 }}
+                        >
+                          <option value="company">Vi vasker</option>
+                          <option value="customer">Kunden vasker</option>
+                        </select>
+                        {(room.responsible || "company") === "company" && (
+                          <label
+                            title="Krever at en kundebruker godkjenner sjekklisten før rommet regnes som fullført"
+                            style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!room.requires_approval}
+                              onChange={(e) => setRoomRequiresApproval(site.id, room.id, e.target.checked)}
+                            />
+                            Krever godkjenning
+                          </label>
+                        )}
+                      </div>
+                    )}
 
                     {expandedRoomId === room.id && (
                       <div style={{ marginLeft: 8, marginTop: 6, paddingLeft: 8, borderLeft: "2px solid var(--border)" }}>
