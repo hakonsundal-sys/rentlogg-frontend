@@ -62,6 +62,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [newItemLabel, setNewItemLabel] = useState("");
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editRoomName, setEditRoomName] = useState("");
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editItemLabel, setEditItemLabel] = useState("");
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -195,6 +197,22 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   async function deleteRoomItem(roomId, itemId) {
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}`, { token, method: "DELETE" });
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditItem(item) {
+    setEditingItemId(item.id);
+    setEditItemLabel(item.label);
+  }
+
+  async function saveItemLabel(roomId, itemId) {
+    if (!editItemLabel.trim()) return;
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, { token, method: "PATCH", body: JSON.stringify({ label: editItemLabel }) });
+      setEditingItemId(null);
       refreshRoomItems(roomId);
     } catch (err) {
       setError(err.message);
@@ -1087,10 +1105,24 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                       <div style={{ marginLeft: 8, marginTop: 6, paddingLeft: 8, borderLeft: "2px solid var(--border)" }}>
                         {(roomItems[room.id] || []).map((item) => (
                           <div key={item.id} style={{ padding: "3px 0", borderBottom: "1px solid var(--border)" }}>
+                            {editingItemId === item.id ? (
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <input
+                                  value={editItemLabel} onChange={(e) => setEditItemLabel(e.target.value)}
+                                  autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, flex: 1, minWidth: 0 }}
+                                />
+                                <button onClick={() => saveItemLabel(room.id, item.id)} style={linkBtnStyle}>Lagre</button>
+                                <button onClick={() => setEditingItemId(null)} style={linkBtnStyle}>Avbryt</button>
+                              </div>
+                            ) : (
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                               <span>{item.label}</span>
-                              <button onClick={() => deleteRoomItem(room.id, item.id)} style={iconBtnStyle}><Trash2 size={11} /></button>
+                              <div style={{ display: "flex", gap: 2 }}>
+                                <button onClick={() => startEditItem(item)} style={iconBtnStyle}><Pencil size={11} /></button>
+                                <button onClick={() => deleteRoomItem(room.id, item.id)} style={iconBtnStyle}><Trash2 size={11} /></button>
+                              </div>
                             </div>
+                            )}
                             <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                               <select
                                 value={item.monthly_weekday == null ? "daily" : item.monthly_occurrence == null ? "weekly" : "monthly"}
