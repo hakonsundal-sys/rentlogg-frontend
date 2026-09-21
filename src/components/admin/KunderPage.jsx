@@ -1,29 +1,15 @@
 import { useEffect, useState } from "react";
 import { Users, Trash2, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, AddressAutocomplete, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
+import { Card, AddressAutocomplete, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import KundebrukerePage from "./KundebrukerePage";
 
 const emptyForm = { name: "", contact_name: "", contact_email: "", phone: "", address: "" };
 
 // Kunder/Kundebrukere are two views of the same "customer" concept, so they share this page and
 // its own little tab bar rather than living as separate top-level sidebar entries — mirrors how
-// Hakon asked for it ("underkategori under kunder"), not a reusable pattern extracted elsewhere
-// yet since this is the only page that needs it so far.
-function TabButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: "none", border: "none", cursor: "pointer", padding: "10px 4px", marginRight: 24,
-        fontSize: 14, fontWeight: 600, color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
-        borderBottom: active ? "2px solid var(--accent-orange)" : "2px solid transparent",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
+// Hakon asked for it ("underkategori under kunder"). TabButton itself now lives in shared.jsx,
+// since Lokasjoner's avdeling filter uses the same bar.
 
 export default function KunderPage({ token, user, refreshSummary }) {
   const [activeTab, setActiveTab] = useState("kunder");

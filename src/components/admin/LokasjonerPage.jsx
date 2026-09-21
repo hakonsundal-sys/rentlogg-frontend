@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText, CalendarCheck } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, AddressAutocomplete, DocumentsList, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
+import { Card, AddressAutocomplete, DocumentsList, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
 
@@ -48,6 +48,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [departmentTab, setDepartmentTab] = useState("all"); // "all" | "none" | String(department_id)
   const [form, setForm] = useState(emptyForm);
   const [expandedSite, setExpandedSite] = useState(null);
   const [expandedRoomsSite, setExpandedRoomsSite] = useState(null);
@@ -501,6 +502,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           report_send_hour: form.report_send_hour === "" ? null : Number(form.report_send_hour),
         }),
       });
+      // Creating a location while a single avdeling is selected would otherwise file the new
+      // card away under a tab you aren't looking at — follow it instead.
+      const createdTab = form.department_id ? String(form.department_id) : "none";
+      if (departmentTab !== "all" && departmentTab !== createdTab) setDepartmentTab(createdTab);
       setForm(emptyForm);
       setShowForm(false);
       loadAll();
@@ -697,16 +702,49 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  // Avdeling is the internal region tag (Vest, Sør, Øst, Midt) — once every region was imported
+  // the flat grid of every building in the company got too long to scan, so the tab bar narrows it
+  // to one region at a time. Purely client-side: /sites already returns department_id.
+  const departmentSiteCount = (departmentId) => sites.filter((s) => s.department_id === departmentId).length;
+  const unassignedCount = sites.filter((s) => !s.department_id).length;
+  const visibleSites = sites.filter((site) => {
+    if (departmentTab === "all") return true;
+    if (departmentTab === "none") return !site.department_id;
+    return String(site.department_id) === departmentTab;
+  });
+
   return (
     <div>
       <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfSelected} style={{ display: "none" }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Lokasjoner</h1>
-          <div style={{ color: "var(--text-secondary)" }}>{sites.length} bygg under oppfølging</div>
+          <div style={{ color: "var(--text-secondary)" }}>
+            {departmentTab === "all"
+              ? `${sites.length} bygg under oppfølging`
+              : `${visibleSites.length} av ${sites.length} bygg under oppfølging`}
+          </div>
         </div>
         <button onClick={() => setShowForm((v) => !v)} style={primaryBtnStyle}>+ Ny lokasjon</button>
       </div>
+
+      {departments.length > 0 && (
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+          <TabButton active={departmentTab === "all"} onClick={() => setDepartmentTab("all")}>
+            Alle ({sites.length})
+          </TabButton>
+          {departments.map((d) => (
+            <TabButton key={d.id} active={departmentTab === String(d.id)} onClick={() => setDepartmentTab(String(d.id))}>
+              {d.name} ({departmentSiteCount(d.id)})
+            </TabButton>
+          ))}
+          {unassignedCount > 0 && (
+            <TabButton active={departmentTab === "none"} onClick={() => setDepartmentTab("none")}>
+              Uten avdeling ({unassignedCount})
+            </TabButton>
+          )}
+        </div>
+      )}
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
 
@@ -757,7 +795,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {sites.map((site) => (
+        {visibleSites.map((site) => (
           <Card key={site.id}>
             {editingSiteId === site.id ? (
               <form onSubmit={(e) => saveEditSite(e, site.id)} style={{ display: "grid", gap: 8 }}>
@@ -1337,7 +1375,11 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           </Card>
         ))}
       </div>
-      {loading ? <Loading /> : sites.length === 0 && <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen lokasjoner ennå.</Card>}
+      {loading ? <Loading /> : visibleSites.length === 0 && (
+        <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>
+          {sites.length === 0 ? "Ingen lokasjoner ennå." : "Ingen lokasjoner i denne avdelingen ennå."}
+        </Card>
+      )}
 
       {qrPreview && (
         <div

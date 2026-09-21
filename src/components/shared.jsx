@@ -94,6 +94,24 @@ export function Field({ label, children, style }) {
   );
 }
 
+// One tab in a page-local tab bar — used by Kunder (Kunder/Kundebrukere) and by Lokasjoner's
+// avdeling filter. Lived inline in KunderPage until a second page needed the exact same bar.
+export function TabButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: "none", border: "none", cursor: "pointer", padding: "10px 4px", marginRight: 24,
+        fontSize: 14, fontWeight: 600, color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+        borderBottom: active ? "2px solid var(--accent-orange)" : "2px solid transparent",
+        whiteSpace: "nowrap", flexShrink: 0,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 // Shared control styling for the admin CRUD pages (Lokasjoner/Kunder/Avdelinger/Avvik/Inviter) —
 // kept in one place so a new page can't drift into a different button/input shape than the rest.
 export const primaryBtnStyle = {
