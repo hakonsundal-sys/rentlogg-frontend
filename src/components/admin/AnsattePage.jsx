@@ -2,12 +2,18 @@ import { Fragment, useEffect, useState } from "react";
 import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import { LANGUAGES, DEFAULT_LANGUAGE } from "../../i18n";
 
 const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "Renholder" };
 
 // Renholder is what this form creates nearly every time — an admin or driftsleder is rare enough
 // to be worth deliberately changing the dropdown for.
-const EMPTY_NEW_USER = { name: "", email: "", password: "", role: "cleaner", department_id: "", company_id: "" };
+const EMPTY_NEW_USER = {
+  name: "", email: "", password: "", role: "cleaner", department_id: "", company_id: "",
+  // Norwegian by default because that is still what most of the office staff created here read —
+  // the languages that matter are picked deliberately, per person, at creation time.
+  language: DEFAULT_LANGUAGE,
+};
 
 // The list arrives sorted by name from the backend; keep that order as rows are added or renamed.
 const byName = (a, b) => a.name.localeCompare(b.name, "nb");
@@ -42,7 +48,7 @@ export default function AnsattePage({ token, user }) {
   const [creating, setCreating] = useState(false);
   const [createdName, setCreatedName] = useState("");
   const [editUserId, setEditUserId] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", language: DEFAULT_LANGUAGE });
   const [savingEdit, setSavingEdit] = useState(false);
 
   function loadAll() {
@@ -96,6 +102,7 @@ export default function AnsattePage({ token, user }) {
           password: newUser.password,
           role: newUser.role,
           department_id: newUser.department_id ? Number(newUser.department_id) : null,
+          language: newUser.language,
           ...(isSuperAdmin ? { company_id: Number(newUser.company_id) } : {}),
         }),
       });
@@ -168,7 +175,7 @@ export default function AnsattePage({ token, user }) {
 
   function startEdit(u) {
     setEditUserId(u.id);
-    setEditForm({ name: u.name, email: u.email, phone: u.phone || "" });
+    setEditForm({ name: u.name, email: u.email, phone: u.phone || "", language: u.language || DEFAULT_LANGUAGE });
     setResetUserId(null);
     setError("");
   }
@@ -273,6 +280,11 @@ export default function AnsattePage({ token, user }) {
                   </select>
                 </Field>
               )}
+              <Field label="Språk" style={{ minWidth: 130 }}>
+                <select value={newUser.language} onChange={(e) => updateNewUser("language", e.target.value)} style={inputStyle}>
+                  {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+                </select>
+              </Field>
               <Field label="Avdeling" style={{ minWidth: 140 }}>
                 <select value={newUser.department_id} onChange={(e) => updateNewUser("department_id", e.target.value)} style={inputStyle}>
                   <option value="">Ingen</option>
@@ -399,6 +411,15 @@ export default function AnsattePage({ token, user }) {
                               onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
                               style={{ ...inputStyle, width: 140 }}
                             />
+                          </Field>
+                          <Field label="Språk" style={{ margin: 0 }}>
+                            <select
+                              value={editForm.language}
+                              onChange={(e) => setEditForm((f) => ({ ...f, language: e.target.value }))}
+                              style={{ ...inputStyle, width: 130 }}
+                            >
+                              {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+                            </select>
                           </Field>
                           <button type="submit" disabled={savingEdit} style={primaryBtnStyle}>Lagre</button>
                           <button type="button" onClick={() => setEditUserId(null)} style={linkBtnStyle}>Avbryt</button>

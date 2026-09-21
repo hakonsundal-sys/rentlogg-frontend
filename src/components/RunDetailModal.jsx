@@ -3,6 +3,7 @@ import { X, Pencil, FileText, Download, ClipboardCheck, TriangleAlert } from "lu
 import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
 import RunRoomsAndItems from "./RunRoomsAndItems";
+import { useT } from "../i18n";
 
 // /uploads is now an authenticated route (it used to be served with no auth at all, which let
 // anyone who knew or guessed a filename read across tenants) — a plain <img src> or <a href>
@@ -30,6 +31,7 @@ function photoUrl(filePath, token) {
 // already in edit mode — used by the customer portal's "Fyll ut sjekkliste i dag" shortcut, so a
 // customer arriving specifically to do that doesn't need a second click to find the toggle.
 export default function RunDetailModal({ token, siteId, date, defaultInitials, userRole, autoEdit, onReportDeviation, onClose, setError }) {
+  const t = useT();
   const [runDetail, setRunDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(!!autoEdit);
@@ -95,7 +97,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
   // own side (customer vs. company) so this can never touch OKV's rooms.
   async function bulkCompleteAllOwnRooms() {
     if (!editInitials?.trim()) {
-      setError("Skriv inn navnet ditt for å fullføre oppgavene.");
+      setError(t("cleaner.nameRequiredTasks"));
       return;
     }
     try {
@@ -132,7 +134,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
         background: "var(--surface-1)", borderRadius: "var(--radius-lg)", padding: 24,
         maxWidth: 480, width: "100%", maxHeight: "85vh", overflowY: "auto",
       }}>
-        {loading && <div style={{ color: "var(--text-secondary)" }}>Laster...</div>}
+        {loading && <div style={{ color: "var(--text-secondary)" }}>{t("common.loading")}</div>}
         {runDetail && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -150,23 +152,23 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                 display: "flex", alignItems: "center", gap: 6, marginTop: 10, padding: "6px 10px",
                 borderRadius: "var(--radius)", background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)", fontSize: 12,
               }}>
-                <TriangleAlert size={13} /> Sjekket inn i etterkant — ingen faktisk innsjekking ble gjort denne dagen.
+                <TriangleAlert size={13} /> {t("runDetail.backdated")}
               </div>
             )}
 
             <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)", display: "grid", gap: 4 }}>
               {runDetail.id ? (
                 <>
-                  <div>Renholder: <strong style={{ color: "var(--text-primary)" }}>{runDetail.cleaner_name}</strong></div>
-                  <div>Startet: {runDetail.started_at.slice(0, 16)}</div>
-                  {runDetail.completed_at && <div>Fullført: {runDetail.completed_at.slice(0, 16)}</div>}
+                  <div>{t("runDetail.cleaner")}<strong style={{ color: "var(--text-primary)" }}>{runDetail.cleaner_name}</strong></div>
+                  <div>{t("runDetail.started", { date: runDetail.started_at.slice(0, 16) })}</div>
+                  {runDetail.completed_at && <div>{t("runDetail.completed", { date: runDetail.completed_at.slice(0, 16) })}</div>}
                   {runDetail.signed_initials && (
-                    <div>Signert: <strong style={{ color: "var(--text-primary)" }}>{runDetail.signed_initials}</strong></div>
+                    <div>{t("runDetail.signed")}<strong style={{ color: "var(--text-primary)" }}>{runDetail.signed_initials}</strong></div>
                   )}
                 </>
               ) : (
                 <div>
-                  <div>Dato: {date} — ingen innsjekking denne dagen, viser rom med egen registrert aktivitet.</div>
+                  <div>{t("runDetail.noCheckin", { date })}</div>
                   {isEditing && userRole !== "customer" && (
                     <button
                       onClick={checkInLate}
@@ -176,7 +178,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                         padding: "6px 10px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
                       }}
                     >
-                      <ClipboardCheck size={13} /> Sjekk inn i etterkant
+                      <ClipboardCheck size={13} /> {t("runDetail.checkInLate")}
                     </button>
                   )}
                 </div>
@@ -193,7 +195,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                     padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
                   }}
                 >
-                  <FileText size={14} /> Vis rapport
+                  <FileText size={14} /> {t("history.viewReport")}
                 </button>
                 <button
                   onClick={() => downloadPdf(`/reports/runs/${runDetail.id}/pdf`, token, `rapport-besok-${runDetail.id}.pdf`).catch((err) => setError(err.message))}
@@ -203,13 +205,13 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                     padding: "8px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
                   }}
                 >
-                  <Download size={14} /> Last ned PDF
+                  <Download size={14} /> {t("history.downloadPdf")}
                 </button>
               </div>
             )}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? t("history.rooms") : t("cleaner.checklist")}</div>
               {canToggleEdit && (!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -218,20 +220,20 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                     color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                   }}
                 >
-                  <Pencil size={12} /> Rediger
+                  <Pencil size={12} /> {t("history.edit")}
                 </button>
               ) : (
                 <button onClick={() => setIsEditing(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
-                  Ferdig
+                  {t("history.done")}
                 </button>
               ))}
             </div>
             {isEditing && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Signatur (navn)</label>
+                <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("cleaner.signatureLabel")}</label>
                 <input
                   value={editInitials} onChange={(e) => setEditInitials(e.target.value)}
-                  placeholder="Fullt navn" maxLength={60}
+                  placeholder={t("deviation.fullNamePlaceholder")} maxLength={60}
                   style={{
                     padding: "4px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
                     background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 12, width: 150,
@@ -248,7 +250,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                   cursor: "pointer", marginBottom: 10,
                 }}
               >
-                Fullfør alle dagens oppgaver ({ownRoomsRemaining})
+                {t("runDetail.completeAllOwn", { count: ownRoomsRemaining })}
               </button>
             )}
             <RunRoomsAndItems
@@ -258,7 +260,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
 
             {runDetail.photos.length > 0 && runDetail.rooms?.length > 0 && (
               <>
-                <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Bilder</div>
+                <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>{t("runDetail.photos")}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   {runDetail.photos.map((p) => (
                     <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">

@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { API_URL } from "../api";
+import { useT } from "../i18n";
 
 export function StatusBadge({ status }) {
+  const t = useT();
   const map = {
-    ok: { label: "OK", cls: "c-teal" },
-    overdue: { label: "Forsinket", cls: "c-amber" },
-    deviation: { label: "Avvik", cls: "c-red" },
+    ok: { key: "status.ok", cls: "c-teal" },
+    overdue: { key: "status.overdue", cls: "c-amber" },
+    deviation: { key: "status.deviation", cls: "c-red" },
   };
   const s = map[status] || map.overdue;
   return (
@@ -14,20 +16,21 @@ export function StatusBadge({ status }) {
       display: "inline-flex", alignItems: "center", gap: 4,
       padding: "2px 10px", borderRadius: "var(--radius-pill)", fontSize: 12, fontWeight: 500,
     }}>
-      {s.label}
+      {t(s.key)}
     </span>
   );
 }
 
 const ROLE_BADGE = {
-  super_admin: { label: "SUPER ADMIN", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
-  admin: { label: "ADMIN", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
-  manager: { label: "MANAGER", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
-  cleaner: { label: "RENHOLDER", bg: "var(--c-teal)", color: "var(--text-success)" },
-  customer: { label: "KUNDE", bg: "var(--surface-0)", color: "var(--text-secondary)" },
+  super_admin: { key: "role.super_admin", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  admin: { key: "role.admin", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  manager: { key: "role.manager", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  cleaner: { key: "role.cleaner", bg: "var(--c-teal)", color: "var(--text-success)" },
+  customer: { key: "role.customer", bg: "var(--surface-0)", color: "var(--text-secondary)" },
 };
 
 export function RoleBadge({ role }) {
+  const t = useT();
   const r = ROLE_BADGE[role] || ROLE_BADGE.customer;
   return (
     <span style={{
@@ -35,7 +38,7 @@ export function RoleBadge({ role }) {
       padding: "2px 8px", borderRadius: "var(--radius-sm)", fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
       background: r.bg, color: r.color,
     }}>
-      {r.label}
+      {t(r.key)}
     </span>
   );
 }
@@ -51,9 +54,13 @@ export function RoleBadge({ role }) {
 // single mixed list. `perspective="staff"` (default; cleaner/admin views) renders nothing for a
 // company room — staff's default assumption is "it's ours", so only the exception needs a flag.
 export function ResponsibleBadge({ responsible, perspective = "staff" }) {
+  const t = useT();
   const isCustomer = responsible === "customer";
   if (perspective === "staff" && !isCustomer) return null;
-  const label = perspective === "customer" ? (isCustomer ? "Dere" : "Renholder") : "Kunde";
+  const label =
+    perspective === "customer"
+      ? t(isCustomer ? "responsible.you" : "responsible.cleaner")
+      : t("responsible.customer");
   return (
     <span style={{
       fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap",
@@ -78,8 +85,13 @@ export function Card({ children, style }) {
 
 // Simple "Laster..." placeholder for list pages, so the first render doesn't flash an
 // "ingen X ennå" empty state before the initial fetch has actually come back.
-export function Loading({ text = "Laster..." }) {
-  return <div style={{ color: "var(--text-secondary)", fontSize: 13, padding: "8px 0" }}>{text}</div>;
+export function Loading({ text }) {
+  const t = useT();
+  return (
+    <div style={{ color: "var(--text-secondary)", fontSize: 13, padding: "8px 0" }}>
+      {text ?? t("common.loading")}
+    </div>
+  );
 }
 
 // A visible label above a form control, unlike a placeholder that disappears once the field has
@@ -139,8 +151,9 @@ function documentUrl(filePath, token) {
 // Shared read/edit list for a site's document library — used by admin (with onDelete), and
 // read-only by the customer and cleaner surfaces.
 export function DocumentsList({ documents, onDelete, token }) {
+  const t = useT();
   if (!documents.length) {
-    return <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Ingen dokumenter ennå.</div>;
+    return <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t("documents.empty")}</div>;
   }
   return (
     <div>
@@ -155,7 +168,7 @@ export function DocumentsList({ documents, onDelete, token }) {
           {onDelete && (
             <button
               onClick={() => onDelete(d.id)}
-              aria-label="Fjern dokument"
+              aria-label={t("documents.remove")}
               style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 0 }}
             >
               <X size={14} />

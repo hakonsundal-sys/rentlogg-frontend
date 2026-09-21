@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { X } from "lucide-react";
+import { useT } from "../i18n";
 
 // Decodes camera frames client-side via jsQR — no round-trip to the server needed to read
 // the code. onScan receives the raw decoded text (a full check-in URL in normal use).
@@ -11,11 +12,12 @@ export default function QrScanner({ onScan, onCancel }) {
   const rafRef = useRef(null);
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
-  const [error, setError] = useState("");
+  const t = useT();
+  const [errorKey, setErrorKey] = useState("");
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Denne nettleseren støtter ikke kameratilgang.");
+      setErrorKey("qr.noCameraSupport");
       return;
     }
 
@@ -55,10 +57,7 @@ export default function QrScanner({ onScan, onCancel }) {
         tick();
       } catch {
         if (!cancelled) {
-          setError(
-            "Fikk ikke tilgang til kamera. Trykk på kamera-/hengelås-ikonet i adressefeltet og " +
-            "gi tilgang, eller lukk dette og skriv inn koden manuelt i stedet."
-          );
+          setErrorKey("qr.cameraDenied");
         }
       }
     })();
@@ -85,12 +84,12 @@ export default function QrScanner({ onScan, onCancel }) {
       }}>
         <X size={18} />
       </button>
-      {error && (
+      {errorKey && (
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0, background: "var(--bg-danger)",
           color: "var(--text-danger)", padding: "10px 14px", fontSize: 13, textAlign: "center",
         }}>
-          {error}
+          {t(errorKey)}
         </div>
       )}
     </div>

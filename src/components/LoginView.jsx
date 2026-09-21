@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { apiFetch } from "../api";
 import { Card } from "./shared";
+import { useT } from "../i18n";
 
 export default function LoginView({ onLogin, checkinPending }) {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -33,16 +35,16 @@ export default function LoginView({ onLogin, checkinPending }) {
             fontSize: 13, color: "var(--text-secondary)", background: "var(--surface-0)",
             border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 10px", marginBottom: 14,
           }}>
-            Logg inn for å sjekke inn på lokasjonen du skannet.
+            {t("login.checkinPending")}
           </div>
         )}
         <form onSubmit={submit}>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>E-post</label>
+          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>{t("login.email")}</label>
           <input
             type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
             style={inputStyle}
           />
-          <label style={{ display: "block", fontSize: 13, margin: "12px 0 4px" }}>Passord</label>
+          <label style={{ display: "block", fontSize: 13, margin: "12px 0 4px" }}>{t("login.password")}</label>
           <input
             type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
             style={inputStyle}
@@ -52,7 +54,7 @@ export default function LoginView({ onLogin, checkinPending }) {
             marginTop: 16, width: "100%", background: "var(--accent-orange)", color: "white",
             border: "none", padding: "10px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
-            {loading ? "Logger inn..." : "Logg inn"}
+            {loading ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
       </Card>
@@ -63,9 +65,9 @@ export default function LoginView({ onLogin, checkinPending }) {
           e-post/passord-boks uten avsender er nøyaktig formen en phishing-side har, og det er en
           medvirkende grunn til at bedriftsfiltre blokkerte domenet for kundene våre. */}
       <p style={{ textAlign: "center", fontSize: 12.5, color: "var(--text-muted)", marginTop: 16, lineHeight: 1.5 }}>
-        Kontoer opprettes av arbeidsgiveren din — det er ingen åpen registrering.
+        {t("login.noSelfSignup")}
         <br />
-        <a href="/om.html" style={{ color: "var(--text-secondary)" }}>Om tjenesten og personvern</a>
+        <a href="/om.html" style={{ color: "var(--text-secondary)" }}>{t("login.about")}</a>
       </p>
     </div>
   );

@@ -1,3 +1,5 @@
+import { translateApiError } from "./i18n";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export async function apiFetch(path, { token, ...options } = {}) {
@@ -14,7 +16,10 @@ export async function apiFetch(path, { token, ...options } = {}) {
   const data = contentType.includes("application/json") ? await res.json() : null;
 
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`);
+    const err = new Error(translateApiError(data?.code, data?.error) || `Request failed (${res.status})`);
+    err.code = data?.code;
+    err.status = res.status;
+    throw err;
   }
   return data;
 }
@@ -23,7 +28,7 @@ async function downloadBlob(path, token, filename) {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error("Kunne ikke laste ned filen");
+  if (!res.ok) throw new Error(translateApiError("download_failed"));
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -57,9 +62,9 @@ export async function viewHtmlReport(path, token) {
     const res = await fetch(`${API_URL}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error("Kunne ikke åpne rapporten");
+    if (!res.ok) throw new Error(translateApiError("report_open_failed"));
     const blob = await res.blob();
-    if (!win) throw new Error("Nettleseren blokkerte den nye fanen. Tillat sprettoppvinduer og prøv igjen.");
+    if (!win) throw new Error(translateApiError("popup_blocked"));
     win.location = URL.createObjectURL(blob);
   } catch (err) {
     win?.close();

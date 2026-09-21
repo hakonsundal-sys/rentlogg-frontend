@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api";
 import { Card } from "./shared";
-
-const ROLE_LABELS = { admin: "Admin", manager: "Driftsleder", cleaner: "Renholder", customer: "Kunde" };
+import { useT } from "../i18n";
 
 export default function AcceptInvitePage({ token: inviteToken, onLogin, onCancel }) {
+  const t = useT();
   const [status, setStatus] = useState("loading"); // loading | valid | invalid
   const [invite, setInvite] = useState(null);
   const [name, setName] = useState("");
@@ -39,19 +39,19 @@ export default function AcceptInvitePage({ token: inviteToken, onLogin, onCancel
   }
 
   if (status === "loading") {
-    return <div style={{ maxWidth: 360, margin: "80px auto", textAlign: "center", color: "var(--text-secondary)" }}>Laster...</div>;
+    return <div style={{ maxWidth: 360, margin: "80px auto", textAlign: "center", color: "var(--text-secondary)" }}>{t("common.loading")}</div>;
   }
 
   if (status === "invalid") {
     return (
       <div style={{ maxWidth: 360, margin: "40px auto 0" }}>
         <Card style={{ textAlign: "center" }}>
-          <div style={{ marginBottom: 12 }}>Denne invitasjonen er ikke lenger gyldig.</div>
+          <div style={{ marginBottom: 12 }}>{t("invite.invalid")}</div>
           <button onClick={onCancel} style={{
             background: "var(--accent-orange)", color: "white", border: "none",
             padding: "10px 20px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
-            Gå til innlogging
+            {t("invite.goToLogin")}
           </button>
         </Card>
       </div>
@@ -62,22 +62,22 @@ export default function AcceptInvitePage({ token: inviteToken, onLogin, onCancel
     <div style={{ maxWidth: 360, margin: "40px auto 0" }}>
       <Card>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 600 }}>Bli med i Rentlogg</div>
+          <div style={{ fontWeight: 600 }}>{t("invite.title")}</div>
           <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            {invite.email} · inviteres som {ROLE_LABELS[invite.role] || invite.role}
+            {t("invite.invitedAs", { email: invite.email, role: t(`invite.role.${invite.role}`) })}
           </div>
         </div>
         <form onSubmit={submit}>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>Fullt navn</label>
+          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>{t("invite.fullName")}</label>
           <input required value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
-          <label style={{ display: "block", fontSize: 13, margin: "12px 0 4px" }}>Velg passord</label>
+          <label style={{ display: "block", fontSize: 13, margin: "12px 0 4px" }}>{t("invite.choosePassword")}</label>
           <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
           {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 10 }}>{error}</div>}
           <button type="submit" disabled={submitting} style={{
             marginTop: 16, width: "100%", background: "var(--accent-orange)", color: "white",
             border: "none", padding: "10px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
-            {submitting ? "Oppretter..." : "Opprett konto"}
+            {submitting ? t("invite.creating") : t("invite.createAccount")}
           </button>
         </form>
       </Card>

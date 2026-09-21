@@ -4,6 +4,7 @@ import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
 import { Card, ResponsibleBadge } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
+import { useI18n, useT } from "../i18n";
 
 // /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
 // Authorization header, so the token rides along as a query param instead.
@@ -12,13 +13,10 @@ function photoUrl(filePath, token) {
   return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
-const REPLY_ACTIONS = [
-  { action: "resolve", label: "Lukk avvik" },
-  { action: "assign_manager", label: "Send til driftsleder" },
-  { action: "assign_customer", label: "Send til kunde" },
-];
+const REPLY_ACTIONS = ["resolve", "assign_manager", "assign_customer"];
 
 export default function CleanerHistoryView({ token, user, initials: sharedInitials }) {
+  const { t, tn } = useI18n();
   const [runs, setRuns] = useState(null);
   const [error, setError] = useState("");
   const [expandedRunId, setExpandedRunId] = useState(null);
@@ -74,13 +72,13 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
     );
   }
 
-  if (runs === null) return <div style={{ color: "var(--text-secondary)" }}>Laster...</div>;
+  if (runs === null) return <div style={{ color: "var(--text-secondary)" }}>{t("common.loading")}</div>;
 
   return (
     <div>
       {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
       {runs.length === 0 && (
-        <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>Ingen tidligere sjekklister ennå.</Card>
+        <Card style={{ textAlign: "center", color: "var(--text-secondary)" }}>{t("history.empty")}</Card>
       )}
       {runs.map((run) => (
         <Card key={run.id} style={{ marginBottom: 10, padding: 0, overflow: "hidden" }}>
@@ -93,8 +91,8 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
               <div>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{run.site_name}</div>
                 <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                  {run.started_at.slice(0, 16)} · {run.completed_at ? "Fullført" : "Pågår"}
-                  {run.backdated && <span style={{ color: "var(--accent-orange-dark)", fontWeight: 600 }}> · sjekket inn i etterkant</span>}
+                  {run.started_at.slice(0, 16)} · {run.completed_at ? t("history.completed") : t("history.inProgress")}
+                  {run.backdated && <span style={{ color: "var(--accent-orange-dark)", fontWeight: 600 }}>{t("history.backdated")}</span>}
                 </div>
               </div>
             </div>
@@ -104,18 +102,20 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                 background: run.needs_response_count > 0 ? "var(--bg-danger)" : "var(--surface-0)",
                 color: run.needs_response_count > 0 ? "var(--text-danger)" : "var(--text-secondary)",
               }}>
-                {run.needs_response_count > 0 ? `${run.needs_response_count} å svare på` : `${run.deviation_count} avvik`}
+                {run.needs_response_count > 0
+                  ? tn("history.toAnswer", run.needs_response_count)
+                  : tn("history.deviationCount", run.deviation_count)}
               </span>
             )}
           </div>
 
           {expandedRunId === run.id && (
             <div style={{ borderTop: "1px solid var(--border)", padding: 14 }}>
-              {loadingDetail && <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>Laster...</div>}
+              {loadingDetail && <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>{t("common.loading")}</div>}
               {runDetail && (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? "Rom" : "Sjekkliste"}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{runDetail.rooms?.length > 0 ? t("history.rooms") : t("cleaner.checklist")}</div>
                     {!isEditingRun ? (
                       <button
                         onClick={() => setIsEditingRun(true)}
@@ -124,20 +124,20 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                           color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                         }}
                       >
-                        <Pencil size={12} /> Rediger
+                        <Pencil size={12} /> {t("history.edit")}
                       </button>
                     ) : (
                       <button onClick={() => setIsEditingRun(false)} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
-                        Ferdig
+                        {t("history.done")}
                       </button>
                     )}
                   </div>
                   {isEditingRun && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Signatur (navn)</label>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("cleaner.signatureLabel")}</label>
                       <input
                         value={editInitials} onChange={(e) => setEditInitials(e.target.value)}
-                        placeholder="Fullt navn" maxLength={60}
+                        placeholder={t("deviation.fullNamePlaceholder")} maxLength={60}
                         style={{
                           padding: "4px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
                           background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 12, width: 150,
@@ -159,7 +159,7 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                         padding: "7px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
                       }}
                     >
-                      <FileText size={13} /> Vis rapport
+                      <FileText size={13} /> {t("history.viewReport")}
                     </button>
                     <button
                       onClick={() => downloadPdf(`/reports/runs/${run.id}/pdf`, token, `rapport-besok-${run.id}.pdf`).catch((err) => setError(err.message))}
@@ -169,20 +169,20 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                         padding: "7px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
                       }}
                     >
-                      <Download size={13} /> Last ned PDF
+                      <Download size={13} /> {t("history.downloadPdf")}
                     </button>
                   </div>
 
                   {runDetail.deviations?.length > 0 && (
                     <>
-                      <div style={{ fontWeight: 600, fontSize: 13, marginTop: 16, marginBottom: 6, color: "var(--text-danger)" }}>Avvik</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, marginTop: 16, marginBottom: 6, color: "var(--text-danger)" }}>{t("history.deviations")}</div>
                       {runDetail.deviations.map((dev) => (
                         <DeviationRow key={dev.id} token={token} deviation={dev} sharedInitials={sharedInitials} onReplied={onReplied} setError={setError} />
                       ))}
                     </>
                   )}
                   {(!runDetail.deviations || runDetail.deviations.length === 0) && (
-                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 16 }}>Ingen avvik meldt for dette besøket.</div>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 16 }}>{t("history.noDeviations")}</div>
                   )}
                 </>
               )}
@@ -194,11 +194,10 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
   );
 }
 
-const ASSIGNED_LABEL = { manager: "Sendt til driftsleder", customer: "Sendt til kunde" };
-const PRIORITY_LABEL = { low: "Lav", medium: "Middels", high: "Høy" };
 const PRIORITY_COLOR = { low: "var(--text-secondary)", medium: "var(--accent-orange-dark)", high: "var(--text-danger)" };
 
 function DeviationRow({ token, deviation, sharedInitials, onReplied, setError }) {
+  const t = useT();
   const [replyText, setReplyText] = useState("");
   const [replyInitials, setReplyInitials] = useState(sharedInitials || "");
   const [replyPhoto, setReplyPhoto] = useState(null);
@@ -207,11 +206,11 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
 
   async function reply(action) {
     if (!replyText.trim()) {
-      setError("Skriv et svar før du sender.");
+      setError(t("history.replyRequired"));
       return;
     }
     if (!replyInitials.trim()) {
-      setError("Skriv inn navnet ditt for å svare.");
+      setError(t("history.nameRequiredReply"));
       return;
     }
     setSubmitting(true);
@@ -232,7 +231,7 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           const photo = await apiFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
           onReplied({ id: deviation.id, photos: [...(deviation.photos || []), photo] });
         } catch (err) {
-          setError(`Svaret ble sendt, men bildet kunne ikke lastes opp: ${err.message}`);
+          setError(t("history.replySentPhotoFailed", { error: err.message }));
         }
         setReplyPhoto(null);
       }
@@ -257,11 +256,11 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           <div style={{ fontSize: 13 }}>{deviation.description}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
             {deviation.reported_by_initials && (
-              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Meldt av: {deviation.reported_by_initials}</div>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{t("deviation.reportedBy", { name: deviation.reported_by_initials })}</div>
             )}
             {deviation.priority && (
               <span style={{ fontSize: 11, fontWeight: 600, color: PRIORITY_COLOR[deviation.priority] }}>
-                {PRIORITY_LABEL[deviation.priority] || deviation.priority}
+                {t(`priority.${deviation.priority}`)}
               </span>
             )}
           </div>
@@ -279,15 +278,19 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
 
       {deviation.reply_text ? (
         <div style={{ marginTop: 8, marginLeft: 22, fontSize: 12, color: "var(--text-secondary)" }}>
-          <div>Svar: {deviation.reply_text} — {deviation.replied_by_initials}</div>
+          <div>{t("deviation.replyLine", { text: deviation.reply_text, by: deviation.replied_by_initials })}</div>
           <div style={{ marginTop: 2 }}>
-            {deviation.status === "resolved" ? "Lukket" : ASSIGNED_LABEL[deviation.assigned_to] || ""}
+            {deviation.status === "resolved"
+              ? t("history.closed")
+              : deviation.assigned_to
+                ? t(`history.assigned.${deviation.assigned_to}`)
+                : ""}
           </div>
           {deviation.status === "resolved" && (
             <div style={{ marginTop: 2, color: deviation.customer_approved_at ? "var(--text-success)" : "var(--text-secondary)" }}>
               {deviation.customer_approved_at
-                ? `Godkjent av kunde (${deviation.customer_approved_by_initials})`
-                : "Venter på kundegodkjenning"}
+                ? t("deviation.approvedByCustomer", { name: deviation.customer_approved_by_initials })
+                : t("deviation.awaitingCustomerApproval")}
             </div>
           )}
         </div>
@@ -296,7 +299,7 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           <textarea
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            placeholder="Svar på avviket..."
+            placeholder={t("history.replyPlaceholder")}
             style={{
               width: "100%", minHeight: 50, padding: 8, borderRadius: "var(--radius)",
               border: "1px solid var(--border)", background: "var(--surface-2)",
@@ -305,7 +308,7 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           />
           <input
             value={replyInitials} onChange={(e) => setReplyInitials(e.target.value)}
-            placeholder="Fullt navn" maxLength={60}
+            placeholder={t("deviation.fullNamePlaceholder")} maxLength={60}
             style={{
               marginTop: 6, padding: "5px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
               background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13, width: 160,
@@ -323,9 +326,9 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
                 padding: "6px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
               }}
             >
-              <Camera size={13} /> {replyPhoto ? replyPhoto.name : "Legg ved bilde"}
+              <Camera size={13} /> {replyPhoto ? replyPhoto.name : t("cleaner.attachPhoto")}
             </button>
-            {REPLY_ACTIONS.map(({ action, label }) => (
+            {REPLY_ACTIONS.map((action) => (
               <button
                 key={action} disabled={submitting} onClick={() => reply(action)}
                 style={{
@@ -335,7 +338,7 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
                   padding: "6px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
                 }}
               >
-                {label}
+                {t(`history.action.${action}`)}
               </button>
             ))}
           </div>

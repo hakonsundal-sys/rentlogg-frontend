@@ -7,6 +7,9 @@ import SuperAdminLayout from "./components/admin/SuperAdminLayout";
 import CleanerView, { clearCleanerContext } from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
 import { RoleBadge } from "./components/shared";
+import LanguagePicker from "./components/LanguagePicker";
+import { I18nProvider, useT } from "./i18n";
+import { apiFetch } from "./api";
 
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
@@ -38,6 +41,10 @@ function authFromStorage() {
 }
 
 export default function App() {
+  return <AppInner />;
+}
+
+function AppInner() {
   const [auth, setAuthState] = useState(authFromStorage);
   const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
   const [checkinToken, setCheckinToken] = useState(checkinTokenFromUrl);
@@ -53,6 +60,20 @@ export default function App() {
     // A cleaner's device is usually shared (one work phone, not one per person) — don't let the
     // next person who logs in on it inherit whichever site/room the previous cleaner had open.
     if (!value) clearCleanerContext();
+  }
+
+  // A language switch applies instantly in the UI (see i18n.jsx) — this just makes it follow the
+  // person to their next device. Failures are swallowed on purpose: the choice is already saved in
+  // this browser, and a cleaner on a dead signal shouldn't get an error toast for picking a
+  // language. Not logged in yet (login/invite screen) means there's no account to save it on.
+  function persistLanguage(code) {
+    if (!auth) return;
+    setAuth({ ...auth, user: { ...auth.user, language: code } });
+    apiFetch("/auth/me", {
+      token: auth.token,
+      method: "PATCH",
+      body: JSON.stringify({ language: code }),
+    }).catch(() => {});
   }
 
   function clearInviteParam() {
@@ -78,23 +99,43 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, checkinToken]);
 
-  if (inviteToken) {
-    return <Shell><AcceptInvitePage token={inviteToken} onLogin={handleAuthenticated} onCancel={clearInviteParam} /></Shell>;
-  }
+  const body = renderBody();
 
-  if (!auth) {
-    return <Shell><LoginView onLogin={handleAuthenticated} checkinPending={!!checkinToken} /></Shell>;
-  }
+  return (
+    <I18nProvider user={auth?.user} onLanguageChange={persistLanguage}>
+      {body}
+    </I18nProvider>
+  );
 
+  function renderBody() {
+    if (inviteToken) {
+      return <Shell><AcceptInvitePage token={inviteToken} onLogin={handleAuthenticated} onCancel={clearInviteParam} /></Shell>;
+    }
+
+    if (!auth) {
+      return <Shell><LoginView onLogin={handleAuthenticated} checkinPending={!!checkinToken} /></Shell>;
+    }
+
+    const { token, user } = auth;
+
+    // The admin surfaces are deliberately still Norwegian-only for now (see the localization plan,
+    // 2026-09-21): the people using them read Norwegian, and the ~380 strings behind LokasjonerPage
+    // and friends would have swamped the translation pass that actually matters — the cleaner's.
+    if (user.role === "super_admin") {
+      return <SuperAdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
+    }
+
+    if (user.role === "admin" || user.role === "manager") {
+      return <AdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
+    }
+
+    return <UserShell auth={auth} onLogout={() => setAuth(null)} checkinToken={checkinToken} onCheckinHandled={clearCheckinParam} />;
+  }
+}
+
+function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
   const { token, user } = auth;
-
-  if (user.role === "super_admin") {
-    return <SuperAdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
-  }
-
-  if (user.role === "admin" || user.role === "manager") {
-    return <AdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
-  }
+  const t = useT();
 
   return (
     <Shell>
@@ -103,38 +144,46 @@ export default function App() {
           <span style={{ fontSize: 14, fontWeight: 600 }}>{user.name}</span>
           <RoleBadge role={user.role} />
         </div>
-        <button onClick={() => setAuth(null)} style={{
+        <button onClick={onLogout} style={{
           display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--border)",
           borderRadius: "var(--radius)", padding: "6px 12px", fontSize: 13, cursor: "pointer", color: "var(--text-secondary)",
         }}>
-          <LogOut size={14} /> Logg ut
+          <LogOut size={14} /> {t("app.logout")}
         </button>
       </div>
       {user.role === "cleaner" && (
-        <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={clearCheckinParam} />
+        <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
       )}
       {user.role === "customer" && (
-        <CustomerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={clearCheckinParam} />
+        <CustomerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
       )}
     </Shell>
   );
 }
 
 function Shell({ children }) {
+  const t = useT();
+
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
-        <span style={{
-          width: 30, height: 30, borderRadius: "var(--radius-sm)", background: "var(--brand-gradient)",
-          color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center",
-          fontSize: 16, fontWeight: 700,
-        }}>
-          R
-        </span>
-        <div style={{ fontSize: 19, fontWeight: 700 }}>Rentlogg</div>
+      {/* The picker sits in the header rather than behind a profile menu because the screen that
+          needs it most is the login screen — someone who can't read "Logg inn" can't be asked to
+          log in first and change the language afterwards. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <span style={{
+            width: 30, height: 30, borderRadius: "var(--radius-sm)", background: "var(--brand-gradient)",
+            color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, fontWeight: 700, flexShrink: 0,
+          }}>
+            R
+          </span>
+          <div style={{ fontSize: 19, fontWeight: 700 }}>Rentlogg</div>
+        </div>
+        <LanguagePicker compact />
       </div>
       <div style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 40, marginBottom: 20 }}>
-        Dokumentert etterkontroll
+        {t("app.tagline")}
       </div>
       {children}
     </div>
