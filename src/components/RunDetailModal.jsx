@@ -3,6 +3,7 @@ import { X, Pencil, FileText, Download, ClipboardCheck, TriangleAlert } from "lu
 import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
 import RunRoomsAndItems from "./RunRoomsAndItems";
+import RunHistory from "./RunHistory";
 import { useT } from "../i18n";
 
 // /uploads is now an authenticated route (it used to be served with no auth at all, which let
@@ -257,6 +258,11 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
               token={token} runDetail={runDetail} editable={isEditing} editInitials={editInitials}
               onChanged={refresh} setError={setError} onReportDeviation={onReportDeviation} userRole={userRole}
             />
+
+            {/* Staff only: the customer already sees who signed and approved each of their rooms,
+                and a minute-by-minute view of the cleaning company's own working day isn't
+                theirs to read. */}
+            {userRole !== "customer" && <RunHistory events={runDetail.history} />}
 
             {runDetail.photos.length > 0 && runDetail.rooms?.length > 0 && (
               <>

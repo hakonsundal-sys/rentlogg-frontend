@@ -4,6 +4,7 @@ import { apiFetch, downloadZip, downloadPdf, viewHtmlReport, API_URL } from "../
 import { isNetworkError } from "../../offlineQueue";
 import { Card } from "../shared";
 import RunRoomsAndItems from "../RunRoomsAndItems";
+import RunHistory from "../RunHistory";
 
 const ROLE_CHIP = { admin: "Administrator", manager: "Driftsleder" };
 
@@ -368,6 +369,10 @@ export default function DashboardPage({ token, user, summary }) {
                     ))}
                   </>
                 )}
+
+                {/* "Hvem gjorde hva når" for dette besøket, satt sammen av tidsstemplene som
+                    allerede lagres — svaret man leter etter når en dag blir bestridt. */}
+                <RunHistory events={runDetail.history} />
               </>
             )}
           </div>
