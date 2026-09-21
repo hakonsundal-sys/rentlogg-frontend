@@ -119,23 +119,30 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // No dedicated cross-site "needs my approval" endpoint exists yet — this reuses the same
+  // per-site rooms fetch openReportForm already calls on demand, just eagerly for every site so
+  // today's dashboard can surface a queue without opening each site one by one. Fine at the scale
+  // a single customer account actually has (a handful of sites). Also re-run after approving an
+  // avvik, since that can now auto-approve the room it was reported against (see
+  // DeviationItem's onApproved below) — without a refresh here the card would keep showing a room
+  // that's already been closed out.
+  async function refreshRoomsAwaitingApproval(sitesList) {
+    const perSite = await Promise.all(
+      sitesList.map((s) =>
+        apiFetch(`/sites/${s.id}/rooms`, { token })
+          .then((rooms) => rooms.filter((r) => r.status === "awaiting_approval").map((r) => ({ ...r, site: s })))
+          .catch(() => [])
+      )
+    );
+    setRoomsAwaitingApproval(perSite.flat());
+  }
+
   useEffect(() => {
     Promise.all([apiFetch("/sites", { token }), apiFetch("/deviations", { token })])
       .then(async ([sites, deviations]) => {
         setSites(sites);
         setDeviations(deviations);
-        // No dedicated cross-site "needs my approval" endpoint exists yet — this reuses the same
-        // per-site rooms fetch openReportForm already calls on demand, just eagerly for every
-        // site so today's dashboard can surface a queue without opening each site one by one.
-        // Fine at the scale a single customer account actually has (a handful of sites).
-        const perSite = await Promise.all(
-          sites.map((s) =>
-            apiFetch(`/sites/${s.id}/rooms`, { token })
-              .then((rooms) => rooms.filter((r) => r.status === "awaiting_approval").map((r) => ({ ...r, site: s })))
-              .catch(() => [])
-          )
-        );
-        setRoomsAwaitingApproval(perSite.flat());
+        await refreshRoomsAwaitingApproval(sites);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -266,7 +273,10 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
                 {siteDeviations.map((d) => (
                   <DeviationItem
                     key={d.id} token={token} user={user} deviation={d}
-                    onApproved={(updated) => setDeviations((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
+                    onApproved={(updated) => {
+                      setDeviations((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
+                      refreshRoomsAwaitingApproval(sites);
+                    }}
                     setError={setError}
                   />
                 ))}

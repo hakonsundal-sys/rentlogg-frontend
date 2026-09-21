@@ -322,6 +322,31 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
     }
   }
 
+  // Same sign-off as approveRoom, applied to every room awaiting the customer's approval in this
+  // run at once — one shared "Fullt navn" entry (the field above the room list) covers all of
+  // them, so this is a loop over the same endpoint rather than a separate bulk route. Approves
+  // sequentially and keeps going on a per-room failure so one bad room doesn't block the rest;
+  // any failures are reported together at the end.
+  async function approveAllRooms(roomRunIds) {
+    if (!editInitials?.trim()) {
+      setError("Skriv inn navnet ditt for å godkjenne alle rom.");
+      return;
+    }
+    const initials = editInitials.trim();
+    const failures = [];
+    for (const roomRunId of roomRunIds) {
+      try {
+        await queueableFetch(`/rooms/runs/${roomRunId}/approve`, {
+          token, method: "POST", body: JSON.stringify({ initials }),
+        });
+      } catch (err) {
+        failures.push(err.message);
+      }
+    }
+    onChanged();
+    if (failures.length > 0) setError(`${failures.length} rom kunne ikke godkjennes: ${failures.join(", ")}`);
+  }
+
   // A room with no roomRunId yet has nothing to click at all — "IKKE STARTET" was previously a
   // dead end when opening a day retroactively (see GET /checklists/site/:siteId/date/:date),
   // since only the live check-in flow (always "today") could ever create a room_run. This lets
@@ -368,8 +393,23 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   }
 
   if (runDetail.rooms?.length > 0) {
+    const approvableRoomRunIds = runDetail.rooms
+      .filter((room) => {
+        const awaitingApproval = room.requires_approval && room.ready_for_approval_at && !room.completed_at;
+        return editable && awaitingApproval && ["customer", "admin", "manager"].includes(userRole);
+      })
+      .map((room) => room.roomRunId);
+
     return (
       <>
+        {approvableRoomRunIds.length > 1 && (
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+            <CompleteButton
+              onClick={() => approveAllRooms(approvableRoomRunIds)}
+              label={`Godkjenn alle rom (${approvableRoomRunIds.length})`}
+            />
+          </div>
+        )}
         {runDetail.rooms.map((room) => {
           const doneCount = room.items.filter((i) => i.done).length;
           const awaitingApproval = room.requires_approval && room.ready_for_approval_at && !room.completed_at;
