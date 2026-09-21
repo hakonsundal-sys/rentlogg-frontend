@@ -220,10 +220,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   }
 
   // A room's own schedule says how often it gets opened at all — this is for a single task
-  // inside it that's due on a different cadence (e.g. a daily room with one Tuesday-only task,
-  // or one monthly task). occurrence=null with weekday set means "weekly, every occurrence of
-  // that weekday"; both set means "only the Nth occurrence of that weekday in the month"; both
-  // null (setItemDailyMode) means "every time the room is cleaned", same as before this existed.
+  // inside it that's due only on the Nth occurrence of a specific weekday each month (e.g. a
+  // daily room with one "first Monday" task). For the weekly, one-or-more-days case, see
+  // setItemWeeklyMode/toggleItemWeekday below. setItemDailyMode means "every time the room is
+  // cleaned", same as before any of this existed.
   async function setItemMonthlyMode(roomId, itemId, weekday, occurrence) {
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
@@ -246,6 +246,31 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // "Ukentlig" — due every week on one or more specific weekdays (e.g. "man+tor"), independent
+  // of whatever days the room itself is scheduled for. Replaces the whole day set each call.
+  async function setItemWeeklyMode(roomId, itemId, days) {
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({ weekly_days: days }),
+      });
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Toggles one day on/off within an item's current weekly day set. Refuses to remove the last
+  // remaining day — a weekly-mode item always needs at least one day; to clear it entirely, switch
+  // the mode dropdown to "Hver gang" instead.
+  async function toggleItemWeekday(roomId, itemId, weekday) {
+    const item = (roomItems[roomId] || []).find((i) => i.id === itemId);
+    const current = item?.weekly_days || [];
+    const next = current.includes(weekday) ? current.filter((d) => d !== weekday) : [...current, weekday];
+    if (next.length === 0) return;
+    setItemWeeklyMode(roomId, itemId, next);
   }
 
   // "Annenhver uke" — due if it's been at least 14 days since this item was last checked off
@@ -1138,16 +1163,16 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                               </div>
                             </div>
                             )}
-                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, flexWrap: "wrap" }}>
                               <select
                                 value={
                                   item.interval_days != null ? "biweekly"
-                                  : item.monthly_weekday == null ? "daily"
-                                  : item.monthly_occurrence == null ? "weekly" : "monthly"
+                                  : (item.weekly_days && item.weekly_days.length > 0) ? "weekly"
+                                  : item.monthly_weekday != null ? "monthly" : "daily"
                                 }
                                 onChange={(e) => {
                                   if (e.target.value === "daily") setItemDailyMode(room.id, item.id);
-                                  else if (e.target.value === "weekly") setItemMonthlyMode(room.id, item.id, todayWeekday(), null);
+                                  else if (e.target.value === "weekly") setItemWeeklyMode(room.id, item.id, [todayWeekday()]);
                                   else if (e.target.value === "biweekly") setItemBiweeklyMode(room.id, item.id);
                                   else setItemMonthlyMode(room.id, item.id, todayWeekday(), 1);
                                 }}
@@ -1158,14 +1183,22 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                 <option value="biweekly">Annenhver uke</option>
                                 <option value="monthly">Månedlig</option>
                               </select>
-                              {item.monthly_weekday != null && item.monthly_occurrence == null && (
-                                <select
-                                  value={item.monthly_weekday}
-                                  onChange={(e) => setItemMonthlyMode(room.id, item.id, Number(e.target.value), null)}
-                                  style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 66 }}
-                                >
-                                  {WEEKDAYS.map((wd) => <option key={wd.value} value={wd.value}>{wd.label}</option>)}
-                                </select>
+                              {item.weekly_days && item.weekly_days.length > 0 && (
+                                <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                                  {WEEKDAYS.map((wd) => {
+                                    const active = item.weekly_days.includes(wd.value);
+                                    return (
+                                      <button key={wd.value} onClick={() => toggleItemWeekday(room.id, item.id, wd.value)} style={{
+                                        padding: "2px 6px", borderRadius: 5, fontSize: 10, cursor: "pointer",
+                                        border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+                                        background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
+                                        color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                                      }}>
+                                        {wd.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               )}
                               {item.monthly_weekday != null && item.monthly_occurrence != null && (
                                 <>
