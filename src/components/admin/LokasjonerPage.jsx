@@ -248,6 +248,21 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  // "Annenhver uke" — due if it's been at least 14 days since this item was last checked off
+  // (see isItemDueOn's interval_days branch). Mutually exclusive with the weekly/monthly modes
+  // above — the backend clears monthly_weekday/monthly_occurrence when this is set.
+  async function setItemBiweeklyMode(roomId, itemId) {
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({ interval_days: 14 }),
+      });
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   // Which party fills out this room's checklist — 'company' (default, OKV's own cleaner) or
   // 'customer' (that site's own client, e.g. Domstein's own zone). Deliberately per-room, not
   // per-site: a site can mix both (see rooms.responsible).
@@ -1125,16 +1140,22 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                             )}
                             <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                               <select
-                                value={item.monthly_weekday == null ? "daily" : item.monthly_occurrence == null ? "weekly" : "monthly"}
+                                value={
+                                  item.interval_days != null ? "biweekly"
+                                  : item.monthly_weekday == null ? "daily"
+                                  : item.monthly_occurrence == null ? "weekly" : "monthly"
+                                }
                                 onChange={(e) => {
                                   if (e.target.value === "daily") setItemDailyMode(room.id, item.id);
                                   else if (e.target.value === "weekly") setItemMonthlyMode(room.id, item.id, todayWeekday(), null);
+                                  else if (e.target.value === "biweekly") setItemBiweeklyMode(room.id, item.id);
                                   else setItemMonthlyMode(room.id, item.id, todayWeekday(), 1);
                                 }}
                                 style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 92 }}
                               >
                                 <option value="daily">Hver gang</option>
                                 <option value="weekly">Ukentlig</option>
+                                <option value="biweekly">Annenhver uke</option>
                                 <option value="monthly">Månedlig</option>
                               </select>
                               {item.monthly_weekday != null && item.monthly_occurrence == null && (
