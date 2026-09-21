@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Pencil, FileText, Download, ClipboardCheck, TriangleAlert } from "lucide-react";
 import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
 import { isNetworkError } from "../offlineQueue";
@@ -63,9 +63,15 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
   // The "Fyll ut sjekkliste i dag" shortcut opens straight into edit mode, but a customer's own
   // rooms can sit anywhere in a mixed site's room list (OKV's rooms usually come first, since
   // they were imported first) — jump straight to the first one instead of leaving them to scroll
-  // past however many read-only rooms come before it.
+  // past however many read-only rooms come before it. Guarded to fire only once per modal session
+  // (hasAutoScrolledRef) — runDetail gets a new object on every refresh (checking an item off,
+  // approving a room, ...), and without the guard this re-ran on every single one of those,
+  // yanking the view back down to the first "Dere" room mid-approval instead of letting someone
+  // work through the list room by room (2026-09-21).
+  const hasAutoScrolledRef = useRef(false);
   useEffect(() => {
-    if (!autoEdit || !runDetail?.rooms) return;
+    if (!autoEdit || !runDetail?.rooms || hasAutoScrolledRef.current) return;
+    hasAutoScrolledRef.current = true;
     const firstOwnRoom = runDetail.rooms.find((r) => r.responsible === "customer");
     if (firstOwnRoom) {
       setTimeout(() => document.getElementById(`room-${firstOwnRoom.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
