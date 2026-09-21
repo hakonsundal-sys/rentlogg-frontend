@@ -19,7 +19,7 @@ function yesterdayInOslo() {
 
 const STATUS_LABEL = { completed: "Fullført", in_progress: "Pågår", missing: "Manglende" };
 
-export default function RapporterPage({ token }) {
+export default function RapporterPage({ token, user }) {
   const [sites, setSites] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [month, setMonth] = useState(currentMonth());
@@ -241,6 +241,7 @@ export default function RapporterPage({ token }) {
       {openDate && (
         <RunDetailModal
           token={token} siteId={siteId} date={openDate}
+          userRole={user?.role} defaultInitials={user?.name}
           onClose={() => setOpenDate(null)} setError={setError}
         />
       )}
