@@ -86,6 +86,8 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
   const [sites, setSites] = useState([]);
   const [deviations, setDeviations] = useState([]);
   const [roomsAwaitingApproval, setRoomsAwaitingApproval] = useState([]);
+  const [approveAllInitials, setApproveAllInitials] = useState(user?.name || "");
+  const [approvingAll, setApprovingAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -135,6 +137,32 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
       )
     );
     setRoomsAwaitingApproval(perSite.flat());
+  }
+
+  // Same sign-off as the "Godkjenn rom"/"Godkjenn alle rom" actions inside a site's own checklist
+  // (see RunRoomsAndItems' approveAllRooms), just reachable straight from the dashboard's queue
+  // card — one shared name field covers every room here even when they span multiple sites.
+  // Approves sequentially and keeps going on a per-room failure so one bad room doesn't block
+  // the rest.
+  async function approveAllPendingRooms() {
+    if (!approveAllInitials.trim()) {
+      setError("Skriv inn navnet ditt for å godkjenne alle rom.");
+      return;
+    }
+    setApprovingAll(true);
+    const initials = approveAllInitials.trim();
+    const failures = [];
+    for (const r of roomsAwaitingApproval) {
+      if (!r.roomRunId) continue;
+      try {
+        await apiFetch(`/rooms/runs/${r.roomRunId}/approve`, { token, method: "POST", body: JSON.stringify({ initials }) });
+      } catch (err) {
+        failures.push(`${r.site.name} — ${r.name}`);
+      }
+    }
+    await refreshRoomsAwaitingApproval(sites);
+    setApprovingAll(false);
+    if (failures.length > 0) setError(`Kunne ikke godkjenne: ${failures.join(", ")}`);
   }
 
   useEffect(() => {
@@ -233,9 +261,26 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
     <div>
       {roomsAwaitingApproval.length > 0 && (
         <Card style={{ marginBottom: 12, borderLeft: "3px solid var(--accent-blue)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
-            <ClipboardCheck size={15} style={{ color: "var(--accent-blue)" }} />
-            {roomsAwaitingApproval.length} rom venter på din godkjenning
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
+              <ClipboardCheck size={15} style={{ color: "var(--accent-blue)" }} />
+              {roomsAwaitingApproval.length} rom venter på din godkjenning
+            </div>
+            {roomsAwaitingApproval.length > 1 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  value={approveAllInitials} onChange={(e) => setApproveAllInitials(e.target.value)}
+                  placeholder="Fullt navn" maxLength={60}
+                  style={{
+                    padding: "5px 8px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                    background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 12, width: 140,
+                  }}
+                />
+                <button onClick={approveAllPendingRooms} disabled={approvingAll} style={{ ...primaryBtnStyle, padding: "5px 10px", fontSize: 12 }}>
+                  Godkjenn alle rom ({roomsAwaitingApproval.length})
+                </button>
+              </div>
+            )}
           </div>
           <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
             {roomsAwaitingApproval.map((r) => (
