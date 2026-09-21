@@ -202,8 +202,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   }
 
   // A room's own schedule says how often it gets opened at all — this is for a single task
-  // inside it that's due less often than the room itself (e.g. a daily room with one monthly
-  // task). Unset (both null) means "every time the room is cleaned", same as before this existed.
+  // inside it that's due on a different cadence (e.g. a daily room with one Tuesday-only task,
+  // or one monthly task). occurrence=null with weekday set means "weekly, every occurrence of
+  // that weekday"; both set means "only the Nth occurrence of that weekday in the month"; both
+  // null (setItemDailyMode) means "every time the room is cleaned", same as before this existed.
   async function setItemMonthlyMode(roomId, itemId, weekday, occurrence) {
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
@@ -1091,19 +1093,31 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                               <select
-                                value={item.monthly_weekday != null ? "monthly" : "daily"}
-                                onChange={(e) => e.target.value === "monthly"
-                                  ? setItemMonthlyMode(room.id, item.id, todayWeekday(), 1)
-                                  : setItemDailyMode(room.id, item.id)}
+                                value={item.monthly_weekday == null ? "daily" : item.monthly_occurrence == null ? "weekly" : "monthly"}
+                                onChange={(e) => {
+                                  if (e.target.value === "daily") setItemDailyMode(room.id, item.id);
+                                  else if (e.target.value === "weekly") setItemMonthlyMode(room.id, item.id, todayWeekday(), null);
+                                  else setItemMonthlyMode(room.id, item.id, todayWeekday(), 1);
+                                }}
                                 style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 92 }}
                               >
                                 <option value="daily">Hver gang</option>
+                                <option value="weekly">Ukentlig</option>
                                 <option value="monthly">Månedlig</option>
                               </select>
-                              {item.monthly_weekday != null && (
+                              {item.monthly_weekday != null && item.monthly_occurrence == null && (
+                                <select
+                                  value={item.monthly_weekday}
+                                  onChange={(e) => setItemMonthlyMode(room.id, item.id, Number(e.target.value), null)}
+                                  style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 66 }}
+                                >
+                                  {WEEKDAYS.map((wd) => <option key={wd.value} value={wd.value}>{wd.label}</option>)}
+                                </select>
+                              )}
+                              {item.monthly_weekday != null && item.monthly_occurrence != null && (
                                 <>
                                   <select
-                                    value={item.monthly_occurrence ?? 1}
+                                    value={item.monthly_occurrence}
                                     onChange={(e) => setItemMonthlyMode(room.id, item.id, item.monthly_weekday, Number(e.target.value))}
                                     style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 78 }}
                                   >
@@ -1111,7 +1125,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                   </select>
                                   <select
                                     value={item.monthly_weekday}
-                                    onChange={(e) => setItemMonthlyMode(room.id, item.id, Number(e.target.value), item.monthly_occurrence ?? 1)}
+                                    onChange={(e) => setItemMonthlyMode(room.id, item.id, Number(e.target.value), item.monthly_occurrence)}
                                     style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 66 }}
                                   >
                                     {WEEKDAYS.map((wd) => <option key={wd.value} value={wd.value}>{wd.label}</option>)}
