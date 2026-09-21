@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText, CalendarCheck } from "lucide-react";
+import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText, CalendarCheck, ChevronDown, ChevronRight, X } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, AddressAutocomplete, DocumentsList, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
+import { Card, AddressAutocomplete, DocumentsList, Field, Loading, ResponsibleBadge, TabButton, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
 
@@ -32,6 +32,14 @@ const emptyForm = { name: "", client_id: "", department_id: "", address: "", rep
 
 // Standard er kl. 07:00 (report_send_hour = null/tom) — kun steder som trenger noe annet setter en verdi.
 const SEND_HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => h);
+
+// Section heading inside an opened room ("Rominnstillinger"/"Oppgaver"/"Renholdsplan") — the panel
+// used to be one undifferentiated column of small controls where nothing said which setting
+// belonged to what.
+const sectionLabelStyle = {
+  fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+  color: "var(--text-muted)", margin: "14px 0 6px",
+};
 
 // Flat (non-room) checklists are hidden for now — locations use only the room-based setup.
 // Flip back to true to re-enable; nothing else needs to change.
@@ -65,6 +73,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [editRoomName, setEditRoomName] = useState("");
   const [editingItemId, setEditingItemId] = useState(null);
   const [editItemLabel, setEditItemLabel] = useState("");
+  const [optionEditorItemId, setOptionEditorItemId] = useState(null); // task whose flervalg editor is open
+  const [optionDrafts, setOptionDrafts] = useState({}); // itemId -> text in that task's "nytt valg" field
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -214,6 +224,48 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}`, { token, method: "PATCH", body: JSON.stringify({ label: editItemLabel }) });
       setEditingItemId(null);
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // "Flervalg": a task can carry a list of alternatives the cleaner ticks instead of just
+  // done/not-done — Sinkaberg's renholdere have to record which soap they used, so the task
+  // "Såpe brukt" gets one option per soap. A task with at least one option can't be ticked off
+  // without choosing one (enforced backend-side); a task with none behaves exactly as before.
+  async function addItemOption(roomId, itemId) {
+    const label = (optionDrafts[itemId] || "").trim();
+    if (!label) return;
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}/options`, {
+        token, method: "POST", body: JSON.stringify({ label }),
+      });
+      setOptionDrafts((d) => ({ ...d, [itemId]: "" }));
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function renameItemOption(roomId, itemId, option) {
+    const label = window.prompt("Nytt navn på valget", option.label);
+    if (label === null || !label.trim() || label.trim() === option.label) return;
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}/options/${option.id}`, {
+        token, method: "PATCH", body: JSON.stringify({ label: label.trim() }),
+      });
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Removing an option only changes what future visits can choose from — every visit that already
+  // recorded it keeps its own copy of the label (see room_run_item_options on the backend).
+  async function deleteItemOption(roomId, itemId, optionId) {
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}/options/${optionId}`, { token, method: "DELETE" });
       refreshRoomItems(roomId);
     } catch (err) {
       setError(err.message);
@@ -1127,62 +1179,94 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     Slett alle rom ({rooms[site.id].length})
                   </button>
                 )}
-                {(rooms[site.id] || []).map((room) => (
-                  <div key={room.id} style={{ marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-                      {editingRoomId === room.id ? (
-                        <div style={{ display: "flex", gap: 4, flex: 1, minWidth: 0 }}>
-                          <input
-                            value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)}
-                            autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0 }}
-                          />
-                          <button onClick={() => saveRoomName(site.id, room.id)} style={linkBtnStyle}>Lagre</button>
-                          <button onClick={() => setEditingRoomId(null)} style={linkBtnStyle}>Avbryt</button>
-                        </div>
-                      ) : (
-                        <>
+                {(rooms[site.id] || []).map((room) => {
+                  const isOpen = expandedRoomId === room.id;
+                  const isCustomerRoom = (room.responsible || "company") === "customer";
+                  return (
+                  <div key={room.id} style={{
+                    border: isOpen ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+                    borderRadius: "var(--radius)", background: isOpen ? "var(--surface-0)" : "var(--surface-1)",
+                    padding: "8px 10px", marginBottom: 8,
+                  }}>
+                    {editingRoomId === room.id ? (
+                      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        <input
+                          value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)}
+                          autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0 }}
+                        />
+                        <button onClick={() => saveRoomName(site.id, room.id)} style={linkBtnStyle}>Lagre</button>
+                        <button onClick={() => setEditingRoomId(null)} style={linkBtnStyle}>Avbryt</button>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                           <button
                             onClick={() => toggleRoomExpand(room.id)}
-                            style={{ ...linkBtnStyle, color: "var(--text-primary)", fontWeight: 500, textAlign: "left", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                            style={{
+                              ...linkBtnStyle, color: "var(--text-primary)", fontWeight: 600, fontSize: 13,
+                              display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, textAlign: "left",
+                            }}
                           >
-                            {room.name} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>({room.itemCount} oppgaver)</span>
+                            {isOpen
+                              ? <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                              : <ChevronRight size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />}
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{room.name}</span>
                           </button>
-                          <button onClick={() => startEditRoom(room)} style={{ ...iconBtnStyle, flexShrink: 0 }}><Pencil size={13} /></button>
-                          <button onClick={() => deleteRoom(site.id, room.id)} style={{ ...iconBtnStyle, flexShrink: 0 }}><Trash2 size={13} /></button>
-                        </>
-                      )}
-                    </div>
-                    {editingRoomId !== room.id && (
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, rowGap: 4, marginTop: 4 }}>
-                        <select
-                          value={room.responsible || "company"}
-                          onChange={(e) => setRoomResponsible(site.id, room.id, e.target.value)}
-                          title="Hvem fyller ut sjekklisten for dette rommet?"
-                          style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 108 }}
-                        >
-                          <option value="company">Vi vasker</option>
-                          <option value="customer">Kunden vasker</option>
-                        </select>
-                        {(room.responsible || "company") === "company" && (
-                          <label
-                            title="Krever at en kundebruker godkjenner sjekklisten før rommet regnes som fullført"
-                            style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={!!room.requires_approval}
-                              onChange={(e) => setRoomRequiresApproval(site.id, room.id, e.target.checked)}
-                            />
-                            Krever godkjenning
-                          </label>
-                        )}
-                      </div>
+                          <button onClick={() => startEditRoom(room)} title="Gi rommet nytt navn" style={{ ...iconBtnStyle, flexShrink: 0 }}><Pencil size={13} /></button>
+                          <button onClick={() => deleteRoom(site.id, room.id)} title="Slett rommet" style={{ ...iconBtnStyle, flexShrink: 0 }}><Trash2 size={13} /></button>
+                        </div>
+                        {/* What used to be two always-visible dropdowns per room is a read-only
+                            summary here — on a site with 25+ rooms that row was most of the page.
+                            The controls themselves live under "Rominnstillinger", one click in. */}
+                        <div style={{
+                          display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6,
+                          marginTop: 3, marginLeft: 20, fontSize: 11, color: "var(--text-secondary)",
+                        }}>
+                          <span>{room.itemCount} {room.itemCount === 1 ? "oppgave" : "oppgaver"}</span>
+                          <ResponsibleBadge responsible={room.responsible} />
+                          {!!room.requires_approval && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+                              background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
+                            }}>
+                              Krever godkjenning
+                            </span>
+                          )}
+                        </div>
+                      </>
                     )}
 
-                    {expandedRoomId === room.id && (
-                      <div style={{ marginLeft: 8, marginTop: 6, paddingLeft: 8, borderLeft: "2px solid var(--border)" }}>
+                    {isOpen && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                        <div style={sectionLabelStyle}>Rominnstillinger</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                          <select
+                            value={room.responsible || "company"}
+                            onChange={(e) => setRoomResponsible(site.id, room.id, e.target.value)}
+                            title="Hvem fyller ut sjekklisten for dette rommet?"
+                            style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, width: 120 }}
+                          >
+                            <option value="company">Vi vasker</option>
+                            <option value="customer">Kunden vasker</option>
+                          </select>
+                          {!isCustomerRoom && (
+                            <label
+                              title="Krever at en kundebruker godkjenner sjekklisten før rommet regnes som fullført"
+                              style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!room.requires_approval}
+                                onChange={(e) => setRoomRequiresApproval(site.id, room.id, e.target.checked)}
+                              />
+                              Krever godkjenning
+                            </label>
+                          )}
+                        </div>
+
+                        <div style={sectionLabelStyle}>Oppgaver</div>
                         {(roomItems[room.id] || []).map((item) => (
-                          <div key={item.id} style={{ padding: "3px 0", borderBottom: "1px solid var(--border)" }}>
+                          <div key={item.id} style={{ padding: "5px 0", borderBottom: "1px solid var(--border)" }}>
                             {editingItemId === item.id ? (
                               <div style={{ display: "flex", gap: 4 }}>
                                 <input
@@ -1193,15 +1277,26 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                 <button onClick={() => setEditingItemId(null)} style={linkBtnStyle}>Avbryt</button>
                               </div>
                             ) : (
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                              <span>{item.label}</span>
-                              <div style={{ display: "flex", gap: 2 }}>
-                                <button onClick={() => startEditItem(item)} style={iconBtnStyle}><Pencil size={11} /></button>
-                                <button onClick={() => deleteRoomItem(room.id, item.id)} style={iconBtnStyle}><Trash2 size={11} /></button>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 6, fontSize: 12 }}>
+                              <span style={{ minWidth: 0 }}>
+                                {item.label}
+                                {item.options?.length > 0 && (
+                                  <span style={{
+                                    marginLeft: 6, fontSize: 9, fontWeight: 600, padding: "1px 6px",
+                                    borderRadius: "var(--radius-pill)", whiteSpace: "nowrap",
+                                    background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)",
+                                  }}>
+                                    Flervalg ({item.options.length})
+                                  </span>
+                                )}
+                              </span>
+                              <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                                <button onClick={() => startEditItem(item)} title="Gi oppgaven nytt navn" style={iconBtnStyle}><Pencil size={11} /></button>
+                                <button onClick={() => deleteRoomItem(room.id, item.id)} title="Slett oppgaven" style={iconBtnStyle}><Trash2 size={11} /></button>
                               </div>
                             </div>
                             )}
-                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
                               <select
                                 value={
                                   item.interval_days != null ? "biweekly"
@@ -1256,18 +1351,77 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                   </select>
                                 </>
                               )}
+                              {/* Flervalg: alternatives the renholder ticks on this task (which soap
+                                  was used, say). Hidden until asked for, so an ordinary
+                                  done/not-done task stays exactly as simple as it was. */}
+                              {optionEditorItemId !== item.id && (
+                                <button onClick={() => setOptionEditorItemId(item.id)} style={linkBtnStyle}>
+                                  {item.options?.length > 0 ? "Rediger valg" : "+ Flervalg"}
+                                </button>
+                              )}
                             </div>
+                            {(item.options?.length > 0 || optionEditorItemId === item.id) && (
+                              <div style={{
+                                marginTop: 5, marginLeft: 2, paddingLeft: 8,
+                                borderLeft: "2px solid var(--accent-orange-bg)",
+                              }}>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                  {(item.options || []).map((option) => (
+                                    <span key={option.id} style={{
+                                      display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11,
+                                      border: "1px solid var(--border)", borderRadius: "var(--radius-pill)",
+                                      background: "var(--surface-0)", padding: "1px 4px 1px 8px",
+                                    }}>
+                                      <button
+                                        onClick={() => renameItemOption(room.id, item.id, option)}
+                                        title="Gi valget nytt navn"
+                                        style={{ ...linkBtnStyle, color: "var(--text-primary)", fontWeight: 400, fontSize: 11 }}
+                                      >
+                                        {option.label}
+                                      </button>
+                                      <button
+                                        onClick={() => deleteItemOption(room.id, item.id, option.id)}
+                                        title="Fjern valget"
+                                        style={{ ...iconBtnStyle, padding: 2 }}
+                                      >
+                                        <X size={11} />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                                {optionEditorItemId === item.id && (
+                                  <>
+                                    <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
+                                      <input
+                                        value={optionDrafts[item.id] || ""}
+                                        onChange={(e) => setOptionDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                                        onKeyDown={(e) => { if (e.key === "Enter") addItemOption(room.id, item.id); }}
+                                        placeholder="Nytt valg (f.eks. en såpe)"
+                                        autoFocus
+                                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 180 }}
+                                      />
+                                      <button onClick={() => addItemOption(room.id, item.id)} style={linkBtnStyle}>+ Legg til</button>
+                                      <button onClick={() => setOptionEditorItemId(null)} style={linkBtnStyle}>Ferdig</button>
+                                    </div>
+                                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+                                      Renholder må krysse av minst ett av valgene for å kunne huke av oppgaven.
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
-                        <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                        <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
                           <input
                             value={newItemLabel} onChange={(e) => setNewItemLabel(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") addRoomItem(room.id); }}
                             placeholder="Ny oppgave" style={{ ...inputStyle, padding: "4px 6px", fontSize: 12 }}
                           />
                           <button onClick={() => addRoomItem(room.id)} style={linkBtnStyle}>+ Legg til</button>
                         </div>
 
-                        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Renholdsplan</div>
+                        <div style={sectionLabelStyle}>Renholdsplan</div>
                         {room.interval_days == null && room.monthly_weekday == null && (
                           <>
                             <div style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "6px 0" }}>
@@ -1353,7 +1507,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
 
                 <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
                   <input

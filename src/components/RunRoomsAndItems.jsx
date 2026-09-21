@@ -3,6 +3,7 @@ import { AlertTriangle, Camera, CheckCircle2, Circle, PlayCircle, X } from "luci
 import { API_URL } from "../api";
 import { queueableFetch } from "../offlineQueue";
 import { ResponsibleBadge } from "./shared";
+import { useI18n, useT } from "../i18n";
 
 // See RunDetailModal.jsx's photoUrl for why the token rides in the query string here.
 function photoUrl(filePath, token) {
@@ -14,52 +15,86 @@ function photoUrl(filePath, token) {
 // (see RunRoomsAndItems' own header comment) — deliberately separate from `onToggle`/`item.done`,
 // which stays the cleaner's own field throughout: an approver reviews what the cleaner already
 // checked, they don't get to change it.
-function ItemRow({ item, variant, onToggle, onToggleApprove }) {
+function ItemRow({ item, variant, onToggle, onToggleApprove, onToggleOption }) {
+  const t = useT();
   const size = variant === "flat" ? 15 : 13;
   const fontSize = variant === "flat" ? 13 : 12;
+  // A flervalg task's whole point is WHICH alternative was used (which soap, say) — a day view or
+  // report that only showed the checkmark would drop exactly the information it was ticked to
+  // record. Read-only here unless this view is editable, same as the checkmark itself.
+  const options = item.options || [];
+  const chosen = options.filter((o) => o.selected).map((o) => o.label);
   return (
-    <div
-      style={{
-        display: "flex", alignItems: "center", gap: 8,
-        padding: variant === "flat" ? "6px 0" : "3px 0 3px 4px",
-        borderTop: variant === "flat" ? "1px solid var(--border)" : "none",
-      }}
-    >
+    <div>
       <div
-        onClick={onToggle ? () => onToggle(item) : undefined}
-        style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, cursor: onToggle ? "pointer" : "default" }}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: variant === "flat" ? "6px 0" : "3px 0 3px 4px",
+          borderTop: variant === "flat" ? "1px solid var(--border)" : "none",
+        }}
       >
-        {item.done
-          ? <CheckCircle2 size={size} style={{ color: "var(--text-success)" }} />
-          : <Circle size={size} style={{ color: "var(--text-muted)" }} />}
-        <span style={{
-          fontSize, textDecoration: item.done ? "line-through" : "none",
-          color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
-        }}>
-          {item.label}
-        </span>
-        {item.monthly ? (
-          <span style={{
-            fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
-            background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
-          }}>
-            Månedlig
-          </span>
-        ) : null}
-      </div>
-      {onToggleApprove && (
-        <label
-          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
+        <div
+          onClick={onToggle ? () => onToggle(item) : undefined}
+          style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, cursor: onToggle ? "pointer" : "default" }}
         >
-          <input type="checkbox" checked={!!item.approved} onChange={() => onToggleApprove(item)} />
-          Godkjent
-        </label>
+          {item.done
+            ? <CheckCircle2 size={size} style={{ color: "var(--text-success)" }} />
+            : <Circle size={size} style={{ color: "var(--text-muted)" }} />}
+          <span style={{
+            fontSize, textDecoration: item.done ? "line-through" : "none",
+            color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
+          }}>
+            {item.label}
+          </span>
+          {item.monthly ? (
+            <span style={{
+              fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+              background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
+            }}>
+              {t("cleaner.monthly")}
+            </span>
+          ) : null}
+        </div>
+        {onToggleApprove && (
+          <label
+            style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
+          >
+            <input type="checkbox" checked={!!item.approved} onChange={() => onToggleApprove(item)} />
+            {t("run.approvedCheckbox")}
+          </label>
+        )}
+      </div>
+      {options.length > 0 && (
+        onToggleOption ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, margin: "2px 0 4px 26px" }}>
+            {options.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => onToggleOption(item, option)}
+                style={{
+                  padding: "3px 8px", borderRadius: "var(--radius-pill)", fontSize: 11, cursor: "pointer",
+                  border: option.selected ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+                  background: option.selected ? "var(--accent-orange-bg)" : "var(--surface-0)",
+                  color: option.selected ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                  fontWeight: option.selected ? 600 : 400,
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 11, color: "var(--text-secondary)", margin: "0 0 4px 26px" }}>
+            {chosen.length ? t("run.chosenOptions", { options: chosen.join(", ") }) : t("run.noOptionChosen")}
+          </div>
+        )
       )}
     </div>
   );
 }
 
 function PhotosRow({ photos, onDelete, token }) {
+  const t = useT();
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, paddingLeft: 4 }}>
       {photos.map((p) => (
@@ -70,7 +105,7 @@ function PhotosRow({ photos, onDelete, token }) {
           {onDelete && (
             <button
               onClick={() => onDelete(p.id)}
-              aria-label="Fjern bilde"
+              aria-label={t("cleaner.removePhoto")}
               style={{
                 position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
                 background: "rgba(0,0,0,0.65)", color: "white", border: "none",
@@ -87,6 +122,7 @@ function PhotosRow({ photos, onDelete, token }) {
 }
 
 function AddPhotoButton({ inputRef, onUpload }) {
+  const t = useT();
   return (
     <>
       <input ref={inputRef} type="file" accept="image/*" onChange={onUpload} style={{ display: "none" }} />
@@ -98,7 +134,7 @@ function AddPhotoButton({ inputRef, onUpload }) {
           padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
         }}
       >
-        <Camera size={13} /> Ta bilde
+        <Camera size={13} /> {t("cleaner.takePhoto")}
       </button>
     </>
   );
@@ -120,6 +156,7 @@ function CompleteButton({ onClick, label }) {
 }
 
 function UndoButton({ onClick }) {
+  const t = useT();
   return (
     <button
       onClick={onClick}
@@ -129,12 +166,13 @@ function UndoButton({ onClick }) {
         padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-danger)",
       }}
     >
-      <X size={13} /> Angre fullføring
+      <X size={13} /> {t("run.undoCompletion")}
     </button>
   );
 }
 
 function StartRoomButton({ onClick }) {
+  const t = useT();
   return (
     <button
       onClick={onClick}
@@ -144,7 +182,7 @@ function StartRoomButton({ onClick }) {
         padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
       }}
     >
-      <PlayCircle size={13} /> Åpne rom
+      <PlayCircle size={13} /> {t("run.openRoom")}
     </button>
   );
 }
@@ -154,13 +192,14 @@ function StartRoomButton({ onClick }) {
 // interval input in LokasjonerPage). Re-syncs if the underlying note changes from outside
 // (onChanged() refetch after another edit lands).
 function NoteField({ value, onSave, editable }) {
+  const t = useT();
   const [text, setText] = useState(value || "");
   useEffect(() => setText(value || ""), [value]);
 
   if (!editable) {
     return value?.trim() ? (
       <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
-        <strong>Notat:</strong> {value}
+        <strong>{t("run.notePrefix")}</strong> {value}
       </div>
     ) : null;
   }
@@ -170,7 +209,7 @@ function NoteField({ value, onSave, editable }) {
       value={text}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => { if (text !== (value || "")) onSave(text); }}
-      placeholder="Notat (valgfritt)"
+      placeholder={t("run.notePlaceholder")}
       style={{
         width: "100%", minHeight: 40, marginTop: 6, padding: 6, borderRadius: "var(--radius)",
         border: "1px solid var(--border)", background: "var(--surface-0)", color: "var(--text-primary)",
@@ -181,10 +220,11 @@ function NoteField({ value, onSave, editable }) {
 }
 
 function EditedBadge({ editedAt, editedBy }) {
+  const t = useT();
   if (!editedAt) return null;
   return (
     <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4, fontStyle: "italic" }}>
-      Redigert i etterkant: {editedAt.slice(0, 16)} av {editedBy}
+      {t("run.editedAfterwards", { date: editedAt.slice(0, 16), name: editedBy })}
     </div>
   );
 }
@@ -195,6 +235,7 @@ function EditedBadge({ editedAt, editedBy }) {
 // controls, gated by `editInitials` being sent with every mutation so the backend can stamp
 // edited_at/edited_by_initials when the run was already completed (a genuine retroactive edit).
 export default function RunRoomsAndItems({ token, runDetail, editable, editInitials, onChanged, setError, onReportDeviation, userRole }) {
+  const { t, tn } = useI18n();
   const fileInputsRef = useRef({});
 
   function endpointFor(roomRunId, suffix) {
@@ -222,6 +263,27 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
       await queueableFetch(endpointFor(roomRunId, `items/${item.id}`), {
         token, method: "PATCH", body: JSON.stringify({ done, initials: editInitials }),
       });
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Ticking an alternative also ticks its task (and clearing the last one unticks it), matching
+  // both the cleaner's live view and the backend's own rule — a flervalg task can't be "utført"
+  // with no answer recorded.
+  async function toggleItemOption(roomRunId, item, option) {
+    const selected = !option.selected;
+    const nextDone = item.options.some((o) => (o.id === option.id ? selected : o.selected));
+    try {
+      await queueableFetch(`/rooms/runs/${roomRunId}/items/${item.id}/options/${option.id}`, {
+        token, method: "PATCH", body: JSON.stringify({ selected, initials: editInitials }),
+      });
+      if (nextDone !== !!item.done) {
+        await queueableFetch(`/rooms/runs/${roomRunId}/items/${item.id}`, {
+          token, method: "PATCH", body: JSON.stringify({ done: nextDone, initials: editInitials }),
+        });
+      }
       onChanged();
     } catch (err) {
       setError(err.message);
@@ -258,7 +320,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   }
 
   async function deletePhoto(roomRunId, photoId) {
-    if (!window.confirm("Fjerne bildet?")) return;
+    if (!window.confirm(t("cleaner.confirmRemovePhoto"))) return;
     try {
       await queueableFetch(endpointFor(roomRunId, `photos/${photoId}`), {
         token, method: "DELETE", body: JSON.stringify({ initials: editInitials }),
@@ -291,7 +353,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   // validation used everywhere else a completion gets signed.
   async function completeRoom(roomRunId) {
     if (!editInitials?.trim()) {
-      setError("Skriv inn navnet ditt for å fullføre rommet.");
+      setError(t("cleaner.nameRequiredRoom"));
       return;
     }
     try {
@@ -309,7 +371,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   // POST /rooms/runs/:runId/approve's own comment on the backend.
   async function approveRoom(roomRunId) {
     if (!editInitials?.trim()) {
-      setError("Skriv inn navnet ditt for å godkjenne rommet.");
+      setError(t("run.nameRequiredApproveRoom"));
       return;
     }
     try {
@@ -329,7 +391,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   // any failures are reported together at the end.
   async function approveAllRooms(roomRunIds) {
     if (!editInitials?.trim()) {
-      setError("Skriv inn navnet ditt for å godkjenne alle rom.");
+      setError(t("run.nameRequiredApproveAll"));
       return;
     }
     const initials = editInitials.trim();
@@ -366,7 +428,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   // it shouldn't have. Only works for today's run server-side (see POST /rooms/:id/reopen), so
   // this is a no-op with a clear error if used on a past day's already-completed room.
   async function reopenRoom(roomId) {
-    if (!window.confirm("Angre fullføring av dette rommet?")) return;
+    if (!window.confirm(t("run.confirmReopen"))) return;
     try {
       await queueableFetch(`/rooms/${roomId}/reopen`, {
         token, method: "POST", body: JSON.stringify({ resetItems: true }),
@@ -379,7 +441,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
 
   async function completeFlatRun() {
     if (!editInitials?.trim()) {
-      setError("Skriv inn navnet ditt for å fullføre besøket.");
+      setError(t("cleaner.nameRequiredVisit"));
       return;
     }
     try {
@@ -406,14 +468,20 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
           <div style={{ display: "flex", justifyContent: "flex-end", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
             <CompleteButton
               onClick={() => approveAllRooms(approvableRoomRunIds)}
-              label={`Godkjenn alle rom (${approvableRoomRunIds.length})`}
+              label={t("run.approveAllRooms", { count: approvableRoomRunIds.length })}
             />
           </div>
         )}
         {runDetail.rooms.map((room) => {
           const doneCount = room.items.filter((i) => i.done).length;
           const awaitingApproval = room.requires_approval && room.ready_for_approval_at && !room.completed_at;
-          const status = room.completed_at ? "FULLFØRT" : awaitingApproval ? "VENTER PÅ GODKJENNING" : room.items.length > 0 ? "PÅGÅR" : "IKKE STARTET";
+          const status = room.completed_at
+            ? t("run.status.completed")
+            : awaitingApproval
+              ? t("run.status.awaiting")
+              : room.items.length > 0
+                ? t("run.status.inProgress")
+                : t("run.status.notStarted");
           const key = `room-${room.roomRunId}`;
           const canEditThisRoom = editable && (userRole !== "customer" || room.responsible === "customer");
           // Who may act on the approval gate itself — the customer (the whole point of the
@@ -437,7 +505,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
               </div>
               {room.items.length > 0 && (
                 <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 8 }}>
-                  {doneCount}/{room.items.length} oppgaver utført
+                  {tn("run.itemsDone", room.items.length, { done: doneCount, total: room.items.length })}
                   {canEditThisRoom && doneCount < room.items.length && (
                     <button
                       onClick={() => completeAllRoomItems(room.roomRunId)}
@@ -446,7 +514,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                         color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                       }}
                     >
-                      Huk av alle
+                      {t("run.tickAll")}
                     </button>
                   )}
                 </div>
@@ -456,6 +524,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                   key={item.id} item={item} variant="room"
                   onToggle={canEditThisRoom ? (i) => toggleItem(room.roomRunId, i) : null}
                   onToggleApprove={canApproveThisRoom ? (i) => toggleApprove(room.roomRunId, i) : null}
+                  onToggleOption={canEditThisRoom ? (i, option) => toggleItemOption(room.roomRunId, i, option) : null}
                 />
               ))}
               {room.photos.length > 0 && (
@@ -474,11 +543,11 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                   {canEditThisRoom && !room.completed_at && !awaitingApproval && (
                     <CompleteButton
                       onClick={() => completeRoom(room.roomRunId)}
-                      label={room.requires_approval ? "Send til godkjenning" : "Fullfør rom"}
+                      label={room.requires_approval ? t("run.sendForApproval") : t("cleaner.completeRoom")}
                     />
                   )}
                   {canApproveThisRoom && (
-                    <CompleteButton onClick={() => approveRoom(room.roomRunId)} label="Godkjenn rom" />
+                    <CompleteButton onClick={() => approveRoom(room.roomRunId)} label={t("run.approveRoom")} />
                   )}
                   {canEditThisRoom && room.completed_at && userRole !== "customer" && (
                     <UndoButton onClick={() => reopenRoom(room.id)} />
@@ -487,12 +556,12 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
               )}
               {awaitingApproval && !canApproveThisRoom && (
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }}>
-                  Sendt til kundegodkjenning av {room.signed_initials} — venter på svar.
+                  {t("run.sentForApprovalBy", { name: room.signed_initials })}
                 </div>
               )}
               {room.approved_at && (
                 <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-secondary)" }}>
-                  Godkjent av {room.approved_by_initials} · {room.approved_at.slice(0, 16)}
+                  {t("run.approvedBy", { name: room.approved_by_initials, date: room.approved_at.slice(0, 16) })}
                 </div>
               )}
               {canEditThisRoom && !room.roomRunId && (
@@ -510,7 +579,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                       padding: "5px 10px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer", color: "var(--text-danger)",
                     }}
                   >
-                    <AlertTriangle size={13} /> Meld avvik
+                    <AlertTriangle size={13} /> {t("cleaner.reportDeviation")}
                   </button>
                 </div>
               )}
@@ -524,7 +593,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
 
   return (
     <>
-      <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Sjekkliste</div>
+      <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>{t("cleaner.checklist")}</div>
       {runDetail.items.map((item) => (
         <ItemRow
           key={item.id} item={item} variant="flat"
@@ -538,7 +607,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
       {editable && (
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8 }}>
           <AddPhotoButton inputRef={inputRefFor("flat")} onUpload={(e) => uploadPhoto(null, e)} />
-          {!runDetail.completed_at && <CompleteButton onClick={completeFlatRun} label="Fullfør besøk" />}
+          {!runDetail.completed_at && <CompleteButton onClick={completeFlatRun} label={t("run.completeVisit")} />}
         </div>
       )}
       <EditedBadge editedAt={runDetail.edited_at} editedBy={runDetail.edited_by_initials} />
