@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { KeyRound, Pencil, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 
 // The list arrives sorted by name from the backend; keep that order as rows are added or renamed.
 const byName = (a, b) => a.name.localeCompare(b.name, "nb");
+
+const EMPTY_NEW_USER = { name: "", email: "", password: "", client_id: "" };
 
 export default function KundebrukerePage({ token, user }) {
   const isSuperAdmin = user?.role === "super_admin";
@@ -21,10 +23,21 @@ export default function KundebrukerePage({ token, user }) {
   const [editUserId, setEditUserId] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "" });
   const [savingEdit, setSavingEdit] = useState(false);
+  // Every customer that exists, not just the ones that already have a user — a new account is
+  // most often the FIRST one for that customer, which is exactly the case the derived list below
+  // cannot cover.
+  const [allClients, setAllClients] = useState([]);
+  const [showNewUser, setShowNewUser] = useState(false);
+  const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
+  const [creating, setCreating] = useState(false);
+  const [createdName, setCreatedName] = useState("");
 
   function loadAll() {
-    apiFetch("/auth/users?role=customer", { token })
-      .then(setUsers)
+    Promise.all([apiFetch("/auth/users?role=customer", { token }), apiFetch("/clients", { token })])
+      .then(([usersData, clientsData]) => {
+        setUsers(usersData);
+        setAllClients(Array.isArray(clientsData) ? clientsData : clientsData?.clients || []);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
@@ -50,6 +63,37 @@ export default function KundebrukerePage({ token, user }) {
   }, [users]);
 
   const visibleUsers = clientFilter ? users.filter((u) => String(u.client_id) === clientFilter) : users;
+
+  function updateNewUser(field, value) {
+    setNewUser((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function createUser(e) {
+    e.preventDefault();
+    setError("");
+    setCreating(true);
+    try {
+      const created = await apiFetch("/auth/users", {
+        token,
+        method: "POST",
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          password: newUser.password,
+          role: "customer",
+          client_id: Number(newUser.client_id),
+        }),
+      });
+      setUsers((list) => [...list, created].sort(byName));
+      setCreatedName(created.name);
+      setNewUser(EMPTY_NEW_USER);
+      setShowNewUser(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function toggleActive(u) {
     setError("");
@@ -138,6 +182,12 @@ export default function KundebrukerePage({ token, user }) {
             {users.length} kundebrukere &middot; endre aktiv status eller passord
           </div>
         </div>
+        <button
+          onClick={() => { setShowNewUser((open) => !open); setCreatedName(""); setError(""); }}
+          style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <UserPlus size={15} /> Ny kundebruker
+        </button>
         {clients.length > 1 && (
           <Field label="Kunde" style={{ margin: 0, minWidth: 200 }}>
             <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} style={inputStyle}>
@@ -150,10 +200,43 @@ export default function KundebrukerePage({ token, user }) {
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
 
-      <Card style={{ marginBottom: 16, fontSize: 13, color: "var(--text-secondary)" }}>
-        Kundebrukere opprettes via <strong>Inviter brukere</strong> &mdash; her kan du bare følge opp kontoer som
-        allerede finnes.
-      </Card>
+      {createdName && !showNewUser && (
+        <Card style={{ marginBottom: 16, fontSize: 13 }}>
+          Kundebruker opprettet for <strong>{createdName}</strong>. Gi e-posten og passordet videre til {createdName}{" "}
+          selv &mdash; passordet vises ikke igjen her.
+        </Card>
+      )}
+
+      {showNewUser && (
+        <Card style={{ marginBottom: 16 }}>
+          <form onSubmit={createUser}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Field label="Fullt navn" style={{ flex: 1, minWidth: 180 }}>
+                <input required autoFocus value={newUser.name} onChange={(e) => updateNewUser("name", e.target.value)} style={inputStyle} />
+              </Field>
+              <Field label="E-post / brukernavn" style={{ flex: 1, minWidth: 220 }}>
+                <input required type="email" placeholder="navn@kunde.no" value={newUser.email} onChange={(e) => updateNewUser("email", e.target.value)} style={inputStyle} />
+              </Field>
+              <Field label="Passord" style={{ flex: 1, minWidth: 140 }}>
+                <input required type="text" minLength={6} placeholder="Minst 6 tegn" value={newUser.password} onChange={(e) => updateNewUser("password", e.target.value)} style={inputStyle} />
+              </Field>
+              <Field label="Kunde" style={{ minWidth: 200 }}>
+                <select required value={newUser.client_id} onChange={(e) => updateNewUser("client_id", e.target.value)} style={inputStyle}>
+                  <option value="">Velg kunde</option>
+                  {allClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14, flexWrap: "wrap" }}>
+              <button type="submit" disabled={creating} style={primaryBtnStyle}>{creating ? "Oppretter..." : "Opprett kundebruker"}</button>
+              <button type="button" onClick={() => setShowNewUser(false)} style={linkBtnStyle}>Avbryt</button>
+              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                Brukeren kan logge inn med en gang, og ser bare denne kundens lokasjoner.
+              </span>
+            </div>
+          </form>
+        </Card>
+      )}
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
