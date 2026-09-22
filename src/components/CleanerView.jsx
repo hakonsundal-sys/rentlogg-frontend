@@ -496,18 +496,28 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     }
   }
 
-  async function bulkCompleteAllDue() {
+  // `targetRooms` narrows the sweep to one chapter; omitted, it means every room still due today,
+  // which is what the button above the list does. The backend applies its own role scoping on top
+  // either way, so a narrowed list can never reach a room the wide one would not have.
+  async function bulkCompleteAllDue(targetRooms, chapterName) {
     setError("");
     if (!initials.trim()) {
       setError(t("cleaner.nameRequiredTasks"));
       focusInitials();
       return;
     }
-    const roomIds = rooms.filter((r) => r.dueToday && r.status !== "completed").map((r) => r.id);
+    const target = targetRooms || rooms.filter((r) => r.dueToday && r.status !== "completed");
+    const roomIds = target.map((r) => r.id);
     if (roomIds.length === 0) return;
-    if (!window.confirm(tn("cleaner.confirmCompleteAllDue", roomIds.length))) return;
+    const question = chapterName
+      ? tn("cleaner.confirmCompleteChapter", roomIds.length, { area: chapterName })
+      : tn("cleaner.confirmCompleteAllDue", roomIds.length);
+    if (!window.confirm(question)) return;
     try {
-      const result = await queueableFetch(`/sites/${run.site.id}/rooms/complete-all-due`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
+      const result = await queueableFetch(`/sites/${run.site.id}/rooms/complete-all-due`, {
+        token, method: "POST",
+        body: JSON.stringify({ initials: initials.trim(), ...(targetRooms ? { room_ids: roomIds } : {}) }),
+      });
       refreshRooms();
       // The backend leaves a room open when it holds a flervalg task nobody answered (see its
       // complete-all-due route) — say which ones, otherwise they just quietly stay unfinished.
@@ -778,6 +788,21 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   const dueRooms = allDueRooms.filter(matchesFilter);
   const notPlannedRooms = isRoomEnabled ? rooms.filter((r) => !r.dueToday).filter(matchesFilter) : [];
   const dueDoneCount = allDueRooms.filter((r) => r.status === "completed").length;
+  // Chapters follow the source plan's own Område, in the order the rooms already sit in — so a
+  // 60-room site reads as "Fjøs", "Slakt storfe ren", "Skjæreri" rather than one endless list.
+  // Rooms without an area (most sites, which never set one) fall into a single unnamed chapter,
+  // which renders exactly as the flat list this used to be.
+  const dueChapters = [];
+  for (const room of dueRooms) {
+    const name = room.area || null;
+    const last = dueChapters[dueChapters.length - 1];
+    if (last && last.name === name) last.rooms.push(room);
+    else dueChapters.push({ key: `${name || ""}-${room.id}`, name, rooms: [room] });
+  }
+  for (const chapter of dueChapters) {
+    chapter.doneCount = chapter.rooms.filter((r) => r.status === "completed").length;
+    chapter.remaining = chapter.rooms.filter((r) => r.status !== "completed");
+  }
   const showRoomFilter = isRoomEnabled && rooms.length > 8;
   // Searching, or having one of them open (e.g. restored after the phone dropped the tab), always
   // wins over the collapsed default — otherwise the room you're looking for is hidden from you.
@@ -1046,10 +1071,39 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>{t("cleaner.roomsToday")}</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{dueDoneCount}/{allDueRooms.length}</div>
           </div>
-          {dueRooms.map((room) => (
-            <div key={room.id}>
-              <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} />
-              {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
+          {dueChapters.map((chapter) => (
+            <div key={chapter.key}>
+              {chapter.name && (
+                <div style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+                  margin: "14px 0 6px", paddingTop: 10, borderTop: "1px solid var(--border)",
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>
+                    {chapter.name}{" "}
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>
+                      {chapter.doneCount}/{chapter.rooms.length}
+                    </span>
+                  </div>
+                  {chapter.remaining.length > 0 && (
+                    <button
+                      onClick={() => bulkCompleteAllDue(chapter.remaining, chapter.name)}
+                      style={{
+                        background: "none", border: "1px solid var(--border)", borderRadius: 999,
+                        padding: "4px 12px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                        color: "var(--accent-orange-dark)", cursor: "pointer",
+                      }}
+                    >
+                      {t("cleaner.completeChapter", { count: chapter.remaining.length })}
+                    </button>
+                  )}
+                </div>
+              )}
+              {chapter.rooms.map((room) => (
+                <div key={room.id}>
+                  <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} />
+                  {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
+                </div>
+              ))}
             </div>
           ))}
           {dueRooms.length === 0 && (

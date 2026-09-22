@@ -71,6 +71,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [newItemLabel, setNewItemLabel] = useState("");
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editRoomName, setEditRoomName] = useState("");
+  const [editRoomArea, setEditRoomArea] = useState("");
   const [editingItemId, setEditingItemId] = useState(null);
   const [editItemLabel, setEditItemLabel] = useState("");
   const [optionEditorItemId, setOptionEditorItemId] = useState(null); // task whose flervalg editor is open
@@ -147,12 +148,18 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   function startEditRoom(room) {
     setEditingRoomId(room.id);
     setEditRoomName(room.name);
+    setEditRoomArea(room.area || "");
   }
 
   async function saveRoomName(siteId, roomId) {
     if (!editRoomName.trim()) return;
     try {
-      await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ name: editRoomName }) });
+      // Empty område means "no chapter", stored as null rather than "" so the cleaner's day view
+      // groups it with the other loose rooms instead of under a blank heading.
+      await apiFetch(`/rooms/${roomId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({ name: editRoomName, area: editRoomArea.trim() || null }),
+      });
       setEditingRoomId(null);
       refreshRoomsForSite(siteId);
     } catch (err) {
@@ -1189,10 +1196,15 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     padding: "8px 10px", marginBottom: 8,
                   }}>
                     {editingRoomId === room.id ? (
-                      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
                         <input
                           value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)}
-                          autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0 }}
+                          autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0, flex: 1 }}
+                        />
+                        <input
+                          value={editRoomArea} onChange={(e) => setEditRoomArea(e.target.value)}
+                          placeholder="Område (valgfritt)" title="Rom med samme område samles i et kapittel i renholderens dagsplan"
+                          style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0, width: 150 }}
                         />
                         <button onClick={() => saveRoomName(site.id, room.id)} style={linkBtnStyle}>Lagre</button>
                         <button onClick={() => setEditingRoomId(null)} style={linkBtnStyle}>Avbryt</button>
@@ -1223,6 +1235,14 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                           marginTop: 3, marginLeft: 20, fontSize: 11, color: "var(--text-secondary)",
                         }}>
                           <span>{room.itemCount} {room.itemCount === 1 ? "oppgave" : "oppgaver"}</span>
+                          {room.area && (
+                            <span title="Område — samler rommet i et kapittel i dagsplanen" style={{
+                              fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+                              background: "var(--surface-2)", color: "var(--text-secondary)", whiteSpace: "nowrap",
+                            }}>
+                              {room.area}
+                            </span>
+                          )}
                           <ResponsibleBadge responsible={room.responsible} />
                           {!!room.requires_approval && (
                             <span style={{
