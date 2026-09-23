@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
+import { GraduationCap, KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 import { LANGUAGES, DEFAULT_LANGUAGE } from "../../i18n";
@@ -33,24 +33,33 @@ function canResetPassword(role) {
 // super_admin has no company of its own and therefore never sees it.
 export default function AnsattePage({ token, user }) {
   const [activeTab, setActiveTab] = useState("ansatte");
+  // Who the Opplæring tab should open when you jump there from a row in the staff list. Without
+  // this the only way into one person's training was clicking their name in the matrix, which does
+  // not look clickable — Håkon had to ask where the certificate was, which is the answer.
+  const [openTrainingFor, setOpenTrainingFor] = useState(null);
   const showTraining = hasModule(user, MODULE_TRAINING);
+
+  function openTraining(userId) {
+    setOpenTrainingFor(userId);
+    setActiveTab("opplaering");
+  }
 
   return (
     <div>
       {showTraining && (
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
           <TabButton active={activeTab === "ansatte"} onClick={() => setActiveTab("ansatte")}>Ansatte</TabButton>
-          <TabButton active={activeTab === "opplaering"} onClick={() => setActiveTab("opplaering")}>Opplæring</TabButton>
+          <TabButton active={activeTab === "opplaering"} onClick={() => { setOpenTrainingFor(null); setActiveTab("opplaering"); }}>Opplæring</TabButton>
         </div>
       )}
       {showTraining && activeTab === "opplaering"
-        ? <OpplaeringPage token={token} user={user} />
-        : <StaffList token={token} user={user} />}
+        ? <OpplaeringPage token={token} user={user} openUserOnMount={openTrainingFor} />
+        : <StaffList token={token} user={user} onOpenTraining={showTraining ? openTraining : null} />}
     </div>
   );
 }
 
-function StaffList({ token, user }) {
+function StaffList({ token, user, onOpenTraining }) {
   // super_admin has no company of its own and manages staff across every company from here —
   // the backend already returns every company's users/departments for it (see auth.js's
   // GET /users and departments.js's GET /), this just adds a "Firma" column and makes sure each
@@ -397,6 +406,11 @@ function StaffList({ token, user }) {
                         <button onClick={() => startEdit(u)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                           <Pencil size={13} /> Rediger
                         </button>
+                        {onOpenTraining && (
+                          <button onClick={() => onOpenTraining(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                            <GraduationCap size={13} /> Opplæring
+                          </button>
+                        )}
                         {canResetPassword(u.role) && (
                           <button onClick={() => startReset(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                             <KeyRound size={13} /> {resetSuccessId === u.id ? "Passord satt ✓" : "Sett nytt passord"}

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { BookOpen, Download, FileText, Plus, Trash2, Upload, UserPlus } from "lucide-react";
+import { BookOpen, ChevronRight, Download, FileText, Plus, Trash2, Upload, UserPlus } from "lucide-react";
 import { apiFetch, downloadPdf } from "../../api";
 import { Card, Field, Loading, TabButton, uploadUrl, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 import SignaturePad from "../SignaturePad";
@@ -38,7 +38,9 @@ function day(value) {
   return value ? String(value).slice(0, 10) : "";
 }
 
-export default function OpplaeringPage({ token, user }) {
+// openUserOnMount: jumped here from a row in the staff list, so open that person straight away
+// instead of making the caller hunt for the name in the matrix.
+export default function OpplaeringPage({ token, user, openUserOnMount }) {
   const [view, setView] = useState("oversikt");
   const [overview, setOverview] = useState(null);
   const [courses, setCourses] = useState([]);
@@ -46,7 +48,7 @@ export default function OpplaeringPage({ token, user }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [departmentFilter, setDepartmentFilter] = useState("");
-  const [openUserId, setOpenUserId] = useState(null);
+  const [openUserId, setOpenUserId] = useState(openUserOnMount ?? null);
   const [openUser, setOpenUser] = useState(null);
 
   const isAdmin = user?.role === "admin";
@@ -204,9 +206,22 @@ function Oversikt({
                     <td style={{ padding: "10px 14px", position: "sticky", left: 0, background: "var(--sidebar-bg)" }}>
                       <button
                         onClick={() => setOpenUserId(openUserId === u.id ? null : u.id)}
-                        style={{ ...linkBtnStyle, fontWeight: 500, color: "var(--text-primary)" }}
+                        title={`Åpne opplæringen til ${u.name}`}
+                        style={{
+                          ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4, fontWeight: 500,
+                          color: openUserId === u.id ? "var(--accent-orange-dark)" : "var(--text-primary)",
+                        }}
                       >
-                        {u.name}
+                        <ChevronRight
+                          size={13}
+                          style={{
+                            color: "var(--text-muted)", flexShrink: 0,
+                            transform: openUserId === u.id ? "rotate(90deg)" : "none", transition: "transform .12s",
+                          }}
+                        />
+                        <span style={{ textDecoration: "underline", textDecorationColor: "var(--border)", textUnderlineOffset: 3 }}>
+                          {u.name}
+                        </span>
                       </button>
                     </td>
                     {overview.courses.map((c) => {
