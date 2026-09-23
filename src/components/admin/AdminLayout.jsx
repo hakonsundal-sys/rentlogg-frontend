@@ -10,6 +10,7 @@ import AvvikPage from "./AvvikPage";
 import InviterBrukerePage from "./InviterBrukerePage";
 import RapporterPage from "./RapporterPage";
 import MinProfilPage from "./MinProfilPage";
+import TimerPage from "./TimerPage";
 import { apiFetch } from "../../api";
 
 const PAGES = {
@@ -21,6 +22,7 @@ const PAGES = {
   avvik: AvvikPage,
   inviter: InviterBrukerePage,
   rapporter: RapporterPage,
+  timer: TimerPage,
   profil: MinProfilPage,
 };
 

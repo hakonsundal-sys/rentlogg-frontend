@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays, Search,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays, Search, GraduationCap,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
@@ -8,6 +8,9 @@ import { Card, StatusBadge, DocumentsList } from "./shared";
 import { useI18n } from "../i18n";
 import QrScanner from "./QrScanner";
 import CleanerHistoryView from "./CleanerHistoryView";
+import TrainingView, { isSettled as isTrainingSettled } from "./TrainingView";
+import TimeClockCard from "./TimeClockCard";
+import { hasModule, MODULE_TRAINING, MODULE_TIMECLOCK } from "../modules";
 import RoomGrid from "./RoomGrid";
 import RunDetailModal from "./RunDetailModal";
 
@@ -149,6 +152,16 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   const [undoAction, setUndoAction] = useState(null); // { label, onUndo }
   const [initials, setInitials] = useState(() => user?.name || "");
   const [viewTab, setViewTab] = useState("today");
+  // How many courses still need something from her — drives the badge on the Opplæring tab. Only
+  // fetched at all when the company has the training module (see src/modules.js).
+  const [trainingDue, setTrainingDue] = useState(0);
+  const showTraining = hasModule(user, MODULE_TRAINING);
+  // Timeregistrering, when the company has it: the stamp card renders on both the "skann QR-kode"
+  // screen and inside an open visit, because somebody who has already walked out still has to be
+  // able to stamp out. Bumped after every check-in so the card picks up the shift that scan just
+  // started, rather than waiting for its own next poll.
+  const showTimeClock = hasModule(user, MODULE_TIMECLOCK);
+  const [timeClockKey, setTimeClockKey] = useState(0);
   const [documents, setDocuments] = useState([]);
   const [showDocuments, setShowDocuments] = useState(false);
   const [pendingRoomPhotos, setPendingRoomPhotos] = useState([]); // photos queued offline: { tempId, previewUrl }
@@ -164,6 +177,11 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   const undoTimeoutRef = useRef(null);
   const initialsInputRef = useRef(null);
   const { pendingCount, flushNow } = useQueueStatus();
+
+  useEffect(() => {
+    if (showTraining) countTrainingDue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTraining, token]);
 
   useEffect(() => {
     function goOnline() { setIsOnline(true); }
@@ -292,6 +310,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       setRooms(siteRooms);
 
       setShowDocuments(false);
+      setTimeClockKey((n) => n + 1);
       apiFetch(`/sites/${checkin.site.id}/documents`, { token }).then(setDocuments).catch(() => setDocuments([]));
       return siteRooms; // used by the mount-time restore effect below, which needs the freshly
       // fetched list right away rather than waiting a render for `rooms` state to catch up
@@ -661,12 +680,36 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     }
   }
 
+  // Takes the list straight from TrainingView when it has just loaded one, and fetches its own only
+  // on first mount, when nothing has opened that tab yet. Failures are ignored: a missing badge is
+  // a far smaller problem than an error on the screen she checks in from every morning.
+  function countTrainingDue(rows) {
+    const apply = (list) => setTrainingDue(list.filter((row) => !isTrainingSettled(row)).length);
+    if (Array.isArray(rows)) return apply(rows);
+    apiFetch("/training/me", { token }).then(apply).catch(() => {});
+  }
+
   const viewTabs = (
-    <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+    <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
       <button onClick={() => setViewTab("today")} style={tabBtnStyle(viewTab === "today")}>{t("cleaner.tab.today")}</button>
       <button onClick={() => setViewTab("history")} style={tabBtnStyle(viewTab === "history")}>
         <History size={13} style={{ marginRight: 4 }} /> {t("cleaner.tab.history")}
       </button>
+      {showTraining && (
+        <button onClick={() => setViewTab("training")} style={tabBtnStyle(viewTab === "training")}>
+          <GraduationCap size={13} style={{ marginRight: 4 }} /> {t("training.tab")}
+          {/* The count is the whole point of the badge: an unfinished course is easy to never
+              notice on a tab you have no reason to open. */}
+          {trainingDue > 0 && (
+            <span style={{
+              marginLeft: 6, minWidth: 18, padding: "0 5px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+              background: "var(--accent-orange)", color: "white",
+            }}>
+              {trainingDue}
+            </span>
+          )}
+        </button>
+      )}
     </div>
   );
 
@@ -701,6 +744,16 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     );
   }
 
+  if (viewTab === "training") {
+    return (
+      <div>
+        {viewTabs}
+        {/* Re-counted on the way out, so a course finished in here stops nagging from the tab. */}
+        <TrainingView token={token} user={user} onChanged={countTrainingDue} />
+      </div>
+    );
+  }
+
   if (!run) {
     if (showScanner) {
       return (
@@ -716,6 +769,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       <div>
         {viewTabs}
         {offlineBanner}
+        {showTimeClock && <TimeClockCard token={token} refreshKey={timeClockKey} />}
         {showOnboarding && (
           <Card style={{ marginBottom: 12, fontSize: 13 }}>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("cleaner.onboarding.title")}</div>
@@ -926,6 +980,8 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       </div>
 
       {offlineBanner}
+
+      {showTimeClock && <TimeClockCard token={token} refreshKey={timeClockKey} />}
 
       {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
 

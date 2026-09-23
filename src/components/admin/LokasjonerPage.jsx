@@ -4,6 +4,7 @@ import { apiFetch } from "../../api";
 import { Card, AddressAutocomplete, DocumentsList, Field, Loading, ResponsibleBadge, TabButton, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
+import { hasModule, MODULE_TIMECLOCK } from "../../modules";
 
 const WEEKDAYS = [
   { value: 1, label: "Man" },
@@ -28,7 +29,49 @@ function todayWeekday() {
   return new Date(`${todayStr}T00:00:00`).getDay();
 }
 
-const emptyForm = { name: "", client_id: "", department_id: "", address: "", report_recipients: "", report_send_hour: "" };
+const emptyForm = {
+  name: "", client_id: "", department_id: "", address: "", report_recipients: "", report_send_hour: "",
+  // Timeregistrering (tilleggsmodul): "actual" teller klokketiden mellom inn- og utstempling,
+  // "fixed" godskriver rammetimetallet under uansett hvor lenge besøket faktisk varte.
+  time_billing_mode: "actual", time_fixed_hours: "",
+};
+
+// Rammetimetallet skrives som timer ("1,5") fordi det er slik det avtales med kunden, men lagres
+// som minutter — et desimaltall ville drifte så fort en måned summeres.
+function hoursToMinutes(value) {
+  const hours = Number(String(value).trim().replace(",", "."));
+  if (!value || !(hours > 0)) return null;
+  return Math.round(hours * 60);
+}
+
+function minutesToHours(minutes) {
+  if (minutes == null) return "";
+  return String(minutes / 60).replace(".", ",");
+}
+
+// Feltene vises bare for et firma som faktisk har Timeregistrering — se src/modules.js. Uten dem
+// ville en ny lokasjon ikke kunne få rammetimer i det hele tatt uten å gå via API-et.
+function TimeSettingsFields({ form, onChange }) {
+  return (
+    <>
+      <Field label="Timeberegning">
+        <select value={form.time_billing_mode} onChange={(e) => onChange({ time_billing_mode: e.target.value })} style={inputStyle}>
+          <option value="actual">Faktisk tid (inn- og utstempling)</option>
+          <option value="fixed">Fast rammetimetall</option>
+        </select>
+      </Field>
+      {form.time_billing_mode === "fixed" && (
+        <Field label="Rammetimetall (timer per besøk)">
+          <input
+            required value={form.time_fixed_hours}
+            onChange={(e) => onChange({ time_fixed_hours: e.target.value })}
+            placeholder="2,5" style={inputStyle}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
 
 // Standard er kl. 07:00 (report_send_hour = null/tom) — kun steder som trenger noe annet setter en verdi.
 const SEND_HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => h);
@@ -46,6 +89,7 @@ const sectionLabelStyle = {
 const SHOW_FLAT_CHECKLIST = false;
 
 export default function LokasjonerPage({ token, user, refreshSummary }) {
+  const showTimeSettings = hasModule(user, MODULE_TIMECLOCK);
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -559,6 +603,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           name: form.name, client_id: Number(form.client_id), department_id: form.department_id ? Number(form.department_id) : null,
           address: form.address || null, report_recipients: form.report_recipients || null,
           report_send_hour: form.report_send_hour === "" ? null : Number(form.report_send_hour),
+          time_billing_mode: form.time_billing_mode,
+          time_fixed_minutes: form.time_billing_mode === "fixed" ? hoursToMinutes(form.time_fixed_hours) : null,
         }),
       });
       // Creating a location while a single avdeling is selected would otherwise file the new
@@ -583,6 +629,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
       address: site.address || "",
       report_recipients: site.report_recipients || "",
       report_send_hour: site.report_send_hour ?? "",
+      time_billing_mode: site.time_billing_mode || "actual",
+      time_fixed_hours: minutesToHours(site.time_fixed_minutes),
     });
   }
 
@@ -597,6 +645,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
           department_id: editSiteForm.department_id ? Number(editSiteForm.department_id) : null,
           address: editSiteForm.address || null, report_recipients: editSiteForm.report_recipients || null,
           report_send_hour: editSiteForm.report_send_hour === "" ? null : Number(editSiteForm.report_send_hour),
+          time_billing_mode: editSiteForm.time_billing_mode,
+          time_fixed_minutes: editSiteForm.time_billing_mode === "fixed" ? hoursToMinutes(editSiteForm.time_fixed_hours) : null,
         }),
       });
       setEditingSiteId(null);
@@ -848,6 +898,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                 {SEND_HOUR_OPTIONS.map((h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
               </select>
             </Field>
+            {showTimeSettings && <TimeSettingsFields form={form} onChange={(patch) => setForm({ ...form, ...patch })} />}
             <button type="submit" style={{ ...primaryBtnStyle, gridColumn: "span 2" }}>Opprett lokasjon</button>
           </form>
         </Card>
@@ -896,6 +947,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     {SEND_HOUR_OPTIONS.map((h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
                   </select>
                 </Field>
+                {showTimeSettings && (
+                  <TimeSettingsFields form={editSiteForm} onChange={(patch) => setEditSiteForm({ ...editSiteForm, ...patch })} />
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button type="submit" style={primaryBtnStyle}>Lagre</button>
                   <button type="button" onClick={() => setEditingSiteId(null)} style={linkBtnStyle}>Avbryt</button>

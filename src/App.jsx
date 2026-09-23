@@ -91,6 +91,23 @@ function AppInner() {
     setAuth({ token, user });
   }
 
+  // Which add-on modules the company has can change between logins (a super_admin turns one on
+  // from "Firmaer"), and the copy this tab holds is whatever was true when the token was minted —
+  // or whatever sessionStorage restored after the phone discarded the tab. Refreshed best-effort
+  // on mount: a failure deliberately keeps the cached list rather than making someone's tabs
+  // vanish on a dead signal, and the backend's own requireModule is what actually enforces it.
+  useEffect(() => {
+    if (!auth?.token) return;
+    apiFetch("/modules", { token: auth.token })
+      .then((modules) => {
+        if (modules.join() !== (auth.user.modules || []).join()) {
+          setAuth({ ...auth, user: { ...auth.user, modules } });
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth?.token]);
+
   // A ?checkin= link means something for a cleaner (their check-in flow) or a customer (jumps
   // to that site's "Fyll ut sjekkliste i dag") — for every other role it's just dead weight
   // sitting in the address bar, so drop it once we know who actually logged in.

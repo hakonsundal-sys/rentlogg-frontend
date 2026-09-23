@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { LayoutGrid, MapPin, Users, Building2, UserCog, AlertTriangle, UserPlus, FileText, CircleUser, LogOut, Menu, X } from "lucide-react";
+import { LayoutGrid, MapPin, Users, Building2, UserCog, AlertTriangle, UserPlus, FileText, CircleUser, Clock, LogOut, Menu, X } from "lucide-react";
 import { RoleBadge } from "../shared";
+import { hasModule, MODULE_TIMECLOCK } from "../../modules";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -9,6 +10,9 @@ const NAV_ITEMS = [
   { id: "avdelinger", label: "Avdelinger", icon: Building2 },
   { id: "ansatte", label: "Ansatte", icon: UserCog },
   { id: "avvik", label: "Avvik", icon: AlertTriangle },
+  // `module` marks an entry as belonging to an add-on: it is only listed for a company that has
+  // that module turned on (see src/modules.js). Every other entry is core and always shown.
+  { id: "timer", label: "Timer", icon: Clock, module: MODULE_TIMECLOCK },
   { id: "inviter", label: "Inviter brukere", icon: UserPlus },
   { id: "rapporter", label: "Rapporter", icon: FileText },
   { id: "profil", label: "Min profil", icon: CircleUser },
@@ -21,6 +25,7 @@ const NAV_ITEMS = [
 // no responsive fallback at all, so every admin page just overflowed sideways on a phone.
 export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, navItems = NAV_ITEMS }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const visibleItems = navItems.filter((item) => !item.module || hasModule(user, item.module));
 
   function selectPage(id) {
     setCurrentPage(id);
@@ -69,7 +74,7 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, n
         </div>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const active = currentPage === item.id;
             return (
               <button

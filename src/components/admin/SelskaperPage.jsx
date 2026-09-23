@@ -7,6 +7,9 @@ export default function SelskaperPage({ token }) {
   const [companies, setCompanies] = useState([]);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
+  // "<company id>:<module key>" while that one checkbox is in flight — a company can have several
+  // modules, and only the one actually being toggled should lock while the call runs.
+  const [savingModule, setSavingModule] = useState(null);
 
   function loadAll() {
     apiFetch("/companies", { token }).then(setCompanies).catch((err) => setError(err.message));
@@ -23,6 +26,21 @@ export default function SelskaperPage({ token }) {
       loadAll();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function toggleModule(companyId, moduleKey, enabled) {
+    setError("");
+    setSavingModule(`${companyId}:${moduleKey}`);
+    try {
+      const updated = await apiFetch(`/companies/${companyId}/modules`, {
+        token, method: "PATCH", body: JSON.stringify({ module_key: moduleKey, enabled }),
+      });
+      setCompanies((list) => list.map((c) => (c.id === updated.id ? { ...c, modules: updated.modules } : c)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingModule(null);
     }
   }
 
@@ -60,6 +78,33 @@ export default function SelskaperPage({ token }) {
             <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
               Opprettet {company.created_at?.slice(0, 10)}
             </div>
+            {/* Tilleggsmoduler er bevisst bare synlige her: et firmas egen admin ser ingen spor av
+                en modul de ikke har, og kan heller ikke skru den på selv. */}
+            {company.modules?.length > 0 && (
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6 }}>Tilleggsmoduler</div>
+                {company.modules.map((m) => (
+                  <label key={m.key} style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", marginTop: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={m.enabled}
+                      disabled={savingModule === `${company.id}:${m.key}`}
+                      onChange={(e) => toggleModule(company.id, m.key, e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{m.name}</span>
+                      <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                        {m.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+                <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.5 }}>
+                  Skrur du av en modul, skjules den bare &mdash; ingenting slettes.
+                </div>
+              </div>
+            )}
           </Card>
         ))}
       </div>

@@ -141,10 +141,12 @@ export const inputStyle = {
   background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 14, boxSizing: "border-box", width: "100%",
 };
 
-// /uploads is an authenticated route now — a plain <a href> can't attach an Authorization
-// header, so the token rides along as a query param instead.
-function documentUrl(filePath, token) {
-  const filename = filePath.split(/[\\/]/).pop();
+// /uploads is an authenticated route now — a plain <a href> (or <img src>, or <audio src>) can't
+// attach an Authorization header, so the token rides along as a query param instead. Exported
+// because the training module's slides, narration audio and course certificates need exactly the
+// same treatment as a site document.
+export function uploadUrl(filePath, token) {
+  const filename = String(filePath).split(/[\\/]/).pop();
   return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
@@ -162,7 +164,7 @@ export function DocumentsList({ documents, onDelete, token }) {
           display: "flex", justifyContent: "space-between", alignItems: "center",
           padding: "6px 0", borderTop: "1px solid var(--border)",
         }}>
-          <a href={documentUrl(d.file_path, token)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent-orange-dark)" }}>
+          <a href={uploadUrl(d.file_path, token)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent-orange-dark)" }}>
             {d.name}
           </a>
           {onDelete && (

@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useState } from "react";
 import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import { Card, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 import { LANGUAGES, DEFAULT_LANGUAGE } from "../../i18n";
+import { hasModule, MODULE_TRAINING } from "../../modules";
+import OpplaeringPage from "./OpplaeringPage";
 
 const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "Renholder" };
 
@@ -25,7 +27,30 @@ function canResetPassword(role) {
   return role === "cleaner" || role === "manager";
 }
 
+// Ansatte and Opplæring are two views of the same staff, so they share this page and its own tab
+// bar rather than taking two sidebar entries — the same shape Kunder/Kundebrukere already uses.
+// The Opplæring tab exists only for a company that has the add-on module (see src/modules.js);
+// super_admin has no company of its own and therefore never sees it.
 export default function AnsattePage({ token, user }) {
+  const [activeTab, setActiveTab] = useState("ansatte");
+  const showTraining = hasModule(user, MODULE_TRAINING);
+
+  return (
+    <div>
+      {showTraining && (
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+          <TabButton active={activeTab === "ansatte"} onClick={() => setActiveTab("ansatte")}>Ansatte</TabButton>
+          <TabButton active={activeTab === "opplaering"} onClick={() => setActiveTab("opplaering")}>Opplæring</TabButton>
+        </div>
+      )}
+      {showTraining && activeTab === "opplaering"
+        ? <OpplaeringPage token={token} user={user} />
+        : <StaffList token={token} user={user} />}
+    </div>
+  );
+}
+
+function StaffList({ token, user }) {
   // super_admin has no company of its own and manages staff across every company from here —
   // the backend already returns every company's users/departments for it (see auth.js's
   // GET /users and departments.js's GET /), this just adds a "Firma" column and makes sure each
