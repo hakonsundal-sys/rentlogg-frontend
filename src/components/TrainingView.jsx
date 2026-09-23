@@ -218,13 +218,21 @@ function CourseView({ row, token, user, onBack }) {
             record={record}
             token={token}
             user={user}
+            requiresDrawnSignature={row.requires_drawn_signature}
             onSigned={onBack}
           />
         )
       )}
 
       {!settled && row.kind === "document" && record && (
-        <SignCard record={record} token={token} user={user} requiresSignature={row.requires_signature} onSigned={onBack} />
+        <SignCard
+          record={record}
+          token={token}
+          user={user}
+          requiresSignature={row.requires_signature}
+          requiresDrawnSignature={row.requires_drawn_signature}
+          onSigned={onBack}
+        />
       )}
 
       {starting && <Card style={{ marginTop: 10, color: "var(--text-secondary)" }}>…</Card>}

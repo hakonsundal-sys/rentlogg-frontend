@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { BookOpen, Download, FileText, Plus, Trash2, Upload, UserPlus } from "lucide-react";
 import { apiFetch, downloadPdf } from "../../api";
 import { Card, Field, Loading, TabButton, uploadUrl, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import SignaturePad from "../SignaturePad";
 
 // The "Opplæring" tab under Ansatte. Documents that a staff member has received training — a lesson
 // watched in the app, a routine read, a physical course held, an external certificate earned — and
@@ -28,7 +29,10 @@ const STATUS = {
   expired: { label: "Utløpt", title: "Utløpt — må tas på nytt", color: "var(--text-danger)", bg: "var(--c-red)" },
 };
 
-const EMPTY_COURSE = { title: "", description: "", kind: "lesson", validity_months: "", requires_signature: true };
+const EMPTY_COURSE = {
+  title: "", description: "", kind: "lesson", validity_months: "",
+  requires_signature: true, requires_drawn_signature: false,
+};
 
 function day(value) {
   return value ? String(value).slice(0, 10) : "";
@@ -299,6 +303,13 @@ function PersonKort({ person, token, isAdmin, onDeleteRecord }) {
                 {rec.expires_at ? ` · gyldig til ${day(rec.expires_at)}` : ""}
                 {rec.slides_total ? ` · ${rec.slides_seen || 0}/${rec.slides_total} lysbilder` : ""}
               </span>
+              {rec.signature_path && (
+                <img
+                  src={uploadUrl(rec.signature_path, token)}
+                  alt="Signatur"
+                  style={{ height: 34, background: "white", border: "1px solid var(--border)", borderRadius: 4, padding: 2 }}
+                />
+              )}
               {rec.evidence_path && (
                 <a href={uploadUrl(rec.evidence_path, token)} target="_blank" rel="noreferrer" style={{ color: "var(--accent-orange-dark)" }}>
                   {rec.evidence_name || "Bevis"}
@@ -343,6 +354,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
       kind: course.kind,
       validity_months: course.validity_months ?? "",
       requires_signature: !!course.requires_signature,
+      requires_drawn_signature: !!course.requires_drawn_signature,
     });
     setEditingId(course.id);
     setShowForm(true);
@@ -460,6 +472,19 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
               />
               Den ansatte må signere med navnet sitt
             </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, marginTop: 6 }}>
+              <input
+                type="checkbox" checked={form.requires_drawn_signature} style={{ marginTop: 3 }}
+                onChange={(e) => setForm((f) => ({ ...f, requires_drawn_signature: e.target.checked }))}
+              />
+              <span>
+                ... og tegne signaturen sin med fingeren
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)" }}>
+                  Signaturen havner i opplæringsbeviset. Juridisk sier den ikke mer enn navn og
+                  tidspunkt gjør, men den leses som en signatur av en kunde eller et tilsyn.
+                </span>
+              </span>
+            </label>
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14 }}>
               <button type="submit" disabled={saving} style={primaryBtnStyle}>{saving ? "Lagrer..." : "Lagre kurs"}</button>
               <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} style={linkBtnStyle}>Avbryt</button>
@@ -485,6 +510,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
                 {course.kind_label}
                 {course.validity_months ? ` · gyldig ${course.validity_months} måneder` : " · uten utløp"}
                 {course.requires_signature ? " · krever signatur" : " · uten signatur"}
+                {course.requires_drawn_signature ? " · tegnet signatur" : ""}
                 {course.kind === "lesson" && ` · versjon ${course.version}`}
               </div>
               {course.description && <div style={{ fontSize: 13, marginTop: 6 }}>{course.description}</div>}
@@ -655,6 +681,8 @@ function RegistrerOpplaering({ courses, staff, token, onChanged, setError }) {
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedFor, setSavedFor] = useState("");
+  const [hasInk, setHasInk] = useState(false);
+  const padRef = useRef(null);
 
   const course = courses.find((c) => String(c.id) === String(form.course_id));
 
@@ -666,11 +694,16 @@ function RegistrerOpplaering({ courses, staff, token, onChanged, setError }) {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value ?? ""));
       if (file) body.append("evidence", file);
+      // Tegnes her og nå, mens personen står foran den som holdt kurset — det er hele poenget med
+      // en signatur man skriver med fingeren i stedet for å taste et navn på vegne av noen.
+      const drawn = await padRef.current?.toBlob();
+      if (drawn) body.append("signature", drawn, "signatur.png");
       await apiFetch("/training/records", { token, method: "POST", body });
       const person = staff.find((s) => String(s.id) === String(form.user_id));
       setSavedFor(person?.name || "");
       setForm({ ...EMPTY, course_id: form.course_id });
       setFile(null);
+      setHasInk(false);
       onChanged();
     } catch (err) {
       setError(err.message);
@@ -734,11 +767,16 @@ function RegistrerOpplaering({ courses, staff, token, onChanged, setError }) {
             style={{ ...inputStyle, width: "100%", resize: "vertical" }}
           />
         </Field>
+        {course?.requires_drawn_signature && (
+          <div style={{ marginTop: 12 }}>
+            <SignaturePad key={savedFor} ref={padRef} onChange={setHasInk} />
+          </div>
+        )}
         <Field label="Kursbevis eller annet vedlegg (valgfritt)">
           <input type="file" accept=".pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ fontSize: 13 }} />
         </Field>
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
-          <button type="submit" disabled={saving} style={primaryBtnStyle}>
+          <button type="submit" disabled={saving || (course?.requires_drawn_signature && !hasInk)} style={primaryBtnStyle}>
             {saving ? "Lagrer..." : "Registrer opplæring"}
           </button>
           <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>

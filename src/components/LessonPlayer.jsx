@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "../api";
 import { Card, Field, uploadUrl, inputStyle } from "./shared";
 import { useT } from "../i18n";
+import SignaturePad from "./SignaturePad";
 
 
 // Plays a lesson as image + narration audio, one slide at a time, with the narration also written
@@ -14,7 +15,7 @@ import { useT } from "../i18n";
 // audio files rather than a re-rendered film, and — the part a video can't do — the app can tell
 // which slides were actually watched, which is the whole claim the signature below rests on.
 
-export default function LessonPlayer({ slides, record, token, user, onSigned }) {
+export default function LessonPlayer({ slides, record, token, user, requiresDrawnSignature, onSigned }) {
   const t = useT();
   // Resumes where she left off. A cleaner's phone routinely discards the tab mid-task (see
   // App.jsx's sessionStorage note); progress lives on the record so it survives that, and a new
@@ -126,6 +127,7 @@ export default function LessonPlayer({ slides, record, token, user, onSigned }) 
         token={token}
         user={user}
         requiresSignature
+        requiresDrawnSignature={requiresDrawnSignature}
         onSigned={onSigned}
         disabled={!allSeen}
         disabledReason={t("training.seenCount", { seen: seen.size, total: slides.length })}
@@ -139,20 +141,36 @@ export default function LessonPlayer({ slides, record, token, user, onSigned }) 
 // Shared by the lesson player and the "read this document" flow. The name is prefilled from the
 // account, exactly like the initials field a cleaner signs a room off with — it's a confirmation
 // that she is the one doing this, not a password.
-export function SignCard({ record, token, user, requiresSignature, onSigned, disabled, disabledReason }) {
+export function SignCard({
+  record, token, user, requiresSignature, requiresDrawnSignature, onSigned, disabled, disabledReason,
+}) {
   const t = useT();
   const [name, setName] = useState(user?.name || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [hasInk, setHasInk] = useState(false);
+  const padRef = useRef(null);
 
   async function submit(e) {
     e.preventDefault();
     setError("");
+
+    // Checked here as well as on the server so the answer is instant and in her own language,
+    // rather than a round-trip to be told she drew nothing.
+    const drawn = requiresDrawnSignature ? await padRef.current?.toBlob() : null;
+    if (requiresDrawnSignature && !drawn) {
+      setError(t("error.drawn_signature_required"));
+      return;
+    }
+
     setSaving(true);
     try {
-      await apiFetch(`/training/me/records/${record.id}/sign`, {
-        token, method: "POST", body: JSON.stringify({ signed_initials: name.trim() }),
-      });
+      // multipart rather than JSON: the signature is a file like every other upload in this app,
+      // and goes through the same type check and size limit.
+      const body = new FormData();
+      body.append("signed_initials", name.trim());
+      if (drawn) body.append("signature", drawn, "signatur.png");
+      await apiFetch(`/training/me/records/${record.id}/sign`, { token, method: "POST", body });
       onSigned();
     } catch (err) {
       setError(err.message);
@@ -160,6 +178,10 @@ export function SignCard({ record, token, user, requiresSignature, onSigned, dis
       setSaving(false);
     }
   }
+
+  // Same treatment as the unseen-slides gate: the button goes quiet until the thing it is waiting
+  // for exists, rather than accepting the tap and then refusing it.
+  const blocked = disabled || (requiresDrawnSignature && !hasInk);
 
   return (
     <Card style={{ marginTop: 10 }}>
@@ -173,17 +195,22 @@ export function SignCard({ record, token, user, requiresSignature, onSigned, dis
             style={inputStyle}
           />
         </Field>
+        {requiresDrawnSignature && (
+          <div style={{ marginTop: 12 }}>
+            <SignaturePad ref={padRef} onChange={setHasInk} />
+          </div>
+        )}
         {disabled && disabledReason && (
           <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8 }}>{disabledReason}</div>
         )}
         {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 8 }}>{error}</div>}
         <button
           type="submit"
-          disabled={saving || disabled}
+          disabled={saving || blocked}
           style={{
-            marginTop: 12, width: "100%", background: disabled ? "var(--border)" : "var(--accent-orange)",
-            color: disabled ? "var(--text-secondary)" : "white", border: "none", padding: "12px 20px",
-            borderRadius: "var(--radius)", fontSize: 15, fontWeight: 600, cursor: disabled ? "default" : "pointer",
+            marginTop: 12, width: "100%", background: blocked ? "var(--border)" : "var(--accent-orange)",
+            color: blocked ? "var(--text-secondary)" : "white", border: "none", padding: "12px 20px",
+            borderRadius: "var(--radius)", fontSize: 15, fontWeight: 600, cursor: blocked ? "default" : "pointer",
           }}
         >
           {saving ? "…" : t("training.sign")}
