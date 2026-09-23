@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, ChevronLeft, FileText } from "lucide-react";
 import { apiFetch } from "../api";
 import { Card, uploadUrl } from "./shared";
-import { useT } from "../i18n";
+import { useI18n, useT } from "../i18n";
 import LessonPlayer, { SignCard } from "./LessonPlayer";
 
 // The staff member's own view of her training: what she has been given, what she has done, and the
@@ -117,7 +117,7 @@ export default function TrainingView({ token, user, onChanged }) {
 // --- One course --------------------------------------------------------------------------------
 
 function CourseView({ row, token, user, onBack }) {
-  const t = useT();
+  const { t, language } = useI18n();
   const [record, setRecord] = useState(row.record?.completed_at ? null : row.record);
   const [slides, setSlides] = useState(null);
   const [error, setError] = useState("");
@@ -129,7 +129,7 @@ function CourseView({ row, token, user, onBack }) {
   useEffect(() => {
     if (settled) return;
     setStarting(true);
-    apiFetch(`/training/me/courses/${row.course_id}/start`, { token, method: "POST" })
+    apiFetch(`/training/me/courses/${row.course_id}/start`, { token, method: "POST", body: JSON.stringify({ language }) })
       .then(setRecord)
       .catch((err) => setError(err.message))
       .finally(() => setStarting(false));
@@ -138,10 +138,12 @@ function CourseView({ row, token, user, onBack }) {
 
   useEffect(() => {
     if (row.kind !== "lesson") return;
-    apiFetch(`/training/me/courses/${row.course_id}/slides`, { token })
+    apiFetch(`/training/me/courses/${row.course_id}/slides?language=${language}`, { token })
       .then((data) => setSlides(data.slides))
       .catch(() => setSlides([]));
-  }, [row.course_id, row.kind, token]);
+    // language is a dependency on purpose: switching language from the header mid-lesson should
+    // swap the narration under the same slides, not leave her reading the one she just left.
+  }, [row.course_id, row.kind, token, language]);
 
   const back = (
     <button
