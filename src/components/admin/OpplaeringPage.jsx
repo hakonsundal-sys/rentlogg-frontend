@@ -3,6 +3,7 @@ import { BookOpen, ChevronRight, Download, FileText, Plus, Trash2, Upload, UserP
 import { apiFetch, downloadPdf } from "../../api";
 import { Card, Field, Loading, TabButton, uploadUrl, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 import SignaturePad from "../SignaturePad";
+import { youtubeId } from "../TrainingView";
 
 // The "Opplæring" tab under Ansatte. Documents that a staff member has received training — a lesson
 // watched in the app, a routine read, a physical course held, an external certificate earned — and
@@ -544,8 +545,11 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
                 {course.requires_signature ? " · krever signatur" : " · uten signatur"}
                 {course.requires_drawn_signature ? " · tegnet signatur" : ""}
                 {course.kind === "lesson" && ` · versjon ${course.version}`}
-                {course.kind === "video" && course.video_url && (
-                  <> · <a href={course.video_url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-orange-dark)" }}>se videoen</a></>
+                {/* Built from the parsed id rather than the raw stored string: video_url is never
+                    re-validated on read, and rendering it verbatim as an href would let a value
+                    that slipped past save-time validation execute in this admin's session. */}
+                {course.kind === "video" && youtubeId(course.video_url) && (
+                  <> · <a href={`https://www.youtube.com/watch?v=${youtubeId(course.video_url)}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-orange-dark)" }}>se videoen</a></>
                 )}
               </div>
               {course.description && <div style={{ fontSize: 13, marginTop: 6 }}>{course.description}</div>}

@@ -33,16 +33,35 @@ function loadYouTubeApi() {
     // message rather than a spinner that never resolves.
     script.onerror = () => reject(new Error("youtube_unavailable"));
     document.head.appendChild(script);
+  }).catch((err) => {
+    // A transient failure must not poison every later video for the rest of the page session — let
+    // the next mount try loading the script again instead of replaying this same rejection forever.
+    ytReady = null;
+    throw err;
   });
   return ytReady;
 }
 
-export default function VideoLesson({ videoId, record, token, user, requiresDrawnSignature, onSigned }) {
+export default function VideoLesson({ videoId, record, token, user, requiresSignature, requiresDrawnSignature, onSigned }) {
   const t = useT();
   const holderRef = useRef(null);
   const playerRef = useRef(null);
   const [watched, setWatched] = useState(!!record.video_completed_at);
   const [failed, setFailed] = useState(false);
+  const [syncFailed, setSyncFailed] = useState(false);
+
+  // Stamps the server-side record before unlocking the signature locally, so "the sign button is
+  // enabled" and "the server will actually accept a sign" never disagree. A failure is shown with a
+  // retry rather than swallowed — unlocking anyway would just move the same failure to the sign
+  // button, where the 409 it comes back with is a more confusing place to discover it.
+  function markWatched() {
+    setSyncFailed(false);
+    apiFetch(`/training/me/records/${record.id}/progress`, {
+      token, method: "PATCH", body: JSON.stringify({ video_completed: true }),
+    })
+      .then(() => setWatched(true))
+      .catch(() => setSyncFailed(true));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -54,15 +73,11 @@ export default function VideoLesson({ videoId, record, token, user, requiresDraw
           playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
           events: {
             onStateChange: (event) => {
-              if (event.data !== YT.PlayerState.ENDED) return;
-              setWatched(true);
-              // Recorded server-side too — the button unlocking is cosmetic, the stamp is what the
-              // signature is allowed to rest on. Swallowed on failure: she is on whatever signal
-              // the building has, and she can press play again.
-              apiFetch(`/training/me/records/${record.id}/progress`, {
-                token, method: "PATCH", body: JSON.stringify({ video_completed: true }),
-              }).catch(() => {});
+              if (event.data === YT.PlayerState.ENDED) markWatched();
             },
+            // A private, deleted, or region-blocked video never reaches ENDED — without this she'd
+            // be stuck looking at a black box forever with no explanation and no way forward.
+            onError: () => setFailed(true),
           },
         });
       })
@@ -82,17 +97,32 @@ export default function VideoLesson({ videoId, record, token, user, requiresDraw
           <div style={{ padding: 20, fontSize: 14, color: "var(--text-secondary)" }}>{t("training.videoUnavailable")}</div>
         ) : (
           // 16:9 box: the iframe YouTube swaps in fills it, so the page does not jump as it loads.
-          <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "black" }}>
+          <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "black" }}>
             <div ref={holderRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
           </div>
         )}
       </Card>
 
+      {syncFailed && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text-danger)", marginTop: 8 }}>
+          {t("training.progressSyncFailed")}
+          <button
+            onClick={markWatched}
+            style={{
+              background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)",
+              padding: "4px 10px", fontSize: 13, color: "var(--text-primary)", cursor: "pointer",
+            }}
+          >
+            {t("training.retry")}
+          </button>
+        </div>
+      )}
+
       <SignCard
         record={record}
         token={token}
         user={user}
-        requiresSignature
+        requiresSignature={requiresSignature}
         requiresDrawnSignature={requiresDrawnSignature}
         onSigned={onSigned}
         disabled={!watched}

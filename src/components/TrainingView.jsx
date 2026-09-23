@@ -9,10 +9,12 @@ import VideoLesson from "./VideoLesson";
 // Same extraction the backend does when the course is saved (youtubeIdFrom in routes/training.js).
 // Duplicated rather than shipped from the server because the player needs the bare id, and a link
 // that got this far has already been validated once — this is only turning it into an embed.
-function youtubeId(url) {
+// Exported so the admin's "se videoen" link can build its href from the parsed id rather than the
+// raw stored string (see OpplaeringPage.jsx).
+export function youtubeId(url) {
   return (
     String(url || "").match(
-      /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
+      /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i
     )?.[1] || null
   );
 }
@@ -254,18 +256,22 @@ function CourseView({ row, token, user, onBack }) {
         )
       )}
 
-      {!settled && row.kind === "video" && record && (
-        youtubeId(row.video_url)
-          ? <VideoLesson
-              videoId={youtubeId(row.video_url)}
-              record={record}
-              token={token}
-              user={user}
-              requiresDrawnSignature={row.requires_drawn_signature}
-              onSigned={onBack}
-            />
-          : <Card style={{ marginTop: 10, color: "var(--text-secondary)", fontSize: 14 }}>{t("training.noContent")}</Card>
-      )}
+      {!settled && row.kind === "video" && record && (() => {
+        const videoId = youtubeId(row.video_url);
+        return videoId ? (
+          <VideoLesson
+            videoId={videoId}
+            record={record}
+            token={token}
+            user={user}
+            requiresSignature={row.requires_signature}
+            requiresDrawnSignature={row.requires_drawn_signature}
+            onSigned={onBack}
+          />
+        ) : (
+          <Card style={{ marginTop: 10, color: "var(--text-secondary)", fontSize: 14 }}>{t("training.videoNoContent")}</Card>
+        );
+      })()}
 
       {!settled && row.kind === "document" && record && (
         <SignCard
