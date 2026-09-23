@@ -4,6 +4,18 @@ import { apiFetch, downloadPdf } from "../api";
 import { Card, uploadUrl } from "./shared";
 import { useI18n, useT } from "../i18n";
 import LessonPlayer, { SignCard } from "./LessonPlayer";
+import VideoLesson from "./VideoLesson";
+
+// Same extraction the backend does when the course is saved (youtubeIdFrom in routes/training.js).
+// Duplicated rather than shipped from the server because the player needs the bare id, and a link
+// that got this far has already been validated once — this is only turning it into an embed.
+function youtubeId(url) {
+  return (
+    String(url || "").match(
+      /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
+    )?.[1] || null
+  );
+}
 
 // The staff member's own view of her training: what she has been given, what she has done, and the
 // signature that documents it. Fully translated, unlike the admin side — the people who use this
@@ -240,6 +252,19 @@ function CourseView({ row, token, user, onBack }) {
             onSigned={onBack}
           />
         )
+      )}
+
+      {!settled && row.kind === "video" && record && (
+        youtubeId(row.video_url)
+          ? <VideoLesson
+              videoId={youtubeId(row.video_url)}
+              record={record}
+              token={token}
+              user={user}
+              requiresDrawnSignature={row.requires_drawn_signature}
+              onSigned={onBack}
+            />
+          : <Card style={{ marginTop: 10, color: "var(--text-secondary)", fontSize: 14 }}>{t("training.noContent")}</Card>
       )}
 
       {!settled && row.kind === "document" && record && (

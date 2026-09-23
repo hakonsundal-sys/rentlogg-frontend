@@ -14,6 +14,7 @@ import SignaturePad from "../SignaturePad";
 
 const KIND_LABEL = {
   lesson: "Leksjon i appen",
+  video: "Video",
   document: "Dokument som skal leses",
   classroom: "Fysisk opplæring",
   external: "Eksternt kurs",
@@ -30,7 +31,7 @@ const STATUS = {
 };
 
 const EMPTY_COURSE = {
-  title: "", description: "", kind: "lesson", validity_months: "",
+  title: "", description: "", kind: "lesson", validity_months: "", video_url: "",
   requires_signature: true, requires_drawn_signature: false,
 };
 
@@ -368,6 +369,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
       description: course.description || "",
       kind: course.kind,
       validity_months: course.validity_months ?? "",
+      video_url: course.video_url || "",
       requires_signature: !!course.requires_signature,
       requires_drawn_signature: !!course.requires_drawn_signature,
     });
@@ -473,6 +475,21 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
                 />
               </Field>
             </div>
+            {form.kind === "video" && (
+              <Field label="YouTube-lenke">
+                <input
+                  required placeholder="https://www.youtube.com/watch?v=..."
+                  value={form.video_url}
+                  onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
+                  style={{ ...inputStyle, width: "100%" }}
+                />
+                <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+                  Videoen må være ulistet eller offentlig, og ha innbygging tillatt &mdash; en privat
+                  video kan ikke spilles av i appen. Merk at én video er ett språk; en leksjon med
+                  lysbilder kan ha tale på flere.
+                </span>
+              </Field>
+            )}
             <Field label="Beskrivelse">
               <textarea
                 rows={2} value={form.description}
@@ -527,6 +544,9 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
                 {course.requires_signature ? " · krever signatur" : " · uten signatur"}
                 {course.requires_drawn_signature ? " · tegnet signatur" : ""}
                 {course.kind === "lesson" && ` · versjon ${course.version}`}
+                {course.kind === "video" && course.video_url && (
+                  <> · <a href={course.video_url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-orange-dark)" }}>se videoen</a></>
+                )}
               </div>
               {course.description && <div style={{ fontSize: 13, marginTop: 6 }}>{course.description}</div>}
               <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>
