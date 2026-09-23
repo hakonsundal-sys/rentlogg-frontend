@@ -331,6 +331,8 @@
   "training.kind.document": "Dokumentas, kurį reikia perskaityti",
   "training.kind.external": "Išorinis kursas",
   "training.kind.lesson": "Pamoka programėlėje",
+  "training.myCertificate": "Atsisiųsti mano pažymėjimą",
+  "training.myCertificateFile": "mokymu-pazymejimas",
   "training.next": "Kita",
   "training.noContent": "Ši pamoka dar neturi turinio.",
   "training.previous": "Ankstesnė",

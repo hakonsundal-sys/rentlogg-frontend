@@ -331,6 +331,8 @@
   "training.kind.document": "Документ для прочтения",
   "training.kind.external": "Внешний курс",
   "training.kind.lesson": "Урок в приложении",
+  "training.myCertificate": "Скачать мой сертификат",
+  "training.myCertificateFile": "sertifikat-obucheniya",
   "training.next": "Далее",
   "training.noContent": "В этом уроке пока нет содержания.",
   "training.previous": "Предыдущий",

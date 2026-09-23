@@ -320,6 +320,8 @@
   "training.kind.document": "Dokuments, kas jāizlasa",
   "training.kind.external": "Ārējs kurss",
   "training.kind.lesson": "Nodarbība lietotnē",
+  "training.myCertificate": "Lejupielādēt manu apliecību",
+  "training.myCertificateFile": "apmacibas-apliecina",
   "training.next": "Nākamais",
   "training.noContent": "Šai nodarbībai vēl nav satura.",
   "training.previous": "Iepriekšējais",

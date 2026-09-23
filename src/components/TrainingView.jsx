@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookOpen, ChevronLeft, FileText } from "lucide-react";
-import { apiFetch } from "../api";
+import { BookOpen, ChevronLeft, Download, FileText } from "lucide-react";
+import { apiFetch, downloadPdf } from "../api";
 import { Card, uploadUrl } from "./shared";
 import { useI18n, useT } from "../i18n";
 import LessonPlayer, { SignCard } from "./LessonPlayer";
@@ -69,6 +69,24 @@ export default function TrainingView({ token, user, onChanged }) {
           <BookOpen size={32} style={{ marginBottom: 10 }} />
           <div>{t("training.empty")}</div>
         </Card>
+      )}
+
+      {/* Her own copy of the certificate. Hidden until she has something to show — an empty
+          certificate is nothing to download, and a button that hands you a blank page is worse
+          than no button. */}
+      {rows?.some((row) => row.record?.completed_at) && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+          <button
+            onClick={() => downloadPdf("/training/me/certificate.pdf", token, `${t("training.myCertificateFile")}.pdf`)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6, background: "none",
+              border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 14px",
+              fontSize: 14, color: "var(--text-primary)", cursor: "pointer",
+            }}
+          >
+            <Download size={15} /> {t("training.myCertificate")}
+          </button>
+        </div>
       )}
 
       {rows?.map((row) => (

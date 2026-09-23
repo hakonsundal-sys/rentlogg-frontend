@@ -309,6 +309,8 @@
   "training.kind.document": "Document to read",
   "training.kind.external": "External course",
   "training.kind.lesson": "Lesson in the app",
+  "training.myCertificate": "Download my certificate",
+  "training.myCertificateFile": "training-certificate",
   "training.next": "Next",
   "training.noContent": "This lesson has no content yet.",
   "training.previous": "Previous",

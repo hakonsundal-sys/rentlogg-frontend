@@ -309,6 +309,8 @@
   "training.kind.document": "Dokument å lese",
   "training.kind.external": "Eksternt kurs",
   "training.kind.lesson": "Leksjon i appen",
+  "training.myCertificate": "Last ned beviset mitt",
+  "training.myCertificateFile": "opplaeringsbevis",
   "training.next": "Neste",
   "training.noContent": "Denne leksjonen har ikke noe innhold ennå.",
   "training.previous": "Forrige",
