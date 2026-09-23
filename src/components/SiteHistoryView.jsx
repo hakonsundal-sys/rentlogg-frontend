@@ -110,7 +110,7 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    {run.backdated && (
+                    {!!run.backdated && (
                       <span style={{
                         fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
                         background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)",

@@ -148,7 +148,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
               </button>
             </div>
 
-            {runDetail.backdated && (
+            {!!runDetail.backdated && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 6, marginTop: 10, padding: "6px 10px",
                 borderRadius: "var(--radius)", background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)", fontSize: 12,

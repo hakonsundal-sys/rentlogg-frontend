@@ -213,7 +213,7 @@ export default function DashboardPage({ token, user, summary }) {
                       {" · "}{roomProgress}
                     </span>
                   )}
-                  {r.backdated && (
+                  {!!r.backdated && (
                     <span style={{ color: "var(--accent-orange-dark)", fontWeight: 600 }}>{" · sjekket inn i etterkant"}</span>
                   )}
                 </div>
