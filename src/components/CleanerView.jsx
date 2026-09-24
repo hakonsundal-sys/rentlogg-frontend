@@ -537,7 +537,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     // A room already waiting on the customer is not work this sweep can do anything with — the
     // backend skips it too — so including it only makes the confirm dialog promise more rooms
     // than will be touched, and puts it in reach of the undo below.
-    const target = (targetRooms || rooms.filter((r) => r.dueToday && r.status !== "completed"))
+    const target = (Array.isArray(targetRooms) ? targetRooms : rooms.filter((r) => r.dueToday && r.status !== "completed"))
       .filter((r) => r.status !== "awaiting_approval");
     const roomIds = target.map((r) => r.id);
     if (roomIds.length === 0) return;
@@ -548,7 +548,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     try {
       const result = await queueableFetch(`/sites/${run.site.id}/rooms/complete-all-due`, {
         token, method: "POST",
-        body: JSON.stringify({ initials: initials.trim(), ...(targetRooms ? { room_ids: roomIds } : {}) }),
+        body: JSON.stringify({ initials: initials.trim(), ...(Array.isArray(targetRooms) ? { room_ids: roomIds } : {}) }),
       });
       refreshRooms();
       // The backend leaves a room open when it holds a flervalg task nobody answered (see its
@@ -1144,7 +1144,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
           </Card>
 
           {allDueRooms.length > 0 && dueDoneCount < allDueRooms.length && (
-            <button onClick={bulkCompleteAllDue} style={{
+            <button onClick={() => bulkCompleteAllDue()} style={{
               width: "100%", background: "var(--brand)", color: "white", border: "none",
               padding: "12px", borderRadius: "var(--radius)", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16,
             }}>
