@@ -12,6 +12,10 @@ const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "R
 // to be worth deliberately changing the dropdown for.
 const EMPTY_NEW_USER = {
   name: "", email: "", password: "", role: "cleaner", department_id: "", company_id: "",
+  // Ansattnummer: the id payroll knows the person by. Optional here — it usually arrives from the
+  // payroll system after somebody has started, and blocking the account on it would just mean
+  // nobody gets created.
+  employee_number: "",
   // Norwegian by default because that is still what most of the office staff created here read —
   // the languages that matter are picked deliberately, per person, at creation time.
   language: DEFAULT_LANGUAGE,
@@ -82,7 +86,7 @@ function StaffList({ token, user, onOpenTraining }) {
   const [creating, setCreating] = useState(false);
   const [createdName, setCreatedName] = useState("");
   const [editUserId, setEditUserId] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", language: DEFAULT_LANGUAGE });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", employee_number: "", language: DEFAULT_LANGUAGE });
   const [savingEdit, setSavingEdit] = useState(false);
 
   function loadAll() {
@@ -137,6 +141,7 @@ function StaffList({ token, user, onOpenTraining }) {
           role: newUser.role,
           department_id: newUser.department_id ? Number(newUser.department_id) : null,
           language: newUser.language,
+          employee_number: newUser.employee_number,
           ...(isSuperAdmin ? { company_id: Number(newUser.company_id) } : {}),
         }),
       });
@@ -209,7 +214,10 @@ function StaffList({ token, user, onOpenTraining }) {
 
   function startEdit(u) {
     setEditUserId(u.id);
-    setEditForm({ name: u.name, email: u.email, phone: u.phone || "", language: u.language || DEFAULT_LANGUAGE });
+    setEditForm({
+      name: u.name, email: u.email, phone: u.phone || "",
+      employee_number: u.employee_number || "", language: u.language || DEFAULT_LANGUAGE,
+    });
     setResetUserId(null);
     setError("");
   }
@@ -296,6 +304,9 @@ function StaffList({ token, user, onOpenTraining }) {
               <Field label="Passord" style={{ flex: 1, minWidth: 140 }}>
                 <input required type="text" minLength={6} placeholder="Minst 6 tegn" value={newUser.password} onChange={(e) => updateNewUser("password", e.target.value)} style={inputStyle} />
               </Field>
+              <Field label="Ansattnummer" style={{ minWidth: 130 }}>
+                <input value={newUser.employee_number} onChange={(e) => updateNewUser("employee_number", e.target.value)} placeholder="Valgfritt" style={inputStyle} />
+              </Field>
               <Field label="Rolle" style={{ minWidth: 140 }}>
                 <select value={newUser.role} onChange={(e) => updateNewUser("role", e.target.value)} style={inputStyle}>
                   {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -346,6 +357,7 @@ function StaffList({ token, user, onOpenTraining }) {
                 {isSuperAdmin && <th style={{ padding: "10px 14px" }}>Firma</th>}
                 <th style={{ padding: "10px 14px" }}>E-post</th>
                 <th style={{ padding: "10px 14px" }}>Rolle</th>
+                <th style={{ padding: "10px 14px" }}>Ansattnr.</th>
                 <th style={{ padding: "10px 14px" }}>Telefon</th>
                 <th style={{ padding: "10px 14px" }}>Avdeling</th>
                 <th style={{ padding: "10px 14px" }}>Status</th>
@@ -375,6 +387,11 @@ function StaffList({ token, user, onOpenTraining }) {
                           {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </select>
                       )}
+                    </td>
+                    {/* Shown even when empty, and deliberately not greyed into invisibility: a
+                        missing number is the thing that stops a payroll export from importing. */}
+                    <td style={{ padding: "10px 14px" }}>
+                      {u.employee_number || <span style={{ color: "var(--text-danger)", fontSize: 12 }}>mangler</span>}
                     </td>
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.phone || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
@@ -442,6 +459,14 @@ function StaffList({ token, user, onOpenTraining }) {
                               required type="email" value={editForm.email}
                               onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
                               style={{ ...inputStyle, width: 240 }}
+                            />
+                          </Field>
+                          <Field label="Ansattnummer" style={{ margin: 0 }}>
+                            <input
+                              value={editForm.employee_number}
+                              onChange={(e) => setEditForm((f) => ({ ...f, employee_number: e.target.value }))}
+                              placeholder="Til lønn"
+                              style={inputStyle}
                             />
                           </Field>
                           <Field label="Telefon" style={{ margin: 0 }}>
