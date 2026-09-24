@@ -3,6 +3,30 @@ import { X } from "lucide-react";
 import { API_URL } from "../api";
 import { useT } from "../i18n";
 
+// The logo mark: three log entries and a check — what a visit actually leaves behind once the
+// rooms are signed out. It replaces a white "R" inside a rounded-square gradient chip, which was
+// the same shape *and* the same orange cleanlog.no puts its own mark in, and was most of why a
+// person seeing both products assumed one had copied the other (see index.css's brand block).
+// Drawn bare rather than in a chip for that same reason — the chip is theirs. Only the favicon
+// keeps a filled tile, because a stroked mark mushes on a browser tab at 16px.
+//
+// Lives here rather than inline because both shells render it: App.jsx (cleaner/customer) and
+// admin/Sidebar.jsx. public/favicon.svg carries the same four paths — change them together.
+export function BrandMark({ size = 28, color = "var(--brand)" }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 32 32"
+      fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"
+      role="img" aria-label="Rentlogg" style={{ flexShrink: 0 }}
+    >
+      <path d="M5 7.5h12" />
+      <path d="M5 15h9" />
+      <path d="M5 22.5h7" />
+      <path d="m17.5 19.6 3.6 3.6L29 15" />
+    </svg>
+  );
+}
+
 export function StatusBadge({ status }) {
   const t = useT();
   const map = {
@@ -22,9 +46,9 @@ export function StatusBadge({ status }) {
 }
 
 const ROLE_BADGE = {
-  super_admin: { key: "role.super_admin", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
-  admin: { key: "role.admin", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
-  manager: { key: "role.manager", bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  super_admin: { key: "role.super_admin", bg: "var(--brand-bg)", color: "var(--brand-dark)" },
+  admin: { key: "role.admin", bg: "var(--brand-bg)", color: "var(--brand-dark)" },
+  manager: { key: "role.manager", bg: "var(--brand-bg)", color: "var(--brand-dark)" },
   cleaner: { key: "role.cleaner", bg: "var(--c-teal)", color: "var(--text-success)" },
   customer: { key: "role.customer", bg: "var(--surface-0)", color: "var(--text-secondary)" },
 };
@@ -114,8 +138,8 @@ export function TabButton({ active, onClick, children }) {
       onClick={onClick}
       style={{
         background: "none", border: "none", cursor: "pointer", padding: "10px 4px", marginRight: 24,
-        fontSize: 14, fontWeight: 600, color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
-        borderBottom: active ? "2px solid var(--accent-orange)" : "2px solid transparent",
+        fontSize: 14, fontWeight: 600, color: active ? "var(--brand-dark)" : "var(--text-secondary)",
+        borderBottom: active ? "2px solid var(--brand)" : "2px solid transparent",
         whiteSpace: "nowrap", flexShrink: 0,
       }}
     >
@@ -127,11 +151,11 @@ export function TabButton({ active, onClick, children }) {
 // Shared control styling for the admin CRUD pages (Lokasjoner/Kunder/Avdelinger/Avvik/Inviter) —
 // kept in one place so a new page can't drift into a different button/input shape than the rest.
 export const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
+  background: "var(--brand)", color: "white", border: "none",
   padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 export const linkBtnStyle = {
-  background: "none", border: "none", color: "var(--accent-orange-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
+  background: "none", border: "none", color: "var(--brand-dark)", fontSize: 12, cursor: "pointer", fontWeight: 500,
 };
 export const iconBtnStyle = {
   background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4,
@@ -164,7 +188,7 @@ export function DocumentsList({ documents, onDelete, token }) {
           display: "flex", justifyContent: "space-between", alignItems: "center",
           padding: "6px 0", borderTop: "1px solid var(--border)",
         }}>
-          <a href={uploadUrl(d.file_path, token)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent-orange-dark)" }}>
+          <a href={uploadUrl(d.file_path, token)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--brand-dark)" }}>
             {d.name}
           </a>
           {onDelete && (

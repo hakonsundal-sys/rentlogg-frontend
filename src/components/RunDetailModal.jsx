@@ -151,7 +151,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
             {!!runDetail.backdated && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 6, marginTop: 10, padding: "6px 10px",
-                borderRadius: "var(--radius)", background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)", fontSize: 12,
+                borderRadius: "var(--radius)", background: "var(--brand-bg)", color: "var(--brand-dark)", fontSize: 12,
               }}>
                 <TriangleAlert size={13} /> {t("runDetail.backdated")}
               </div>
@@ -218,7 +218,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                   onClick={() => setIsEditing(true)}
                   style={{
                     display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
-                    color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                    color: "var(--brand-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                   }}
                 >
                   <Pencil size={12} /> {t("history.edit")}
@@ -246,7 +246,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
               <button
                 onClick={bulkCompleteAllOwnRooms}
                 style={{
-                  width: "100%", background: "var(--accent-orange)", color: "white", border: "none",
+                  width: "100%", background: "var(--brand)", color: "white", border: "none",
                   padding: "10px", borderRadius: "var(--radius)", fontSize: 13, fontWeight: 600,
                   cursor: "pointer", marginBottom: 10,
                 }}

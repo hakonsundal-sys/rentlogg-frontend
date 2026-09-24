@@ -13,14 +13,14 @@
     <meta name="robots" content="index, follow" />
     <style>
       :root {
-        --page-bg: #fdfbf7;
+        --page-bg: #f9f9fc;
         --surface: #ffffff;
-        --border: #f0e4d4;
+        --border: #e9e7f2;
         --text-primary: #18181b;
         --text-secondary: #71717a;
-        --accent-orange: #f97316;
-        --accent-orange-dark: #ea580c;
-        --accent-orange-bg: #fff1e6;
+        --brand: #6d28d9;
+        --brand-dark: #5b21b6;
+        --brand-bg: #f5f3ff;
         --radius: 10px;
         --radius-lg: 16px;
       }
@@ -33,11 +33,14 @@
       }
       .wrap { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; }
       header { margin-bottom: 40px; }
+      /* Samme lockup som appen: merket i merkevarefargen, ordmerket i brødtekstfargen. Var en
+         liten versal-pille — men dette er siden kategoriseringstjenestene og nye kunder leser
+         først, så den skal vise den faktiske logoen, ikke en etikett. */
       .logo {
-        display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: .04em;
-        text-transform: uppercase; color: var(--accent-orange-dark);
-        background: var(--accent-orange-bg); border-radius: 999px; padding: 5px 12px; margin-bottom: 16px;
+        display: inline-flex; align-items: center; gap: 9px; margin-bottom: 18px;
+        font-size: 19px; font-weight: 700; letter-spacing: -.021em; color: var(--text-primary);
       }
+      .logo svg { color: var(--brand); flex-shrink: 0; }
       h1 { font-size: 30px; line-height: 1.25; margin: 0 0 8px; }
       .lede { font-size: 18px; color: var(--text-secondary); margin: 0; }
       h2 { font-size: 20px; margin: 40px 0 12px; }
@@ -48,7 +51,7 @@
       }
       ol.steps li::before {
         content: counter(step); position: absolute; left: 0; top: 1px;
-        width: 26px; height: 26px; border-radius: 50%; background: var(--accent-orange);
+        width: 26px; height: 26px; border-radius: 50%; background: var(--brand);
         color: #fff; font-size: 14px; font-weight: 600; display: grid; place-items: center;
       }
       .card {
@@ -60,7 +63,7 @@
       dt { font-weight: 600; margin-top: 14px; }
       dd { margin: 2px 0 0; color: var(--text-secondary); }
       dl.org dd { color: var(--text-primary); }
-      a { color: var(--accent-orange-dark); }
+      a { color: var(--brand-dark); }
       footer {
         margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border);
         font-size: 14px; color: var(--text-secondary);
@@ -71,7 +74,14 @@
   <body>
     <div class="wrap">
       <header>
-        <div class="logo">Rentlogg</div>
+        <div class="logo">
+          <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor"
+               stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 7.5h12" /><path d="M5 15h9" /><path d="M5 22.5h7" />
+            <path d="m17.5 19.6 3.6 3.6L29 15" />
+          </svg>
+          Rentlogg
+        </div>
         <h1>Dokumentasjon av renhold</h1>
         <p class="lede">
           Et norsk fagsystem som lar renholdsbedrifter dokumentere arbeidet de utfører — og lar

@@ -149,7 +149,7 @@ export default function TimeClockCard({ token, refreshKey }) {
             disabled={stoppingOut}
             style={{
               display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-              background: "var(--accent-orange)", color: "white", border: "none",
+              background: "var(--brand)", color: "white", border: "none",
               padding: "10px 16px", borderRadius: "var(--radius)", fontSize: 14, fontWeight: 600,
               cursor: stoppingOut ? "default" : "pointer", opacity: stoppingOut ? 0.6 : 1,
             }}
@@ -170,7 +170,7 @@ export default function TimeClockCard({ token, refreshKey }) {
           style={{
             marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5,
             background: "none", border: "none", padding: 0, cursor: "pointer",
-            color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 600,
+            color: "var(--brand-dark)", fontSize: 12, fontWeight: 600,
           }}
         >
           <Plus size={13} /> {t("time.addHours")}
@@ -192,11 +192,11 @@ export default function TimeClockCard({ token, refreshKey }) {
       {missingCount > 0 && (
         <div style={{
           display: "flex", gap: 8, alignItems: "flex-start", marginTop: 10, padding: "8px 10px",
-          background: "var(--accent-orange-bg)", borderRadius: "var(--radius)", fontSize: 12,
+          background: "var(--brand-bg)", borderRadius: "var(--radius)", fontSize: 12,
         }}>
-          <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1, color: "var(--accent-orange-dark)" }} />
+          <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1, color: "var(--brand-dark)" }} />
           <div>
-            <div style={{ fontWeight: 600, color: "var(--accent-orange-dark)" }}>
+            <div style={{ fontWeight: 600, color: "var(--brand-dark)" }}>
               {tn("time.missingCheckout", missingCount)}
             </div>
             <div style={{ color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.5 }}>
@@ -351,7 +351,7 @@ function AddHoursForm({ token, onClose, onSaved }) {
           </button>
           <button type="submit" disabled={saving} style={{
             flex: 2, padding: "12px", borderRadius: "var(--radius)", border: "none",
-            background: "var(--accent-orange)", color: "white", fontSize: 14, fontWeight: 600,
+            background: "var(--brand)", color: "white", fontSize: 14, fontWeight: 600,
             cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1,
           }}>
             {saving ? t("time.savingHours") : t("time.saveHours")}

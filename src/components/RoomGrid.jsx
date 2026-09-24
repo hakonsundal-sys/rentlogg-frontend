@@ -5,7 +5,7 @@ import { useT } from "../i18n";
 // Colors only — the labels moved into the locale files, keyed "grid.status.<key>".
 export const GRID_STATUS = {
   completed: { color: "var(--c-teal)" },
-  in_progress: { color: "var(--accent-orange-bg)" },
+  in_progress: { color: "var(--status-progress-bg)" },
   missing: { color: "var(--bg-danger)" },
   not_due: { color: "var(--surface-2)" },
 };
@@ -62,20 +62,20 @@ export default function RoomGrid({ grid, month, siteName, onOpenRun, userRole })
                 return (
                   <th key={d} style={{
                     ...gridThStyle, textAlign: "center", minWidth: 22,
-                    background: isToday ? "var(--accent-orange-bg)" : undefined,
+                    background: isToday ? "var(--brand-bg)" : undefined,
                     borderRadius: isToday ? "var(--radius-sm) var(--radius-sm) 0 0" : undefined,
                   }}>
-                    <div style={{ color: isToday ? "var(--accent-orange-dark)" : "var(--text-muted)", fontSize: 9, fontWeight: isToday ? 700 : 400 }}>
+                    <div style={{ color: isToday ? "var(--brand-dark)" : "var(--text-muted)", fontSize: 9, fontWeight: isToday ? 700 : 400 }}>
                       {weekdayAbbr(dateStr, t)}
                     </div>
-                    <div style={{ color: isToday ? "var(--accent-orange-dark)" : undefined, fontWeight: isToday ? 700 : undefined }}>{d}</div>
+                    <div style={{ color: isToday ? "var(--brand-dark)" : undefined, fontWeight: isToday ? 700 : undefined }}>{d}</div>
                     {openable && (
                       <button
                         onClick={() => onOpenRun(dateStr)}
                         title={t("grid.openChecklist", { date: dateStr })}
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "center", margin: "2px auto 0",
-                          background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--accent-orange-dark)",
+                          background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--brand-dark)",
                         }}
                       >
                         <ExternalLink size={10} />
@@ -106,7 +106,7 @@ export default function RoomGrid({ grid, month, siteName, onOpenRun, userRole })
                   const info = GRID_STATUS[status];
                   const isToday = dateStr === today;
                   return (
-                    <td key={d} style={{ textAlign: "center", padding: 2, background: isToday ? "var(--accent-orange-bg)" : undefined }}>
+                    <td key={d} style={{ textAlign: "center", padding: 2, background: isToday ? "var(--brand-bg)" : undefined }}>
                       <div
                         title={t("grid.cell", {
                           room: room.name,

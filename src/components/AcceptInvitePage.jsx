@@ -48,7 +48,7 @@ export default function AcceptInvitePage({ token: inviteToken, onLogin, onCancel
         <Card style={{ textAlign: "center" }}>
           <div style={{ marginBottom: 12 }}>{t("invite.invalid")}</div>
           <button onClick={onCancel} style={{
-            background: "var(--accent-orange)", color: "white", border: "none",
+            background: "var(--brand)", color: "white", border: "none",
             padding: "10px 20px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
             {t("invite.goToLogin")}
@@ -74,7 +74,7 @@ export default function AcceptInvitePage({ token: inviteToken, onLogin, onCancel
           <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
           {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 10 }}>{error}</div>}
           <button type="submit" disabled={submitting} style={{
-            marginTop: 16, width: "100%", background: "var(--accent-orange)", color: "white",
+            marginTop: 16, width: "100%", background: "var(--brand)", color: "white",
             border: "none", padding: "10px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
             {submitting ? t("invite.creating") : t("invite.createAccount")}

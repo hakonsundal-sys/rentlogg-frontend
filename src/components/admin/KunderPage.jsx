@@ -162,7 +162,7 @@ export default function KunderPage({ token, user, refreshSummary }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))", color: "white",
+                    background: "linear-gradient(135deg, var(--brand), var(--brand-dark))", color: "white",
                   }}>
                     <Users size={20} />
                   </div>

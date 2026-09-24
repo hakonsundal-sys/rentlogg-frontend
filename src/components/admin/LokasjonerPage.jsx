@@ -960,7 +960,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))", color: "white",
+                    background: "linear-gradient(135deg, var(--brand), var(--brand-dark))", color: "white",
                   }}>
                     <Building2 size={20} />
                   </div>
@@ -1074,9 +1074,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     return (
                       <button key={wd.value} onClick={() => toggleWeekday(site.id, wd.value)} style={{
                         padding: "5px 9px", borderRadius: 6, fontSize: 12, cursor: "pointer",
-                        border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                        background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                        color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                        border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+                        background: active ? "var(--brand-bg)" : "var(--surface-0)",
+                        color: active ? "var(--brand-dark)" : "var(--text-secondary)",
                       }}>
                         {wd.label}
                       </button>
@@ -1157,9 +1157,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                               return (
                                 <button key={wd.value} onClick={() => toggleImportWeekday(roomIdx, wd.value)} style={{
                                   padding: "3px 7px", borderRadius: 6, fontSize: 11, cursor: "pointer",
-                                  border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                                  background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                                  color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                                  border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+                                  background: active ? "var(--brand-bg)" : "var(--surface-0)",
+                                  color: active ? "var(--brand-dark)" : "var(--text-secondary)",
                                 }}>
                                   {wd.label}
                                 </button>
@@ -1245,7 +1245,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                   const isCustomerRoom = (room.responsible || "company") === "customer";
                   return (
                   <div key={room.id} style={{
-                    border: isOpen ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+                    border: isOpen ? "1px solid var(--brand)" : "1px solid var(--border)",
                     borderRadius: "var(--radius)", background: isOpen ? "var(--surface-0)" : "var(--surface-1)",
                     padding: "8px 10px", marginBottom: 8,
                   }}>
@@ -1358,7 +1358,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                   <span style={{
                                     marginLeft: 6, fontSize: 9, fontWeight: 600, padding: "1px 6px",
                                     borderRadius: "var(--radius-pill)", whiteSpace: "nowrap",
-                                    background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)",
+                                    background: "var(--brand-bg)", color: "var(--brand-dark)",
                                   }}>
                                     Flervalg ({item.options.length})
                                   </span>
@@ -1397,9 +1397,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                     return (
                                       <button key={wd.value} onClick={() => toggleItemWeekday(room.id, item.id, wd.value)} style={{
                                         padding: "2px 6px", borderRadius: 5, fontSize: 10, cursor: "pointer",
-                                        border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                                        background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                                        color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                                        border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+                                        background: active ? "var(--brand-bg)" : "var(--surface-0)",
+                                        color: active ? "var(--brand-dark)" : "var(--text-secondary)",
                                       }}>
                                         {wd.label}
                                       </button>
@@ -1437,7 +1437,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                             {(item.options?.length > 0 || optionEditorItemId === item.id) && (
                               <div style={{
                                 marginTop: 5, marginLeft: 2, paddingLeft: 8,
-                                borderLeft: "2px solid var(--accent-orange-bg)",
+                                borderLeft: "2px solid var(--brand-bg)",
                               }}>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                                   {(item.options || []).map((option) => (
@@ -1504,9 +1504,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                 return (
                                   <button key={wd.value} onClick={() => toggleRoomWeekday(site.id, room.id, wd.value)} style={{
                                     padding: "4px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer",
-                                    border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                                    background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                                    color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                                    border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+                                    background: active ? "var(--brand-bg)" : "var(--surface-0)",
+                                    color: active ? "var(--brand-dark)" : "var(--text-secondary)",
                                   }}>
                                     {wd.label}
                                   </button>

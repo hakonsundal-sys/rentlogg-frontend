@@ -108,7 +108,7 @@ export default function LessonPlayer({ slides, record, token, user, requiresDraw
           disabled={isLast}
           style={{
             display: "flex", alignItems: "center", gap: 4,
-            background: isLast ? "none" : "var(--accent-orange)",
+            background: isLast ? "none" : "var(--brand)",
             color: isLast ? "var(--text-muted)" : "white",
             border: isLast ? "1px solid var(--border)" : "none",
             borderRadius: "var(--radius)", padding: "10px 14px", fontSize: 14,
@@ -208,7 +208,7 @@ export function SignCard({
           type="submit"
           disabled={saving || blocked}
           style={{
-            marginTop: 12, width: "100%", background: blocked ? "var(--border)" : "var(--accent-orange)",
+            marginTop: 12, width: "100%", background: blocked ? "var(--border)" : "var(--brand)",
             color: blocked ? "var(--text-secondary)" : "white", border: "none", padding: "12px 20px",
             borderRadius: "var(--radius)", fontSize: 15, fontWeight: 600, cursor: blocked ? "default" : "pointer",
           }}

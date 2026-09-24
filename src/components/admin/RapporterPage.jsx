@@ -189,7 +189,7 @@ export default function RapporterPage({ token, user }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
             <StatCard icon={CheckCircle2} label="Oppmøte" value={`${report.attendancePct}%`} color="var(--text-success)" />
             <StatCard icon={FileText} label="Planlagte dager" value={report.plannedDays} />
-            <StatCard icon={Clock} label="Fullførte dager" value={report.completedDays} color="var(--accent-orange-dark)" />
+            <StatCard icon={Clock} label="Fullførte dager" value={report.completedDays} color="var(--brand-dark)" />
             <StatCard icon={AlertTriangle} label="Manglende dager" value={report.missingDays} color="var(--text-danger)" />
           </div>
 

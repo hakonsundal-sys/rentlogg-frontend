@@ -90,8 +90,8 @@ export default function DashboardPage({ token, user, summary }) {
         subtitle: [a.cleanerName, roomProgress || (a.status === "completed" ? "Fullført" : "Pågår"), a.signedInitials ? `signert ${a.signedInitials}` : null]
           .filter(Boolean).join(" · "),
         badge: a.status === "completed" ? "FULLFØRT" : "PÅGÅR",
-        badgeColor: a.status === "completed" ? "var(--text-success)" : "var(--accent-orange-dark)",
-        badgeBg: a.status === "completed" ? "var(--c-teal)" : "var(--accent-orange-bg)",
+        badgeColor: a.status === "completed" ? "var(--text-success)" : "var(--status-progress-dark)",
+        badgeBg: a.status === "completed" ? "var(--c-teal)" : "var(--status-progress-bg)",
       };
     }),
     ...summary.plannedToday.map((p) => ({
@@ -106,7 +106,7 @@ export default function DashboardPage({ token, user, summary }) {
 
   return (
     <div>
-      <div style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: 999, background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 600, marginBottom: 10 }}>
+      <div style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: 999, background: "var(--brand-bg)", color: "var(--brand-dark)", fontSize: 12, fontWeight: 600, marginBottom: 10 }}>
         <Sparkles size={12} style={{ marginRight: 4 }} /> {ROLE_CHIP[user.role] || user.role}
       </div>
       <h1 style={{ fontSize: 28, margin: "0 0 4px" }}>Hei {user.name} 👋</h1>
@@ -134,7 +134,7 @@ export default function DashboardPage({ token, user, summary }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
         <StatCard icon={ClipboardList} label="Oppdrag totalt" value={summary.totalRunsToday + summary.plannedToday.length} />
         <StatCard icon={CheckCircle2} label="Fullført" value={summary.completedToday} color="var(--text-success)" />
-        <StatCard icon={Clock} label="Pågående" value={summary.inProgressToday} color="var(--accent-orange-dark)" />
+        <StatCard icon={Clock} label="Pågående" value={summary.inProgressToday} color="var(--status-progress-dark)" />
         <StatCard icon={AlertTriangle} label="Åpne avvik" value={summary.openDeviationsCount} color="var(--text-danger)" />
       </div>
 
@@ -162,7 +162,7 @@ export default function DashboardPage({ token, user, summary }) {
         </Card>
 
         <div style={{
-          background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))",
+          background: "linear-gradient(135deg, var(--brand), var(--brand-dark))",
           borderRadius: 12, padding: 20, color: "white",
         }}>
           <div style={{ fontSize: 13, opacity: 0.9 }}>Aktive lokasjoner</div>
@@ -180,9 +180,9 @@ export default function DashboardPage({ token, user, summary }) {
             {RUN_FILTERS.map((f) => (
               <button key={f.key} onClick={() => setRunFilter(f.key)} style={{
                 padding: "4px 10px", borderRadius: 999, fontSize: 12, cursor: "pointer",
-                border: runFilter === f.key ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                background: runFilter === f.key ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                color: runFilter === f.key ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                border: runFilter === f.key ? "1px solid var(--brand)" : "1px solid var(--border)",
+                background: runFilter === f.key ? "var(--brand-bg)" : "var(--surface-0)",
+                color: runFilter === f.key ? "var(--brand-dark)" : "var(--text-secondary)",
               }}>
                 {f.label}
               </button>
@@ -214,14 +214,14 @@ export default function DashboardPage({ token, user, summary }) {
                     </span>
                   )}
                   {!!r.backdated && (
-                    <span style={{ color: "var(--accent-orange-dark)", fontWeight: 600 }}>{" · sjekket inn i etterkant"}</span>
+                    <span style={{ color: "var(--brand-dark)", fontWeight: 600 }}>{" · sjekket inn i etterkant"}</span>
                   )}
                 </div>
               </div>
               <span style={{
                 fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 999,
-                background: r.completed_at ? "var(--c-teal)" : "var(--accent-orange-bg)",
-                color: r.completed_at ? "var(--text-success)" : "var(--accent-orange-dark)",
+                background: r.completed_at ? "var(--c-teal)" : "var(--status-progress-bg)",
+                color: r.completed_at ? "var(--text-success)" : "var(--status-progress-dark)",
               }}>
                 {r.completed_at ? "FULLFØRT" : "PÅGÅR"}
               </span>
@@ -307,7 +307,7 @@ export default function DashboardPage({ token, user, summary }) {
                       onClick={() => setIsEditingRun(true)}
                       style={{
                         display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
-                        color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                        color: "var(--brand-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                       }}
                     >
                       <Pencil size={12} /> Rediger

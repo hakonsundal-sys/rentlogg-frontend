@@ -73,9 +73,9 @@ function ItemRow({ item, variant, onToggle, onToggleApprove, onToggleOption }) {
                 onClick={() => onToggleOption(item, option)}
                 style={{
                   padding: "3px 8px", borderRadius: "var(--radius-pill)", fontSize: 11, cursor: "pointer",
-                  border: option.selected ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                  background: option.selected ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                  color: option.selected ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                  border: option.selected ? "1px solid var(--brand)" : "1px solid var(--border)",
+                  background: option.selected ? "var(--brand-bg)" : "var(--surface-0)",
+                  color: option.selected ? "var(--brand-dark)" : "var(--text-secondary)",
                   fontWeight: option.selected ? 600 : 400,
                 }}
               >
@@ -497,8 +497,8 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
-                  background: room.completed_at ? "var(--c-teal)" : awaitingApproval ? "var(--accent-blue-bg)" : room.items.length > 0 ? "var(--accent-orange-bg)" : "var(--surface-2)",
-                  color: room.completed_at ? "var(--text-success)" : awaitingApproval ? "var(--accent-blue-dark)" : room.items.length > 0 ? "var(--accent-orange-dark)" : "var(--text-muted)",
+                  background: room.completed_at ? "var(--c-teal)" : awaitingApproval ? "var(--accent-blue-bg)" : room.items.length > 0 ? "var(--status-progress-bg)" : "var(--surface-2)",
+                  color: room.completed_at ? "var(--text-success)" : awaitingApproval ? "var(--accent-blue-dark)" : room.items.length > 0 ? "var(--status-progress-dark)" : "var(--text-muted)",
                 }}>
                   {status}
                 </span>
@@ -511,7 +511,7 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
                       onClick={() => completeAllRoomItems(room.roomRunId)}
                       style={{
                         background: "none", border: "none", padding: 0, margin: 0,
-                        color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                        color: "var(--brand-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                       }}
                     >
                       {t("run.tickAll")}

@@ -15,24 +15,39 @@
   --text-secondary: #71717a;
   --text-muted: #a1a1aa;
   --text-success: #16a34a;
+  --text-warning: #d97706;
   --text-danger: #dc2626;
 
   --c-teal: color-mix(in srgb, #16a34a 15%, transparent);
   --c-amber: color-mix(in srgb, #d97706 15%, transparent);
   --c-red: color-mix(in srgb, #dc2626 15%, transparent);
 
-  /* Rentlogg brand theme — shared across the admin panel, cleaner, and customer views */
-  --page-bg: #fdfbf7;
+  /* Rentlogg brand theme — shared across the admin panel, cleaner, and customer views.
+     Deep violet rather than orange, and a cool ground rather than warm cream, because
+     cleanlog.no — same market, same pitch (QR-innsjekk → sjekkliste → bilde → kundeportal) —
+     runs #fc6b33 on #fefbf8 behind an orange-gradient chip logo. Against the old #f97316 on
+     #fdfbf7 the two products read as the same company. The whole point of these values is the
+     distance from that, so don't drift them back toward warm orange. */
+  --page-bg: #f9f9fc;
   --sidebar-bg: #ffffff;
-  --sidebar-border: #f0e4d4;
-  --sidebar-active-bg: #fff1e6;
-  --accent-orange: #f97316;
-  --accent-orange-dark: #ea580c;
-  --accent-orange-bg: #fff1e6;
-  --brand-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark));
-  --banner-gradient: linear-gradient(90deg, #ffede0, #fff6ee);
-  /* Reserved for "the customer's own" (rooms.responsible='customer') so it never has to compete
-     with orange, which is already both the brand/CTA color and the "in progress" status color. */
+  --sidebar-border: #e9e7f2;
+  --sidebar-active-bg: #f5f3ff;
+  --brand: #6d28d9;
+  --brand-dark: #5b21b6;
+  --brand-bg: #f5f3ff;
+  --brand-gradient: linear-gradient(135deg, #7c3aed, var(--brand-dark));
+  --banner-gradient: linear-gradient(90deg, #f0ebff, #faf8ff);
+
+  /* Orange did not leave the product, it stopped being two things at once. It used to be the
+     brand/CTA color AND the "in progress" status; ResponsibleBadge's comment below records why
+     that hurt — a third meaning on one hue made all of them harder to read. Moving the brand off
+     orange is what freed it, so these three are for status only. Never style a CTA with them. */
+  --status-progress: #f97316;
+  --status-progress-dark: #ea580c;
+  --status-progress-bg: #fff1e6;
+
+  /* Reserved for "the customer's own" (rooms.responsible='customer'), matching the farge-koder
+     legend printed on OKV's real renholdsplan PDFs, where blue marks the customer's own zone. */
   --accent-blue: #3b82f6;
   --accent-blue-dark: #2563eb;
   --accent-blue-bg: #eff6ff;

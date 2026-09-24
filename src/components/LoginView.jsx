@@ -51,7 +51,7 @@ export default function LoginView({ onLogin, checkinPending }) {
           />
           {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginTop: 10 }}>{error}</div>}
           <button type="submit" disabled={loading} style={{
-            marginTop: 16, width: "100%", background: "var(--accent-orange)", color: "white",
+            marginTop: 16, width: "100%", background: "var(--brand)", color: "white",
             border: "none", padding: "10px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
             {loading ? t("login.submitting") : t("login.submit")}

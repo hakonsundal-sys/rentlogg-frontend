@@ -92,7 +92,7 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{run.site_name}</div>
                 <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                   {run.started_at.slice(0, 16)} · {run.completed_at ? t("history.completed") : t("history.inProgress")}
-                  {!!run.backdated && <span style={{ color: "var(--accent-orange-dark)", fontWeight: 600 }}>{t("history.backdated")}</span>}
+                  {!!run.backdated && <span style={{ color: "var(--brand-dark)", fontWeight: 600 }}>{t("history.backdated")}</span>}
                 </div>
               </div>
             </div>
@@ -121,7 +121,7 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
                         onClick={() => setIsEditingRun(true)}
                         style={{
                           display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
-                          color: "var(--accent-orange-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                          color: "var(--brand-dark)", fontSize: 12, fontWeight: 500, cursor: "pointer",
                         }}
                       >
                         <Pencil size={12} /> {t("history.edit")}
@@ -194,7 +194,7 @@ export default function CleanerHistoryView({ token, user, initials: sharedInitia
   );
 }
 
-const PRIORITY_COLOR = { low: "var(--text-secondary)", medium: "var(--accent-orange-dark)", high: "var(--text-danger)" };
+const PRIORITY_COLOR = { low: "var(--text-secondary)", medium: "var(--brand-dark)", high: "var(--text-danger)" };
 
 function DeviationRow({ token, deviation, sharedInitials, onReplied, setError }) {
   const t = useT();

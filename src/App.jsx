@@ -6,7 +6,7 @@ import AdminLayout from "./components/admin/AdminLayout";
 import SuperAdminLayout from "./components/admin/SuperAdminLayout";
 import CleanerView, { clearCleanerContext } from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
-import { RoleBadge } from "./components/shared";
+import { BrandMark, RoleBadge } from "./components/shared";
 import LanguagePicker from "./components/LanguagePicker";
 import { I18nProvider, useT } from "./i18n";
 import { apiFetch } from "./api";
@@ -188,14 +188,8 @@ function Shell({ children }) {
           log in first and change the language afterwards. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <span style={{
-            width: 30, height: 30, borderRadius: "var(--radius-sm)", background: "var(--brand-gradient)",
-            color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, fontWeight: 700, flexShrink: 0,
-          }}>
-            R
-          </span>
-          <div style={{ fontSize: 19, fontWeight: 700 }}>Rentlogg</div>
+          <BrandMark size={30} />
+          <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.021em" }}>Rentlogg</div>
         </div>
         <LanguagePicker compact />
       </div>

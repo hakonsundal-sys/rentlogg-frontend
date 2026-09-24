@@ -26,7 +26,7 @@ const STATUS_LABEL = {
   open: "Pågår", closed: "Fullført", auto_closed: "Auto-avsluttet", missing_checkout: "Mangler utstempling",
 };
 const STATUS_COLOR = {
-  open: { bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  open: { bg: "var(--brand-bg)", color: "var(--brand-dark)" },
   closed: { bg: "var(--c-teal)", color: "var(--text-success)" },
   auto_closed: { bg: "var(--surface-2)", color: "var(--text-secondary)" },
   missing_checkout: { bg: "var(--surface-2)", color: "var(--text-danger)" },
@@ -39,7 +39,7 @@ const PLANNED_COLOR = {
   ok: { bg: "var(--c-teal)", color: "var(--text-success)" },
   substitute: { bg: "var(--accent-blue-bg)", color: "var(--accent-blue-dark)" },
   no_show: { bg: "var(--surface-2)", color: "var(--text-danger)" },
-  unplanned: { bg: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)" },
+  unplanned: { bg: "var(--brand-bg)", color: "var(--brand-dark)" },
 };
 const CATEGORY_LABEL = { arbeid: "Arbeid", fravær: "Fravær", tillegg: "Tillegg" };
 
@@ -429,9 +429,9 @@ export default function TimerPage({ token, user }) {
                 onClick={() => { setFrom(p.from); setTo(p.to); }}
                 style={{
                   padding: "4px 11px", borderRadius: 999, fontSize: 12, cursor: "pointer",
-                  border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                  background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                  color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                  border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+                  background: active ? "var(--brand-bg)" : "var(--surface-0)",
+                  color: active ? "var(--brand-dark)" : "var(--text-secondary)",
                 }}
               >
                 {p.label}
@@ -574,7 +574,7 @@ export default function TimerPage({ token, user }) {
                   {row.missing_count > 0 && `${row.missing_count} mangler utstempling`}
                 </div>
               )}
-              <div style={{ fontSize: 12, marginTop: 4, color: row.approvable_count > 0 ? "var(--accent-orange-dark)" : "var(--text-success)" }}>
+              <div style={{ fontSize: 12, marginTop: 4, color: row.approvable_count > 0 ? "var(--status-progress-dark)" : "var(--text-success)" }}>
                 {row.approvable_count > 0 ? `${row.approvable_count} venter godkjenning` : "Alt godkjent"}
               </div>
             </Card>
@@ -666,9 +666,9 @@ function RegisterSection({ token, isAdmin, tab, setTab, orders, setOrders, sites
               onClick={() => setTab(r.id)}
               style={{
                 padding: "7px 14px", borderRadius: 999, fontSize: 13, cursor: "pointer",
-                border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-                background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-                color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+                border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+                background: active ? "var(--brand-bg)" : "var(--surface-0)",
+                color: active ? "var(--brand-dark)" : "var(--text-secondary)",
                 fontWeight: active ? 600 : 400,
               }}
             >
@@ -1035,7 +1035,7 @@ function UserView({ totals, entries, onApproveUser, onToggleApproval, onReject, 
               <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 20, fontWeight: 600 }}>{formatMinutes(row.minutes)}</div>
-                  <div style={{ fontSize: 12, color: row.approvable_count > 0 ? "var(--accent-orange-dark)" : "var(--text-success)" }}>
+                  <div style={{ fontSize: 12, color: row.approvable_count > 0 ? "var(--status-progress-dark)" : "var(--text-success)" }}>
                     {row.approvable_count > 0 ? `${row.approvable_count} venter godkjenning` : "Alt godkjent"}
                   </div>
                 </div>
@@ -1821,7 +1821,7 @@ function EntryForm({ token, entry, sites, orders, staff, types, onClose, onSaved
             <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
               {entry.user_name} — {entry.order_name || entry.site_name}
               {entry.approval?.approved_count > 0 && (
-                <div style={{ color: "var(--accent-orange-dark)", marginTop: 4 }}>
+                <div style={{ color: "var(--brand-dark)", marginTop: 4 }}>
                   {entry.approval.approved_count} nivå har signert. Lagrer du en endring, fjernes alle
                   signaturene og vakta går tilbake til «venter».
                 </div>
@@ -2033,9 +2033,9 @@ const REASON_COLOR = {
   missing_checkout: "var(--text-danger)",
   no_order: "var(--text-danger)",
   no_lines: "var(--text-danger)",
-  no_employee_number: "var(--accent-orange-dark)",
+  no_employee_number: "var(--brand-dark)",
   open: "var(--text-secondary)",
-  rejected: "var(--accent-orange-dark)",
+  rejected: "var(--brand-dark)",
   not_approved: "var(--text-secondary)",
 };
 
@@ -2058,7 +2058,7 @@ function AttentionTab({ token, from, to, filters, onEdit }) {
   return (
     <div>
       {data.missing_employee_numbers.length > 0 && (
-        <Card style={{ marginBottom: 16, borderLeft: "3px solid var(--accent-orange)" }}>
+        <Card style={{ marginBottom: 16, borderLeft: "3px solid var(--brand)" }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
             {data.missing_employee_numbers.length === 1
               ? "1 ansatt mangler ansattnummer"

@@ -8,9 +8,9 @@ import { DocumentsList } from "./shared";
 function tabBtnStyle(active) {
   return {
     padding: "6px 14px", borderRadius: 999, fontSize: 13, cursor: "pointer",
-    border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-    background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-    color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+    border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+    background: active ? "var(--brand-bg)" : "var(--surface-0)",
+    color: active ? "var(--brand-dark)" : "var(--text-secondary)",
   };
 }
 
@@ -113,7 +113,7 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
                     {!!run.backdated && (
                       <span style={{
                         fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
-                        background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)",
+                        background: "var(--brand-bg)", color: "var(--brand-dark)",
                       }}>
                         Sjekket inn i etterkant
                       </span>
@@ -128,8 +128,8 @@ export default function SiteHistoryView({ token, user, site, deviations, onAppro
                     )}
                     <span style={{
                       fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
-                      background: run.completed_at ? "var(--c-teal)" : "var(--accent-orange-bg)",
-                      color: run.completed_at ? "var(--text-success)" : "var(--accent-orange-dark)",
+                      background: run.completed_at ? "var(--c-teal)" : "var(--status-progress-bg)",
+                      color: run.completed_at ? "var(--text-success)" : "var(--status-progress-dark)",
                     }}>
                       {run.completed_at ? "FULLFØRT" : "PÅGÅR"}
                     </span>

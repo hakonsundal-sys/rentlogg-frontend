@@ -27,7 +27,7 @@ const STATUS = {
   none: { label: "—", title: "Ikke gjennomført", color: "var(--text-muted)", bg: "transparent" },
   in_progress: { label: "Påbegynt", title: "Påbegynt", color: "var(--text-secondary)", bg: "var(--border)" },
   done: { label: "OK", title: "Gjennomført", color: "var(--text-success)", bg: "var(--c-teal)" },
-  expiring: { label: "Utløper", title: "Gjennomført, men utløper snart", color: "var(--accent-orange-dark)", bg: "var(--c-amber)" },
+  expiring: { label: "Utløper", title: "Gjennomført, men utløper snart", color: "var(--brand-dark)", bg: "var(--c-amber)" },
   expired: { label: "Utløpt", title: "Utløpt — må tas på nytt", color: "var(--text-danger)", bg: "var(--c-red)" },
 };
 
@@ -211,7 +211,7 @@ function Oversikt({
                         title={`Åpne opplæringen til ${u.name}`}
                         style={{
                           ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4, fontWeight: 500,
-                          color: openUserId === u.id ? "var(--accent-orange-dark)" : "var(--text-primary)",
+                          color: openUserId === u.id ? "var(--brand-dark)" : "var(--text-primary)",
                         }}
                       >
                         <ChevronRight
@@ -241,7 +241,7 @@ function Oversikt({
                             {look.label}
                           </span>
                           {cell.outdated && (
-                            <span title="Signert på en eldre versjon av kurset" style={{ marginLeft: 4, fontSize: 11, color: "var(--accent-orange-dark)" }}>
+                            <span title="Signert på en eldre versjon av kurset" style={{ marginLeft: 4, fontSize: 11, color: "var(--brand-dark)" }}>
                               ↻
                             </span>
                           )}
@@ -328,7 +328,7 @@ function PersonKort({ person, token, isAdmin, onDeleteRecord }) {
                 />
               )}
               {rec.evidence_path && (
-                <a href={uploadUrl(rec.evidence_path, token)} target="_blank" rel="noreferrer" style={{ color: "var(--accent-orange-dark)" }}>
+                <a href={uploadUrl(rec.evidence_path, token)} target="_blank" rel="noreferrer" style={{ color: "var(--brand-dark)" }}>
                   {rec.evidence_name || "Bevis"}
                 </a>
               )}
@@ -535,7 +535,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div style={{ minWidth: 240, flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <BookOpen size={16} style={{ color: "var(--accent-orange)" }} />
+                <BookOpen size={16} style={{ color: "var(--brand)" }} />
                 <strong>{course.title}</strong>
                 {!course.active && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>(deaktivert)</span>}
               </div>
@@ -549,7 +549,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
                     re-validated on read, and rendering it verbatim as an href would let a value
                     that slipped past save-time validation execute in this admin's session. */}
                 {course.kind === "video" && youtubeId(course.video_url) && (
-                  <> · <a href={`https://www.youtube.com/watch?v=${youtubeId(course.video_url)}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-orange-dark)" }}>se videoen</a></>
+                  <> · <a href={`https://www.youtube.com/watch?v=${youtubeId(course.video_url)}`} target="_blank" rel="noreferrer" style={{ color: "var(--brand-dark)" }}>se videoen</a></>
                 )}
               </div>
               {course.description && <div style={{ fontSize: 13, marginTop: 6 }}>{course.description}</div>}
@@ -569,7 +569,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
                   {course.files.map((f) => (
                     <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <FileText size={13} style={{ color: "var(--text-secondary)" }} />
-                      <a href={uploadUrl(f.file_path, token)} target="_blank" rel="noreferrer" style={{ color: "var(--accent-orange-dark)" }}>
+                      <a href={uploadUrl(f.file_path, token)} target="_blank" rel="noreferrer" style={{ color: "var(--brand-dark)" }}>
                         {f.name}
                       </a>
                       <button onClick={() => removeFile(course, f.id)} style={{ ...linkBtnStyle, color: "var(--text-danger)" }}>

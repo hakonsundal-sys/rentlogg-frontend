@@ -112,7 +112,7 @@ export default function MinProfilPage({ token }) {
             <input ref={fileInputRef} type="file" accept="image/*" onChange={uploadAvatar} style={{ display: "none" }} />
             <button onClick={() => fileInputRef.current.click()} style={{
               position: "absolute", bottom: -2, right: -2, width: 24, height: 24, borderRadius: "50%",
-              background: "var(--accent-orange)", color: "white", border: "2px solid var(--surface-1)",
+              background: "var(--brand)", color: "white", border: "2px solid var(--surface-1)",
               display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
             }}>
               <Camera size={12} />
@@ -183,7 +183,7 @@ export default function MinProfilPage({ token }) {
 
 const labelStyle = { display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6, marginTop: 14 };
 const primaryBtnStyle = {
-  marginTop: 16, background: "var(--accent-orange)", color: "white", border: "none",
+  marginTop: 16, background: "var(--brand)", color: "white", border: "none",
   padding: "10px 18px", borderRadius: "var(--radius)", fontSize: 14, fontWeight: 600, cursor: "pointer",
 };
 const inputStyle = {

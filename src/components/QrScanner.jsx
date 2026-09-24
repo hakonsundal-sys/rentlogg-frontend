@@ -75,7 +75,7 @@ export default function QrScanner({ onScan, onCancel }) {
       <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       <canvas ref={canvasRef} style={{ display: "none" }} />
       <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-        <div style={{ width: "65%", aspectRatio: "1", border: "3px solid var(--accent-orange)", borderRadius: "var(--radius)" }} />
+        <div style={{ width: "65%", aspectRatio: "1", border: "3px solid var(--brand)", borderRadius: "var(--radius)" }} />
       </div>
       <button onClick={onCancel} style={{
         position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.55)", border: "none",

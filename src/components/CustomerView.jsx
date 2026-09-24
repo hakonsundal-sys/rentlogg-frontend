@@ -469,7 +469,7 @@ const secondaryBtnStyle = {
   padding: "6px 12px", fontSize: 12, cursor: "pointer", color: "var(--text-secondary)",
 };
 const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
+  background: "var(--brand)", color: "white", border: "none",
   padding: "7px 14px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
 };
 const selectStyle = {

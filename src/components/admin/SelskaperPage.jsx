@@ -69,7 +69,7 @@ export default function SelskaperPage({ token }) {
           <Card key={company.id}>
             <div style={{
               width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-              background: "linear-gradient(135deg, var(--accent-orange), var(--accent-orange-dark))", color: "white",
+              background: "linear-gradient(135deg, var(--brand), var(--brand-dark))", color: "white",
               marginBottom: 12,
             }}>
               <Building2 size={20} />
@@ -118,7 +118,7 @@ export default function SelskaperPage({ token }) {
 }
 
 const primaryBtnStyle = {
-  background: "var(--accent-orange)", color: "white", border: "none",
+  background: "var(--brand)", color: "white", border: "none",
   padding: "9px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
 };
 const inputStyle = {

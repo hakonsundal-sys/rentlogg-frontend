@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LayoutGrid, MapPin, Users, Building2, UserCog, AlertTriangle, UserPlus, FileText, CircleUser, Clock, LogOut, Menu, X } from "lucide-react";
-import { RoleBadge } from "../shared";
+import { BrandMark, RoleBadge } from "../shared";
 import { hasModule, MODULE_TIMECLOCK } from "../../modules";
 
 const NAV_ITEMS = [
@@ -50,13 +50,8 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, n
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, paddingLeft: 4 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 700 }}>
-              <span style={{
-                width: 26, height: 26, borderRadius: "var(--radius-sm)", background: "var(--brand-gradient)",
-                color: "white", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14,
-              }}>
-                R
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 700, letterSpacing: "-0.021em" }}>
+              <BrandMark size={26} />
               Rentlogg
             </div>
             <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2, marginLeft: 34 }}>
@@ -84,7 +79,7 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, n
                   display: "flex", alignItems: "center", gap: 10, textAlign: "left",
                   padding: "10px 12px", borderRadius: "var(--radius)", border: "none", cursor: "pointer",
                   background: active ? "var(--sidebar-active-bg)" : "transparent",
-                  color: active ? "var(--accent-orange)" : "var(--text-primary)",
+                  color: active ? "var(--brand)" : "var(--text-primary)",
                   fontSize: 14, fontWeight: active ? 600 : 400,
                 }}
               >

@@ -12,7 +12,7 @@ function photoUrl(filePath, token) {
 
 const PRIORITY = {
   low: { label: "Lav", icon: Info, color: "var(--text-secondary)" },
-  medium: { label: "Middels", icon: AlertTriangle, color: "var(--accent-orange-dark)" },
+  medium: { label: "Middels", icon: AlertTriangle, color: "var(--text-warning)" },
   high: { label: "Høy", icon: CircleAlert, color: "var(--text-danger)" },
 };
 const STATUS_LABEL = { open: "ÅPEN", in_progress: "PÅGÅR", resolved: "LØST" };

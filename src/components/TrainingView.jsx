@@ -27,7 +27,7 @@ const STATUS_COLOR = {
   none: "var(--text-secondary)",
   in_progress: "var(--text-secondary)",
   done: "var(--text-success)",
-  expiring: "var(--accent-orange-dark)",
+  expiring: "var(--brand-dark)",
   expired: "var(--text-danger)",
 };
 
@@ -130,7 +130,7 @@ export default function TrainingView({ token, user, onChanged }) {
             <button
               onClick={() => setOpenRow(row)}
               style={{
-                background: isSettled(row) ? "none" : "var(--accent-orange)",
+                background: isSettled(row) ? "none" : "var(--brand)",
                 color: isSettled(row) ? "var(--text-secondary)" : "white",
                 border: isSettled(row) ? "1px solid var(--border)" : "none",
                 padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
@@ -208,7 +208,7 @@ function CourseView({ row, token, user, onBack }) {
                 href={uploadUrl(f.file_path, token)}
                 target="_blank"
                 rel="noreferrer"
-                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "var(--accent-orange-dark)", padding: "4px 0" }}
+                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "var(--brand-dark)", padding: "4px 0" }}
               >
                 <FileText size={14} /> {f.name}
               </a>

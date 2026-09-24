@@ -10,7 +10,7 @@ export default function TopBanner({ trial }) {
       marginBottom: 20, gap: 16, flexWrap: "wrap",
     }}>
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, color: "var(--accent-orange-dark)", fontSize: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, color: "var(--brand-dark)", fontSize: 14 }}>
           <Clock size={16} /> {trial.daysLeft} dager igjen av prøveperioden
         </div>
         <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>
@@ -20,7 +20,7 @@ export default function TopBanner({ trial }) {
       <button
         onClick={() => alert("Oppgradering er ikke tilgjengelig ennå")}
         style={{
-          display: "flex", alignItems: "center", gap: 6, background: "var(--accent-orange)", color: "white",
+          display: "flex", alignItems: "center", gap: 6, background: "var(--brand)", color: "white",
           border: "none", padding: "10px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600,
           cursor: "pointer", whiteSpace: "nowrap",
         }}
