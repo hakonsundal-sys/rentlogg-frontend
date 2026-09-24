@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, LogOut, ShieldCheck, AlertTriangle, Plus, X } from "lucide-react";
+import { Clock, Coffee, LogOut, ShieldCheck, AlertTriangle, Plus, X } from "lucide-react";
 import { apiFetch } from "../api";
 import { Card } from "./shared";
 import { useI18n } from "../i18n";
@@ -30,6 +30,13 @@ function useDuration() {
   };
 }
 
+// A break is minutes, not hours: "45 min" rather than the duration formatter's "0t 45m".
+function usePauseDuration() {
+  const { t } = useI18n();
+  const formatMinutes = useDuration();
+  return (minutes) => (minutes < 60 ? t("time.pauseMinutes", { minutes }) : formatMinutes(minutes));
+}
+
 function minutesSince(stamp) {
   return Math.max(0, Math.round((Date.now() - new Date(`${String(stamp).replace(" ", "T")}Z`)) / 60000));
 }
@@ -48,11 +55,13 @@ function getPosition() {
 export default function TimeClockCard({ token, refreshKey }) {
   const { t, tn } = useI18n();
   const formatMinutes = useDuration();
+  const formatPause = usePauseDuration();
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
   const [showAddHours, setShowAddHours] = useState(false);
   const [saved, setSaved] = useState("");
   const [stoppingOut, setStoppingOut] = useState(false);
+  const [askingPause, setAskingPause] = useState(false);
   // Re-rendered once a minute purely so a running shift's counter keeps up without a round-trip;
   // the number itself is derived from started_at, never accumulated, so a discarded tab (the whole
   // reason App.jsx persists auth at all) can't make it drift.
@@ -74,17 +83,31 @@ export default function TimeClockCard({ token, refreshKey }) {
     return () => clearInterval(timerRef.current);
   }, []);
 
-  async function stampOut() {
+  async function stampOut(pauseMinutes) {
     if (!state?.open) return;
     setStoppingOut(true);
     setError("");
     try {
       const position = await getPosition();
-      await apiFetch(`/time/entries/${state.open.id}/stop`, {
-        token, method: "POST", body: JSON.stringify(position || {}),
+      const entry = await apiFetch(`/time/entries/${state.open.id}/stop`, {
+        token, method: "POST", body: JSON.stringify({ ...(position || {}), pause_minutes: pauseMinutes || 0 }),
       });
+      setAskingPause(false);
+      // Say back what was recorded. The pause answer is one tap and it moves her pay, so the
+      // screen has to show what that tap did — a mistap otherwise leaves no trace she would ever
+      // notice. It also carries the one surprise worth explaining: on a site paid by a fixed
+      // frame, the break came off nothing.
+      setSaved(
+        entry.pause_minutes > 0
+          ? t(entry.billing_mode === "fixed" ? "time.stampedOutPauseFixed" : "time.stampedOutPause", {
+              hours: formatMinutes(entry.minutes), pause: formatPause(entry.pause_minutes),
+            })
+          : t("time.stampedOut", { hours: formatMinutes(entry.minutes) })
+      );
       load();
     } catch (err) {
+      // Left on the pause question on purpose. The shift is still open, so nothing is lost — she
+      // just gave a break that doesn't fit inside it and needs to give another.
       setError(err.message);
     } finally {
       setStoppingOut(false);
@@ -97,6 +120,20 @@ export default function TimeClockCard({ token, refreshKey }) {
 
   const open = state.open;
   const missingCount = state.missing?.length || 0;
+
+  if (askingPause && open) {
+    return (
+      <Card style={{ marginBottom: 12 }}>
+        <PauseQuestion
+          busy={stoppingOut}
+          error={error}
+          maxMinutes={minutesSince(open.started_at)}
+          onAnswer={stampOut}
+          onCancel={() => { setAskingPause(false); setError(""); }}
+        />
+      </Card>
+    );
+  }
 
   if (showAddHours) {
     return (
@@ -145,7 +182,7 @@ export default function TimeClockCard({ token, refreshKey }) {
         </div>
         {open && (
           <button
-            onClick={stampOut}
+            onClick={() => { setAskingPause(true); setError(""); }}
             disabled={stoppingOut}
             style={{
               display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
@@ -213,6 +250,113 @@ export default function TimeClockCard({ token, refreshKey }) {
     </Card>
   );
 }
+
+// Asked once, when she stamps out — not a button she presses twice during the shift.
+//
+// A pause button is the obvious design and the wrong one here: it only works if she remembers to
+// end it, and a break left running quietly eats the rest of her shift. Shifts here start at four in
+// the morning in a cold building, and the cost of forgetting is hours off her own pay. Asking at
+// the end costs one extra tap and cannot be forgotten, because she cannot stamp out without
+// answering (Håkon's call, 2026-09-24).
+//
+// No preselected answer. A default here is a guess about somebody's pay.
+const PAUSE_PRESETS = [0, 30];
+
+function PauseQuestion({ busy, error, maxMinutes, onAnswer, onCancel }) {
+  const { t } = useI18n();
+  const formatPause = usePauseDuration();
+  const [custom, setCustom] = useState(null);
+  const customMinutes = Math.round(Number(String(custom ?? "").replace(",", ".")) || 0);
+  // The backend refuses a break that doesn't fit inside the shift. She should never meet that
+  // refusal: an option that cannot be right isn't offered, and a typed one says so before she taps.
+  const tooLong = customMinutes >= maxMinutes;
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
+        <Coffee size={14} /> {t("time.pauseTitle")}
+      </div>
+      <div style={{ fontSize: 17, fontWeight: 600, marginTop: 6 }}>{t("time.pauseQuestion")}</div>
+      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.5 }}>
+        {t("time.pauseHint")}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+        {PAUSE_PRESETS.filter((minutes) => minutes === 0 || minutes < maxMinutes).map((minutes) => (
+          <button
+            key={minutes}
+            onClick={() => onAnswer(minutes)}
+            disabled={busy}
+            style={{ ...pauseChoiceStyle, opacity: busy ? 0.6 : 1 }}
+          >
+            {minutes === 0 ? t("time.pauseNone") : t("time.pauseMinutes", { minutes })}
+          </button>
+        ))}
+        {custom === null && (
+          <button onClick={() => setCustom("")} disabled={busy} style={{ ...pauseChoiceStyle, opacity: busy ? 0.6 : 1 }}>
+            {t("time.pauseOther")}
+          </button>
+        )}
+      </div>
+
+      {custom !== null && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
+          <input
+            type="number"
+            inputMode="numeric"
+            min="1"
+            autoFocus
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            placeholder={t("time.pauseOtherPlaceholder")}
+            style={{
+              width: 90, padding: "10px 12px", fontSize: 15, borderRadius: "var(--radius)",
+              border: "1px solid var(--border)", background: "var(--surface-1)", color: "var(--text-primary)",
+            }}
+          />
+          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t("time.pauseUnit")}</span>
+          <button
+            onClick={() => onAnswer(customMinutes)}
+            disabled={busy || !(customMinutes > 0) || tooLong}
+            style={{
+              marginLeft: "auto", background: "var(--brand)", color: "white", border: "none",
+              padding: "10px 16px", borderRadius: "var(--radius)", fontSize: 14, fontWeight: 600,
+              cursor: busy || !(customMinutes > 0) || tooLong ? "default" : "pointer",
+              opacity: busy || !(customMinutes > 0) || tooLong ? 0.5 : 1,
+            }}
+          >
+            {t("time.stampOut")}
+          </button>
+        </div>
+      )}
+
+      {custom !== null && customMinutes > 0 && tooLong && (
+        <div style={{ color: "var(--text-danger)", fontSize: 12, marginTop: 8 }}>
+          {t("time.pauseTooLong", { hours: formatPause(maxMinutes) })}
+        </div>
+      )}
+
+      {error && <div style={{ color: "var(--text-danger)", fontSize: 12, marginTop: 10 }}>{error}</div>}
+
+      <button
+        onClick={onCancel}
+        disabled={busy}
+        style={{
+          marginTop: 12, background: "none", border: "none", padding: 0, cursor: "pointer",
+          color: "var(--text-secondary)", fontSize: 13,
+        }}
+      >
+        {t("time.pauseCancel")}
+      </button>
+    </div>
+  );
+}
+
+const pauseChoiceStyle = {
+  flex: "1 1 auto", minWidth: 96, padding: "14px 12px", fontSize: 15, fontWeight: 600,
+  background: "var(--surface-1)", color: "var(--text-primary)",
+  border: "1px solid var(--border)", borderRadius: "var(--radius)", cursor: "pointer",
+};
 
 // "Før timer" — the hours that have no building to stand in: a staff meeting, driving between
 // sites, a day of holiday or sick leave. Until orders existed a cleaner could not record any of
