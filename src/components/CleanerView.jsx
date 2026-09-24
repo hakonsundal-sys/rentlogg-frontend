@@ -10,6 +10,8 @@ import QrScanner from "./QrScanner";
 import CleanerHistoryView from "./CleanerHistoryView";
 import TrainingView, { isSettled as isTrainingSettled } from "./TrainingView";
 import TimeClockCard from "./TimeClockCard";
+import MyWeekView from "./MyWeekView";
+import PreviousVisitCard from "./PreviousVisitCard";
 import { hasModule, MODULE_TRAINING, MODULE_TIMECLOCK } from "../modules";
 import RoomGrid from "./RoomGrid";
 import RunDetailModal from "./RunDetailModal";
@@ -712,6 +714,9 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   const viewTabs = (
     <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
       <button onClick={() => setViewTab("today")} style={tabBtnStyle(viewTab === "today")}>{t("cleaner.tab.today")}</button>
+      <button onClick={() => setViewTab("week")} style={tabBtnStyle(viewTab === "week")}>
+        <CalendarDays size={13} style={{ marginRight: 4 }} /> {t("cleaner.tab.week")}
+      </button>
       <button onClick={() => setViewTab("history")} style={tabBtnStyle(viewTab === "history")}>
         <History size={13} style={{ marginRight: 4 }} /> {t("cleaner.tab.history")}
       </button>
@@ -754,6 +759,15 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       )}
     </div>
   );
+
+  if (viewTab === "week") {
+    return (
+      <div>
+        {viewTabs}
+        <MyWeekView token={token} />
+      </div>
+    );
+  }
 
   if (viewTab === "history") {
     return (
@@ -1071,6 +1085,8 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
           />
         </div>
       </Card>
+
+      <PreviousVisitCard token={token} siteId={run.site.id} />
 
       {isRoomEnabled ? (
         <>
