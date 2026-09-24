@@ -534,7 +534,11 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       focusInitials();
       return;
     }
-    const target = targetRooms || rooms.filter((r) => r.dueToday && r.status !== "completed");
+    // A room already waiting on the customer is not work this sweep can do anything with — the
+    // backend skips it too — so including it only makes the confirm dialog promise more rooms
+    // than will be touched, and puts it in reach of the undo below.
+    const target = (targetRooms || rooms.filter((r) => r.dueToday && r.status !== "completed"))
+      .filter((r) => r.status !== "awaiting_approval");
     const roomIds = target.map((r) => r.id);
     if (roomIds.length === 0) return;
     const question = chapterName
@@ -566,9 +570,20 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
         parts.push(`${t("history.event.room_ready_for_approval")}: ${sentForApproval.length}`);
       }
       if (parts.length === 0) return;
+      // Undo exactly the rooms the sweep changed, which the backend names in affectedRoomIds —
+      // never the rooms we asked about. The two differ whenever a room was skipped for an
+      // unanswered flervalg task, and /rooms/:id/reopen does not politely no-op on a room that was
+      // left alone: it clears ready_for_approval_at, approved_at and signed_initials, and with
+      // resetItems unticks every task. Undoing the requested set therefore wiped work this sweep
+      // never did.
+      //
+      // Offline, queueableFetch resolves with {queued:true} and the sweep has not run yet, so
+      // there is nothing to name; falling back to roomIds keeps undo working, and that set no
+      // longer contains rooms awaiting approval.
+      const affectedRoomIds = result?.affectedRoomIds ?? roomIds;
       showUndo(parts.join(" · "), async () => {
         await Promise.all(
-          roomIds.map((id) => queueableFetch(`/rooms/${id}/reopen`, { token, method: "POST", body: JSON.stringify({ resetItems: true }) }))
+          affectedRoomIds.map((id) => queueableFetch(`/rooms/${id}/reopen`, { token, method: "POST", body: JSON.stringify({ resetItems: true }) }))
         );
         refreshRooms();
       });
