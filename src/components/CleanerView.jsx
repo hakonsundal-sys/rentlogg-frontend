@@ -56,9 +56,9 @@ export function clearCleanerContext() {
 function tabBtnStyle(active) {
   return {
     padding: "6px 14px", borderRadius: 999, fontSize: 13, cursor: "pointer",
-    border: active ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-    background: active ? "var(--accent-orange-bg)" : "var(--surface-0)",
-    color: active ? "var(--accent-orange-dark)" : "var(--text-secondary)",
+    border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+    background: active ? "var(--brand-bg)" : "var(--surface-0)",
+    color: active ? "var(--brand-dark)" : "var(--text-secondary)",
     display: "inline-flex", alignItems: "center",
   };
 }
@@ -551,7 +551,20 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       if (skipped.length > 0) {
         setError(tn("cleaner.bulkSkippedRooms", skipped.length, { rooms: skipped.join(", ") }));
       }
-      showUndo(tn("cleaner.roomsCompletedUndo", result?.completedCount ?? roomIds.length), async () => {
+      // A sweep can now end two ways at once: rooms genuinely finished, and rooms handed to the
+      // customer for sign-off. Reporting both as "fullført" is what hid the missing approval step
+      // in the first place, so the two counts are shown separately. Composed from strings that
+      // already exist in all five languages — the cleaners this matters to mostly do not read
+      // Norwegian, and an untranslated new key would be no better than the wrong number.
+      const sentForApproval = result?.sentForApprovalRooms || [];
+      const completedCount = result?.completedCount ?? roomIds.length;
+      const parts = [];
+      if (completedCount > 0) parts.push(tn("cleaner.roomsCompletedUndo", completedCount));
+      if (sentForApproval.length > 0) {
+        parts.push(`${t("history.event.room_ready_for_approval")}: ${sentForApproval.length}`);
+      }
+      if (parts.length === 0) return;
+      showUndo(parts.join(" · "), async () => {
         await Promise.all(
           roomIds.map((id) => queueableFetch(`/rooms/${id}/reopen`, { token, method: "POST", body: JSON.stringify({ resetItems: true }) }))
         );
@@ -710,7 +723,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
           {trainingDue > 0 && (
             <span style={{
               marginLeft: 6, minWidth: 18, padding: "0 5px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-              background: "var(--accent-orange)", color: "white",
+              background: "var(--brand)", color: "white",
             }}>
               {trainingDue}
             </span>
@@ -733,7 +746,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       </span>
       {pendingCount > 0 && (
         <button onClick={flushNow} style={{
-          background: "none", border: "none", color: "var(--accent-orange-dark)",
+          background: "none", border: "none", color: "var(--brand-dark)",
           fontWeight: 600, cursor: "pointer", fontSize: 13,
         }}>
           {t("cleaner.offline.retryNow")}
@@ -791,7 +804,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
                 setShowOnboarding(false);
               }}
               style={{
-                marginTop: 10, background: "none", border: "none", color: "var(--accent-orange-dark)",
+                marginTop: 10, background: "none", border: "none", color: "var(--brand-dark)",
                 fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0,
               }}
             >
@@ -804,7 +817,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
         <div style={{ marginBottom: 16, color: "var(--text-secondary)" }}>{t("cleaner.scanPrompt")}</div>
         {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
         <button onClick={() => { setError(""); setShowScanner(true); }} disabled={scanning} style={{
-          background: "var(--accent-orange)", color: "white", border: "none",
+          background: "var(--brand)", color: "white", border: "none",
           padding: "10px 20px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
         }}>
           {scanning ? t("cleaner.scanning") : t("cleaner.scanButton")}
@@ -828,7 +841,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               }}
             />
             <button type="submit" disabled={scanning} style={{
-              background: "var(--accent-orange)", color: "white", border: "none",
+              background: "var(--brand)", color: "white", border: "none",
               padding: "8px 14px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
             }}>
               {t("cleaner.checkIn")}
@@ -883,7 +896,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             </div>
             {roomRun.items.length > 0 && roomRun.items.some((i) => !i.done) && (
               <button onClick={markAllRoomItems} style={{
-                background: "none", border: "none", color: "var(--accent-orange-dark)",
+                background: "none", border: "none", color: "var(--brand-dark)",
                 fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0,
               }}>
                 {t("cleaner.markAll")}
@@ -1001,12 +1014,12 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       {undoAction && (
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "var(--sidebar-active-bg)", border: "1px solid var(--accent-orange-bg)",
+          background: "var(--sidebar-active-bg)", border: "1px solid var(--brand-bg)",
           borderRadius: "var(--radius)", padding: "10px 14px", marginBottom: 16, fontSize: 13,
         }}>
           <span>{undoAction.label}</span>
           <button onClick={performUndo} style={{
-            background: "none", border: "none", color: "var(--accent-orange-dark)",
+            background: "none", border: "none", color: "var(--brand-dark)",
             fontWeight: 600, cursor: "pointer", fontSize: 13,
           }}>
             {t("cleaner.undo")}
@@ -1037,7 +1050,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               onClick={() => setShowDocuments((v) => !v)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none",
-                padding: 0, fontSize: 13, color: "var(--accent-orange-dark)", cursor: "pointer",
+                padding: 0, fontSize: 13, color: "var(--brand-dark)", cursor: "pointer",
               }}
             >
               <FileText size={13} /> {t("cleaner.documents", { count: documents.length })}
@@ -1070,7 +1083,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               <div style={{ height: 6, borderRadius: 3, background: "var(--surface-2)", marginTop: 8, overflow: "hidden" }}>
                 <div style={{
                   width: `${Math.round((dueDoneCount / allDueRooms.length) * 100)}%`, height: "100%",
-                  background: dueDoneCount === allDueRooms.length ? "var(--text-success)" : "var(--accent-orange)",
+                  background: dueDoneCount === allDueRooms.length ? "var(--text-success)" : "var(--status-progress)",
                   transition: "width 0.2s",
                 }} />
               </div>
@@ -1081,7 +1094,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
                   href={mapUrlFor(run.site)} target="_blank" rel="noreferrer"
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 4,
-                    fontSize: 13, color: "var(--accent-orange-dark)", textDecoration: "none",
+                    fontSize: 13, color: "var(--brand-dark)", textDecoration: "none",
                   }}
                 >
                   <MapPin size={13} /> {t("cleaner.openMap")}
@@ -1091,7 +1104,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
                 onClick={() => setShowVaskeplan(true)}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0,
-                  fontSize: 13, color: "var(--accent-orange-dark)", cursor: "pointer",
+                  fontSize: 13, color: "var(--brand-dark)", cursor: "pointer",
                 }}
               >
                 <CalendarDays size={13} /> {t("grid.title")}
@@ -1101,7 +1114,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
 
           {allDueRooms.length > 0 && dueDoneCount < allDueRooms.length && (
             <button onClick={bulkCompleteAllDue} style={{
-              width: "100%", background: "var(--accent-orange)", color: "white", border: "none",
+              width: "100%", background: "var(--brand)", color: "white", border: "none",
               padding: "12px", borderRadius: "var(--radius)", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16,
             }}>
               {t("cleaner.completeAllToday", { count: allDueRooms.length })}
@@ -1159,7 +1172,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
                       style={{
                         background: "none", border: "1px solid var(--border)", borderRadius: 999,
                         padding: "4px 12px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-                        color: "var(--accent-orange-dark)", cursor: "pointer",
+                        color: "var(--brand-dark)", cursor: "pointer",
                       }}
                     >
                       {t("cleaner.completeChapter", { count: chapter.remaining.length })}
@@ -1291,7 +1304,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
                   <Camera size={13} /> {deviationPhoto ? deviationPhoto.name : t("cleaner.attachPhoto")}
                 </button>
                 <button onClick={submitDeviation} style={{
-                  background: "var(--accent-orange)", color: "white",
+                  background: "var(--brand)", color: "white",
                   border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
                 }}>
                   {t("cleaner.sendDeviation")}
@@ -1357,7 +1370,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               <Camera size={13} /> {deviationPhoto ? deviationPhoto.name : t("cleaner.attachPhoto")}
             </button>
             <button onClick={submitDeviation} style={{
-              background: "var(--accent-orange)", color: "white",
+              background: "var(--brand)", color: "white",
               border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
             }}>
               {t("cleaner.sendDeviation")}
@@ -1436,9 +1449,9 @@ function OptionChip({ option, onClick }) {
       style={{
         display: "inline-flex", alignItems: "center", gap: 6, minHeight: 38,
         padding: "8px 12px", borderRadius: "var(--radius-pill)", fontSize: 13, cursor: "pointer",
-        border: option.selected ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
-        background: option.selected ? "var(--accent-orange-bg)" : "var(--surface-0)",
-        color: option.selected ? "var(--accent-orange-dark)" : "var(--text-primary)",
+        border: option.selected ? "1px solid var(--brand)" : "1px solid var(--border)",
+        background: option.selected ? "var(--brand-bg)" : "var(--surface-0)",
+        color: option.selected ? "var(--brand-dark)" : "var(--text-primary)",
         fontWeight: option.selected ? 600 : 400,
       }}
     >
@@ -1508,10 +1521,10 @@ function RoomRow({ room, expanded, onOpen, muted }) {
   const { t, tn } = useI18n();
   const completed = room.status === "completed";
   const inProgress = room.status === "in_progress";
-  const edgeColor = completed ? "var(--text-success)" : inProgress ? "var(--accent-orange)" : "var(--border)";
+  const edgeColor = completed ? "var(--text-success)" : inProgress ? "var(--status-progress)" : "var(--border)";
   // Longhand on purpose: mixing the `border` shorthand with `borderLeft` makes React warn (and
   // can drop the colored edge) when the row re-renders as it opens.
-  const borderStyle = expanded ? "1px solid var(--accent-orange)" : "1px solid var(--border)";
+  const borderStyle = expanded ? "1px solid var(--brand)" : "1px solid var(--border)";
 
   const subline = muted
     ? room.lastCleanedAt
@@ -1528,7 +1541,7 @@ function RoomRow({ room, expanded, onOpen, muted }) {
         display: "flex", alignItems: "center", gap: 12,
         padding: "12px 14px", borderRadius: "var(--radius)",
         borderTop: borderStyle, borderRight: borderStyle, borderBottom: borderStyle,
-        borderLeft: `4px solid ${expanded ? "var(--accent-orange)" : edgeColor}`,
+        borderLeft: `4px solid ${expanded ? "var(--brand)" : edgeColor}`,
         marginBottom: 8, cursor: "pointer",
         opacity: muted && !expanded ? 0.8 : 1,
         background: expanded ? "var(--surface-0)" : "var(--surface-1)",
@@ -1556,7 +1569,7 @@ function RoomRow({ room, expanded, onOpen, muted }) {
         <span style={{
           fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: "var(--radius-pill)",
           whiteSpace: "nowrap", flexShrink: 0,
-          background: "var(--accent-orange-bg)", color: "var(--accent-orange-dark)",
+          background: "var(--brand-bg)", color: "var(--brand-dark)",
         }}>
           {t(`cleaner.roomStatus.${room.status}`)}
         </span>
