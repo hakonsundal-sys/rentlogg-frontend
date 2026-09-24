@@ -500,13 +500,20 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       return;
     }
     const roomId = expandedRoomId;
-    const roomName = rooms.find((r) => r.id === roomId)?.name || t("cleaner.roomFallbackName");
+    const room = rooms.find((r) => r.id === roomId);
+    const roomName = room?.name || t("cleaner.roomFallbackName");
     try {
       await queueableFetch(`/rooms/runs/${roomRun.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
       setExpandedRoomId(null);
       setRoomRun(null);
       refreshRooms();
-      showUndo(t("cleaner.roomCompletedUndo", { room: roomName }), async () => {
+      // The confirmation has to match what actually happened: a gated room is now waiting on the
+      // customer, not finished. Composed from two strings that already exist in all five
+      // languages rather than adding a new key nobody has read through yet.
+      const doneMessage = room?.requires_approval
+        ? `${t("history.event.room_ready_for_approval")}: ${roomName}`
+        : t("cleaner.roomCompletedUndo", { room: roomName });
+      showUndo(doneMessage, async () => {
         await queueableFetch(`/rooms/${roomId}/reopen`, { token, method: "POST" });
         refreshRooms();
       });
@@ -955,11 +962,17 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               <Save size={16} /> {t("cleaner.save")}
             </button>
           </div>
+          {/* On a room the customer signs off before production starts, this does NOT complete
+              the room: the backend sets ready_for_approval_at and leaves completed_at null until
+              the customer approves. Labelling it "Fullfør rom" told the cleaner the room was done
+              when it was in fact waiting on somebody else, so nobody knew to chase the sign-off.
+              RunRoomsAndItems has always labelled this correctly — this is the live cleaner view
+              catching up to it. */}
           <button onClick={completeRoom} style={{
             background: "var(--text-success)", color: "white", border: "none",
             padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
           }}>
-            {t("cleaner.completeRoom")}
+            {room.requires_approval ? t("run.sendForApproval") : t("cleaner.completeRoom")}
           </button>
         </div>
       </Card>
