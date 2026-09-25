@@ -35,10 +35,18 @@ export default function MyWeekView({ token }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let current = true;
     setWeek(null);
+    // Clearing the error on every attempt, not only on success: the render below returns early on
+    // `error`, so a message left standing from a previous week outlives the failure that caused
+    // it. A cleaner who opened this in a basement with no signal stayed stuck on that message for
+    // the rest of the session even once she was back online and the data had loaded fine.
+    setError("");
     apiFetch(`/sites/my-week${from ? `?from=${from}` : ""}`, { token })
-      .then(setWeek)
-      .catch((err) => setError(err.message));
+      .then((data) => current && setWeek(data))
+      // A slow failed request must not overwrite the state of the week she has since moved to.
+      .catch((err) => current && setError(err.message));
+    return () => { current = false; };
   }, [from, token]);
 
   if (error) return <div style={{ color: "var(--text-danger)", fontSize: 13 }}>{error}</div>;
