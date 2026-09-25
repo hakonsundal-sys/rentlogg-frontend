@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays, Search, GraduationCap,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays, Search, GraduationCap, Languages,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
@@ -30,6 +30,30 @@ function currentMonth() {
 // is genuinely finished so a stale entry doesn't reopen an old room next time.
 const CONTEXT_STORAGE_KEY = "rentlogg_cleaner_context";
 
+// Whether the plan is currently shown translated. Deliberately only the boolean — the translated
+// text itself is never written anywhere, so a reload re-fetches it rather than resurrecting a
+// stale copy. sessionStorage for the same reason the room context above uses it: a phone that
+// discards this tab while the camera is open shouldn't quietly flip the plan back to Norwegian
+// for a cleaner who can't read it.
+const TRANSLATION_PREF_KEY = "rentlogg_cleaner_translate_plan";
+
+function translationPreferenceFromStorage() {
+  try {
+    return sessionStorage.getItem(TRANSLATION_PREF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveTranslationPreference(on) {
+  try {
+    if (on) sessionStorage.setItem(TRANSLATION_PREF_KEY, "1");
+    else sessionStorage.removeItem(TRANSLATION_PREF_KEY);
+  } catch {
+    // sessionStorage unavailable — the toggle still works, it just won't survive a reload.
+  }
+}
+
 function contextFromStorage() {
   try {
     const raw = sessionStorage.getItem(CONTEXT_STORAGE_KEY);
@@ -53,6 +77,7 @@ function saveContext(value) {
 // themselves into whichever site the previous cleaner had open.
 export function clearCleanerContext() {
   saveContext(null);
+  saveTranslationPreference(false);
 }
 
 function tabBtnStyle(active) {
@@ -124,7 +149,7 @@ function isOnboardingDismissed() {
 }
 
 export default function CleanerView({ token, user, pendingCheckinToken, onCheckinHandled }) {
-  const { t, tn } = useI18n();
+  const { t, tn, language } = useI18n();
   const [run, setRun] = useState(null);
   const [rooms, setRooms] = useState(null); // null = not room-enabled site (or not yet loaded)
   const [expandedRoomId, setExpandedRoomId] = useState(null);
@@ -173,6 +198,14 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   const [vaskeplanMonth, setVaskeplanMonth] = useState(currentMonth);
   const [vaskeplanGrid, setVaskeplanGrid] = useState(null);
   const [openDate, setOpenDate] = useState(null); // "YYYY-MM-DD" — which grid day's checklist is open
+  // A reading aid, never data: a map of Norwegian plan text -> machine translation, held in React
+  // state for as long as this screen is open and sent nowhere. The Norwegian is what gets signed,
+  // reported and inspected, so a translation must not survive into anything the server stores.
+  // Only the on/off flag is remembered (sessionStorage, like the rest of this view's context, so a
+  // phone discarding the tab mid-round doesn't silently switch the plan back to Norwegian).
+  const [planTranslations, setPlanTranslations] = useState(null);
+  const [translating, setTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(translationPreferenceFromStorage);
   const fileInputRef = useRef(null);
   const roomFileInputRef = useRef(null);
   const deviationFileInputRef = useRef(null);
@@ -343,6 +376,62 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     setShowManualEntry(false);
     checkInWithToken(extractQrToken(manualCode));
     setManualCode("");
+  }
+
+  // Fetches the whole site's plan vocabulary in one call rather than per room: a renholdsplan
+  // reuses the same phrases everywhere, the server caches per string, and translating on open
+  // means no wait when she taps into a room mid-round.
+  function toggleTranslation() {
+    const next = !showTranslation;
+    setShowTranslation(next);
+    saveTranslationPreference(next);
+  }
+
+  // Fetching lives here rather than in the toggle so it re-runs whenever what's held stops
+  // matching what's on screen: switching language, or checking in at a different site. Holding
+  // only the map (as this first did) meant the second language never loaded — the cached
+  // Lithuanian looked like "already translated" and the fetch was skipped.
+  useEffect(() => {
+    const siteId = run?.site?.id;
+    if (!showTranslation || !siteId) return;
+    if (planTranslations?.language === language && planTranslations?.siteId === siteId) return;
+
+    let cancelled = false;
+    setTranslating(true);
+    apiFetch(`/sites/${siteId}/rooms/translations`, {
+      token, method: "POST", body: JSON.stringify({ language }),
+    })
+      .then((data) => {
+        if (!cancelled) setPlanTranslations({ language, siteId, map: data.translations || {} });
+      })
+      .catch((err) => {
+        // Deliberately not queued offline — replaying a translation request two hours later helps
+        // nobody. The Norwegian plan stays fully usable either way.
+        if (cancelled) return;
+        setShowTranslation(false);
+        saveTranslationPreference(false);
+        setError(isNetworkError(err) ? t("cleaner.noConnection") : err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setTranslating(false);
+      });
+
+    // A fast second switch (lt -> en -> ru) must not let an earlier, slower response land on top
+    // of a later one.
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTranslation, language, run?.site?.id]);
+
+  // Norwegian in, translation out — or null when there's nothing (yet) for this line, in which
+  // case the caller shows the Norwegian alone.
+  function planTranslation(text) {
+    if (!showTranslation || !planTranslations) return null;
+    // While a switch is in flight the held map is for the previous language or site. Showing it
+    // would put Lithuanian under an English UI, so fall back to Norwegian alone until the right
+    // one arrives — briefly unhelpful beats briefly wrong.
+    if (planTranslations.language !== language || planTranslations.siteId !== run?.site?.id) return null;
+    const hit = planTranslations.map[(text || "").trim()];
+    return hit && hit !== text ? hit : null;
   }
 
   function refreshRooms() {
@@ -918,7 +1007,21 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     return (
       <Card style={{ marginTop: 6, marginBottom: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontWeight: 500 }}>{room.name}</div>
+          <div>
+            <div style={{ fontWeight: 500 }}>{room.name}</div>
+            {planTranslation(room.name) && (
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }}>
+                {planTranslation(room.name)}
+              </div>
+            )}
+            {/* Said once per room, not per line. She is about to sign for this work, so she needs
+                to know which of the two lines is the one that counts. */}
+            {showTranslation && planTranslations && (
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                {t("cleaner.translationNote")}
+              </div>
+            )}
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
               {roomRun.items.filter((i) => i.done).length}/{roomRun.items.length}
@@ -940,6 +1043,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             hintVisible={optionHintItemId === item.id}
             onToggle={() => toggleRoomItem(item)}
             onToggleOption={(option) => toggleRoomItemOption(item, option)}
+            translate={planTranslation}
           />
         ))}
         {(roomRun.photos?.length > 0 || pendingRoomPhotos.length > 0) && (
@@ -1140,6 +1244,26 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               >
                 <CalendarDays size={13} /> {t("grid.title")}
               </button>
+              {/* Only offered when the app itself isn't already in Norwegian: someone reading the
+                  UI in Norwegian has no use for a Norwegian-to-Norwegian translation. */}
+              {language !== "no" && (
+                <button
+                  onClick={toggleTranslation}
+                  disabled={translating}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0,
+                    fontSize: 13, color: "var(--brand-dark)", cursor: translating ? "default" : "pointer",
+                    opacity: translating ? 0.6 : 1,
+                  }}
+                >
+                  <Languages size={13} />{" "}
+                  {translating
+                    ? t("cleaner.translating")
+                    : showTranslation
+                      ? t("cleaner.translatePlanOff")
+                      : t("cleaner.translatePlan")}
+                </button>
+              )}
             </div>
           </Card>
 
@@ -1213,7 +1337,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               )}
               {chapter.rooms.map((room) => (
                 <div key={room.id}>
-                  <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} />
+                  <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} translatedName={planTranslation(room.name)} />
                   {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
                 </div>
               ))}
@@ -1246,7 +1370,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
                   </div>
                   {notPlannedRooms.map((room) => (
                     <div key={room.id}>
-                      <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} muted />
+                      <RoomRow room={room} expanded={expandedRoomId === room.id} onOpen={() => toggleRoom(room)} muted translatedName={planTranslation(room.name)} />
                       {expandedRoomId === room.id && roomRun && renderExpandedRoom(room)}
                     </div>
                   ))}
@@ -1366,14 +1490,27 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       {showDeviationForm && isRoomEnabled && (
         <Card style={{ marginTop: 12 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            {/* The room <option> carries an id and the task <option> carries the Norwegian label
+                verbatim — that label is posted to /deviations and stored in
+                deviations.room_task_label, which ends up in the customer's report and in anything
+                a tilsyn reads. The translation may appear in the option's *text* so she can find
+                the right task, but it must never become the value. */}
             <select value={deviationRoomId} onChange={(e) => onDeviationRoomChange(e.target.value)} style={deviationSelectStyle}>
               <option value="">{t("cleaner.deviationGeneral")}</option>
-              {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {planTranslation(r.name) ? `${r.name} — ${planTranslation(r.name)}` : r.name}
+                </option>
+              ))}
             </select>
             {deviationRoomId && (
               <select value={deviationTaskLabel} onChange={(e) => setDeviationTaskLabel(e.target.value)} style={deviationSelectStyle}>
                 <option value="">{t("cleaner.deviationGeneralRoom")}</option>
-                {deviationTasks.map((t) => <option key={t.id} value={t.label}>{t.label}</option>)}
+                {deviationTasks.map((task) => (
+                  <option key={task.id} value={task.label}>
+                    {planTranslation(task.label) ? `${task.label} — ${planTranslation(task.label)}` : task.label}
+                  </option>
+                ))}
               </select>
             )}
           </div>
@@ -1473,7 +1610,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
 
 // One tappable alternative on a flervalg task. Sized for a gloved thumb on a phone, not a mouse —
 // this is the control a cleaner uses dozens of times a shift, standing in a wet production hall.
-function OptionChip({ option, onClick }) {
+function OptionChip({ option, translated, onClick }) {
   return (
     <button
       onClick={onClick}
@@ -1489,7 +1626,12 @@ function OptionChip({ option, onClick }) {
       {option.selected
         ? <CheckCircle2 size={15} style={{ flexShrink: 0 }} />
         : <Circle size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />}
-      {option.label}
+      <span style={{ textAlign: "left" }}>
+        {option.label}
+        {translated && (
+          <span style={{ display: "block", fontSize: 11, opacity: 0.75, fontStyle: "italic" }}>{translated}</span>
+        )}
+      </span>
     </button>
   );
 }
@@ -1498,9 +1640,12 @@ function OptionChip({ option, onClick }) {
 // a flervalg task (one carrying options — e.g. which soap was used, see room_run_item_options on
 // the backend) puts its alternatives underneath and is ticked by choosing one, since the choice
 // IS the documentation the task exists for.
-function RoomTaskRow({ item, hintVisible, onToggle, onToggleOption }) {
+function RoomTaskRow({ item, hintVisible, onToggle, onToggleOption, translate }) {
   const { t } = useI18n();
   const hasOptions = item.options?.length > 0;
+  // Under, not instead of. She ticks off the Norwegian line — that is what the signature and the
+  // report attest to — so replacing it would mean signing a sentence she never saw.
+  const translated = translate?.(item.label);
   return (
     <div style={{ padding: "10px 0", borderTop: "1px solid var(--border)" }}>
       <div
@@ -1510,12 +1655,19 @@ function RoomTaskRow({ item, hintVisible, onToggle, onToggleOption }) {
         {item.done
           ? <CheckCircle2 size={18} style={{ color: "var(--text-success)", flexShrink: 0 }} />
           : <Circle size={18} style={{ color: "var(--text-muted)", flexShrink: 0 }} />}
-        <span style={{
-          fontSize: 14, flex: 1,
-          textDecoration: item.done ? "line-through" : "none",
-          color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
-        }}>
-          {item.label}
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{
+            display: "block", fontSize: 14,
+            textDecoration: item.done ? "line-through" : "none",
+            color: item.done ? "var(--text-secondary)" : "var(--text-primary)",
+          }}>
+            {item.label}
+          </span>
+          {translated && (
+            <span style={{ display: "block", fontSize: 13, color: "var(--text-secondary)", fontStyle: "italic", marginTop: 2 }}>
+              {translated}
+            </span>
+          )}
         </span>
         {item.monthly ? (
           <span style={{
@@ -1529,7 +1681,12 @@ function RoomTaskRow({ item, hintVisible, onToggle, onToggleOption }) {
       {hasOptions && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, marginLeft: 28 }}>
           {item.options.map((option) => (
-            <OptionChip key={option.id} option={option} onClick={() => onToggleOption(option)} />
+            <OptionChip
+              key={option.id}
+              option={option}
+              translated={translate?.(option.label)}
+              onClick={() => onToggleOption(option)}
+            />
           ))}
         </div>
       )}
@@ -1548,7 +1705,7 @@ function RoomTaskRow({ item, hintVisible, onToggle, onToggleOption }) {
 // The room picker's row. Status lives in three places at once on purpose — the colored edge, the
 // icon and the pill — because this list is read at a glance, one-handed, mid-round: the edge is
 // what's visible while scrolling, the pill is what's read when you stop.
-function RoomRow({ room, expanded, onOpen, muted }) {
+function RoomRow({ room, expanded, onOpen, muted, translatedName }) {
   const { t, tn } = useI18n();
   const completed = room.status === "completed";
   const inProgress = room.status === "in_progress";
@@ -1594,6 +1751,14 @@ function RoomRow({ room, expanded, onOpen, muted }) {
         }}>
           {room.name}
         </div>
+        {translatedName && (
+          <div style={{
+            fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic", marginTop: 1,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {translatedName}
+          </div>
+        )}
         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{subline}</div>
       </div>
       {!muted && !completed && (
