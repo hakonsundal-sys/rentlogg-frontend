@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2 } from "lucide-react";
+import { Building2, Check, Pencil, X } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card } from "../shared";
 
@@ -10,6 +10,11 @@ export default function SelskaperPage({ token }) {
   // "<company id>:<module key>" while that one checkbox is in flight — a company can have several
   // modules, and only the one actually being toggled should lock while the call runs.
   const [savingModule, setSavingModule] = useState(null);
+  // Which company is being renamed, and the draft name. Inline rather than a dialog: the card
+  // already shows the name, and this replaces it in place so it is obvious what is being edited.
+  const [renaming, setRenaming] = useState(null);
+  const [draftName, setDraftName] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   function loadAll() {
     apiFetch("/companies", { token }).then(setCompanies).catch((err) => setError(err.message));
@@ -26,6 +31,25 @@ export default function SelskaperPage({ token }) {
       loadAll();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function saveName(companyId) {
+    const nytt = draftName.trim();
+    if (!nytt) return;
+    setError("");
+    setSavingName(true);
+    try {
+      const updated = await apiFetch(`/companies/${companyId}`, {
+        token, method: "PATCH", body: JSON.stringify({ name: nytt }),
+      });
+      // Merge rather than replace: the response carries id/name/modules, not created_at.
+      setCompanies((list) => list.map((c) => (c.id === updated.id ? { ...c, name: updated.name } : c)));
+      setRenaming(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingName(false);
     }
   }
 
@@ -74,7 +98,33 @@ export default function SelskaperPage({ token }) {
             }}>
               <Building2 size={20} />
             </div>
-            <div style={{ fontWeight: 600 }}>{company.name}</div>
+            {renaming === company.id ? (
+              <form
+                onSubmit={(e) => { e.preventDefault(); saveName(company.id); }}
+                style={{ display: "flex", gap: 6, alignItems: "center" }}
+              >
+                <input
+                  required autoFocus value={draftName} disabled={savingName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Escape") setRenaming(null); }}
+                  style={{ ...inputStyle, flex: 1, minWidth: 0, fontWeight: 600 }}
+                />
+                <button type="submit" disabled={savingName} title="Lagre" style={iconBtnStyle}><Check size={15} /></button>
+                <button type="button" onClick={() => setRenaming(null)} title="Avbryt" style={iconBtnStyle}><X size={15} /></button>
+              </form>
+            ) : (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontWeight: 600 }}>{company.name}</span>
+                <button
+                  type="button"
+                  onClick={() => { setRenaming(company.id); setDraftName(company.name); setError(""); }}
+                  title="Endre navn"
+                  style={{ ...iconBtnStyle, marginLeft: "auto" }}
+                >
+                  <Pencil size={14} />
+                </button>
+              </div>
+            )}
             <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
               Opprettet {company.created_at?.slice(0, 10)}
             </div>
@@ -116,6 +166,11 @@ export default function SelskaperPage({ token }) {
     </div>
   );
 }
+
+const iconBtnStyle = {
+  background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "3px 6px",
+  cursor: "pointer", color: "var(--text-secondary)", display: "flex", alignItems: "center",
+};
 
 const primaryBtnStyle = {
   background: "var(--brand)", color: "white", border: "none",
