@@ -24,9 +24,29 @@ const OCCURRENCES = [
   { value: -1, label: "Siste" },
 ];
 
+const MONTHS = [
+  { value: 1, label: "Jan" },
+  { value: 2, label: "Feb" },
+  { value: 3, label: "Mar" },
+  { value: 4, label: "Apr" },
+  { value: 5, label: "Mai" },
+  { value: 6, label: "Jun" },
+  { value: 7, label: "Jul" },
+  { value: 8, label: "Aug" },
+  { value: 9, label: "Sep" },
+  { value: 10, label: "Okt" },
+  { value: 11, label: "Nov" },
+  { value: 12, label: "Des" },
+];
+
 function todayWeekday() {
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
   return new Date(`${todayStr}T00:00:00`).getDay();
+}
+
+function todayMonth() {
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
+  return Number(todayStr.split("-")[1]);
 }
 
 const emptyForm = {
@@ -375,6 +395,31 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     const next = current.includes(weekday) ? current.filter((d) => d !== weekday) : [...current, weekday];
     if (next.length === 0) return;
     setItemWeeklyMode(roomId, itemId, next);
+  }
+
+  // "Periodisk" — due in one or more specific calendar months (e.g. an annual belt clean due in
+  // April and August), independent of weekday. Replaces the whole month set each call, same shape
+  // as setItemWeeklyMode/toggleItemWeekday above.
+  async function setItemPeriodicMode(roomId, itemId, months) {
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
+        token, method: "PATCH",
+        body: JSON.stringify({ months }),
+      });
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Same "refuse to remove the last month" rule as toggleItemWeekday — switch to "Hver gang" to
+  // clear a periodic item entirely.
+  async function toggleItemMonth(roomId, itemId, month) {
+    const item = (roomItems[roomId] || []).find((i) => i.id === itemId);
+    const current = item?.months || [];
+    const next = current.includes(month) ? current.filter((m) => m !== month) : [...current, month];
+    if (next.length === 0) return;
+    setItemPeriodicMode(roomId, itemId, next);
   }
 
   // "Annenhver uke" — due if it's been at least 14 days since this item was last checked off
@@ -1375,12 +1420,14 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                 value={
                                   item.interval_days != null ? "biweekly"
                                   : (item.weekly_days && item.weekly_days.length > 0) ? "weekly"
+                                  : (item.months && item.months.length > 0) ? "periodic"
                                   : item.monthly_weekday != null ? "monthly" : "daily"
                                 }
                                 onChange={(e) => {
                                   if (e.target.value === "daily") setItemDailyMode(room.id, item.id);
                                   else if (e.target.value === "weekly") setItemWeeklyMode(room.id, item.id, [todayWeekday()]);
                                   else if (e.target.value === "biweekly") setItemBiweeklyMode(room.id, item.id);
+                                  else if (e.target.value === "periodic") setItemPeriodicMode(room.id, item.id, [todayMonth()]);
                                   else setItemMonthlyMode(room.id, item.id, todayWeekday(), 1);
                                 }}
                                 style={{ ...inputStyle, padding: "2px 4px", fontSize: 11, width: 92 }}
@@ -1389,6 +1436,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                 <option value="weekly">Ukentlig</option>
                                 <option value="biweekly">Annenhver uke</option>
                                 <option value="monthly">Månedlig</option>
+                                <option value="periodic">Periodisk</option>
                               </select>
                               {item.weekly_days && item.weekly_days.length > 0 && (
                                 <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
@@ -1402,6 +1450,23 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                         color: active ? "var(--brand-dark)" : "var(--text-secondary)",
                                       }}>
                                         {wd.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {item.months && item.months.length > 0 && (
+                                <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                                  {MONTHS.map((m) => {
+                                    const active = item.months.includes(m.value);
+                                    return (
+                                      <button key={m.value} onClick={() => toggleItemMonth(room.id, item.id, m.value)} style={{
+                                        padding: "2px 6px", borderRadius: 5, fontSize: 10, cursor: "pointer",
+                                        border: active ? "1px solid var(--brand)" : "1px solid var(--border)",
+                                        background: active ? "var(--brand-bg)" : "var(--surface-0)",
+                                        color: active ? "var(--brand-dark)" : "var(--text-secondary)",
+                                      }}>
+                                        {m.label}
                                       </button>
                                     );
                                   })}
