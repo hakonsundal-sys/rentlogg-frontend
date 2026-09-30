@@ -4,6 +4,7 @@ import { apiFetch } from "../../api";
 import { Card, AddressAutocomplete, DocumentsList, Field, Loading, ResponsibleBadge, TabButton, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
+import KjemikalierPage from "./KjemikalierPage";
 import { hasModule, MODULE_TIMECLOCK } from "../../modules";
 
 // Hygienetrinnene, i utførelsesrekkefølge. Speiler STEP_TYPES i backendens routes/rooms.js —
@@ -154,6 +155,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [measureDrafts, setMeasureDrafts] = useState({}); // itemId -> { unit, min, max }
   const [stepEditorItemId, setStepEditorItemId] = useState(null); // task whose hygienetrinn editor is open
   const [stepDrafts, setStepDrafts] = useState({}); // itemId -> { stepType, contactMinutes, concentration }
+  const [mainTab, setMainTab] = useState("lokasjoner"); // "lokasjoner" | "kjemikalier"
+  const [chemicals, setChemicals] = useState([]); // kjemikalieregisteret, for å koble flervalg-alternativer
+  const [optionChemical, setOptionChemical] = useState({}); // itemId -> valgt chemical_id i "nytt valg"-raden
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -199,6 +203,13 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   }
 
   useEffect(loadAll, [token]);
+
+  // Kjemikalieregisteret hentes én gang her fordi flervalg-editoren under trenger det for å
+  // kunne koble et alternativ til et middel. Feiler det, blir velgeren bare borte — registeret
+  // er valgfritt, og et tomt register skal ikke hindre noen i å sette opp vanlige oppgaver.
+  useEffect(() => {
+    apiFetch("/chemicals", { token }).then(setChemicals).catch(() => setChemicals([]));
+  }, [token]);
 
   function refreshRoomsForSite(siteId) {
     apiFetch(`/sites/${siteId}/rooms`, { token }).then((rows) => setRooms((prev) => ({ ...prev, [siteId]: rows })));
@@ -401,9 +412,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     if (!label) return;
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}/options`, {
-        token, method: "POST", body: JSON.stringify({ label }),
+        token, method: "POST", body: JSON.stringify({ label, chemical_id: optionChemical[itemId] || "" }),
       });
       setOptionDrafts((d) => ({ ...d, [itemId]: "" }));
+      setOptionChemical((c) => ({ ...c, [itemId]: "" }));
       refreshRoomItems(roomId);
     } catch (err) {
       setError(err.message);
@@ -958,9 +970,28 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     return String(site.department_id) === departmentTab;
   });
 
+  // Kjemikalieregisteret er bedriftens eget oppsett, ikke en lokasjons — men det brukes av
+  // oppgavene som settes opp her, så det bor som en fane i stedet for et eget menypunkt. Samme
+  // avveining som Kundebrukere under Kunder.
+  if (mainTab === "kjemikalier") {
+    return (
+      <div>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+          <TabButton active={false} onClick={() => setMainTab("lokasjoner")}>Lokasjoner</TabButton>
+          <TabButton active onClick={() => setMainTab("kjemikalier")}>Kjemikalier</TabButton>
+        </div>
+        <KjemikalierPage token={token} />
+      </div>
+    );
+  }
+
   return (
     <div>
       <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfSelected} style={{ display: "none" }} />
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+        <TabButton active onClick={() => setMainTab("lokasjoner")}>Lokasjoner</TabButton>
+        <TabButton active={false} onClick={() => setMainTab("kjemikalier")}>Kjemikalier</TabButton>
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Lokasjoner</h1>
@@ -1741,6 +1772,23 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                         autoFocus
                                         style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 180 }}
                                       />
+                                      {/* Kobler alternativet til kjemikalieregisteret. Velges et
+                                          middel, følger styrken og sikkerhetsnotatet med ut i
+                                          renholderens skjerm når hun krysser av for det. */}
+                                      {chemicals.length > 0 && (
+                                        <select
+                                          value={optionChemical[item.id] || ""}
+                                          onChange={(e) => setOptionChemical((c) => ({ ...c, [item.id]: e.target.value }))}
+                                          style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 170 }}
+                                        >
+                                          <option value="">Ikke et kjemikalie</option>
+                                          {chemicals.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                              {c.name}{c.strength ? ` (${c.strength})` : ""}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      )}
                                       <button onClick={() => addItemOption(room.id, item.id)} style={linkBtnStyle}>+ Legg til</button>
                                       <button onClick={() => setOptionEditorItemId(null)} style={linkBtnStyle}>Ferdig</button>
                                     </div>

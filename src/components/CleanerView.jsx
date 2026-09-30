@@ -1816,6 +1816,36 @@ function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption,
           ))}
         </div>
       )}
+      {/* Kjemikaliet renholderen faktisk valgte: styrke og sikkerhetsnotat, vist først når
+          valget er tatt. Vist før ville det vært fem kort med advarsler ved siden av hverandre,
+          som ingen leser. Etter er det ett kort om det midlet hun står med i hånda.
+          Verdiene er besøkets egen kopi, ikke et oppslag i registeret — byttes doseringen neste
+          år, viser gamle besøk fortsatt hva som faktisk ble brukt. */}
+      {hasOptions && item.options.filter((o) => o.selected && (o.chemical_strength || o.chemical_safety_note)).map((o) => (
+        <div key={`chem-${o.id}`} style={{
+          marginTop: 8, marginLeft: 28, padding: "10px 12px",
+          background: "var(--brand-bg)", borderRadius: "var(--radius)",
+          borderLeft: "3px solid var(--brand)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{o.label}</span>
+            {o.chemical_strength && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-pill)",
+                background: "var(--surface-1)", color: "var(--brand-dark)",
+              }}>
+                {o.chemical_strength}
+              </span>
+            )}
+          </div>
+          {o.chemical_safety_note && (
+            <div style={{ display: "flex", gap: 7, marginTop: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+              <ShieldCheck size={14} style={{ flexShrink: 0, marginTop: 1, color: "var(--brand)" }} />
+              <span>{o.chemical_safety_note}</span>
+            </div>
+          )}
+        </div>
+      ))}
       {hasOptions && (hintVisible || !item.options.some((o) => o.selected)) && (
         <div style={{
           fontSize: 12, marginTop: 6, marginLeft: 28,
