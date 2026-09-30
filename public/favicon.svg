@@ -3,14 +3,14 @@
   src/components/shared.jsx — endres de ett sted, må de endres begge.
 
   Her, og bare her, står merket på en fylt flate: en ren strekversjon grøter seg sammen på en
-  nettleserfane på 16px. Inne i appen tegnes det bart, fordi den avrundede gradient-brikken er
-  formen cleanlog.no bruker til sitt eget merke.
+  nettleserfane på 16px. Inne i appen tegnes det bart.
 
-  Erstattet en lilla plassholder-blob som ikke matchet noe i appen — den var igjen fra et
-  designverktøy og hadde aldri noe med Rentlogg å gjøre.
+  Flaten er flat #1e2a38, ikke en gradient. Profilen er monokrom skifer, og en gradient ville
+  vært det eneste stedet med en myk overgang — i tillegg til at en avrundet gradient-brikke er
+  nøyaktig formen cleanlog.no setter sitt eget merke i.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Rentlogg">
-  <rect width="32" height="32" rx="7.5" fill="#6d28d9"/>
+  <rect width="32" height="32" rx="7.5" fill="#1e2a38"/>
   <g transform="translate(16 16) scale(.72) translate(-16 -16)"
      fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M5 7.5h12"/>

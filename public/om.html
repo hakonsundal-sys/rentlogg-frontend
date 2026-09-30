@@ -12,25 +12,39 @@
     <link rel="canonical" href="https://www.rentlogg.no/om.html" />
     <meta name="robots" content="index, follow" />
     <style>
+      /* Selvhostet, ikke fra fonts.googleapis.com — denne siden lover nettopp at vi ikke sender
+         besøkendes IP-adresser til tredjeparter, så den kan ikke selv gjøre det i toppen. */
+      @font-face {
+        font-family: "Schibsted Grotesk";
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url("/fonts/schibsted-grotesk-latin.woff2") format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+          U+FEFF, U+FFFD;
+      }
       :root {
-        --page-bg: #f9f9fc;
+        --page-bg: #f4f7fa;
         --surface: #ffffff;
-        --border: #e9e7f2;
-        --text-primary: #18181b;
-        --text-secondary: #71717a;
-        --brand: #6d28d9;
-        --brand-dark: #5b21b6;
-        --brand-bg: #f5f3ff;
-        --radius: 10px;
-        --radius-lg: 16px;
+        --border: #d7dfe8;
+        --text-primary: #1e2a38;
+        --text-secondary: #556677;
+        --brand: #1e2a38;
+        --brand-dark: #0f1822;
+        --brand-bg: #e7ecf1;
+        /* Firkantet, som landingssiden. Dette er en sideflate, ikke en app-komponent. */
+        --radius: 0px;
+        --radius-lg: 0px;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font: 16px/1.65 system-ui, "Segoe UI", Roboto, sans-serif;
+        font: 16px/1.65 "Schibsted Grotesk", system-ui, "Segoe UI", Roboto, sans-serif;
         color: var(--text-primary);
         background: var(--page-bg);
       }
+      h1, h2 { letter-spacing: -0.03em; }
       .wrap { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; }
       header { margin-bottom: 40px; }
       /* Samme lockup som appen: merket i merkevarefargen, ordmerket i brødtekstfargen. Var en

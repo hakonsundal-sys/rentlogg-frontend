@@ -253,7 +253,7 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Adresse", 
         <div style={{
           position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20, marginTop: 2,
           background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.12)", maxHeight: 220, overflowY: "auto",
+          boxShadow: "0 4px 12px rgba(30, 42, 56, 0.14)", maxHeight: 220, overflowY: "auto",
         }}>
           {suggestions.map((a, i) => (
             <div

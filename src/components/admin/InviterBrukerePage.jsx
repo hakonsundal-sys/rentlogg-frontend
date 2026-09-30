@@ -65,8 +65,11 @@ export default function InviterBrukerePage({ token, user }) {
     }
   }
 
+  // Peker rett på /app/ nå som roten er blitt en offentlig landingsside. Lenker som allerede er
+  // sendt ut står fortsatt på `/?invite=` — de virker, fordi landingssiden videresender ?invite=
+  // hit før første maling. Nye lenker slipper det ekstra hoppet.
   function inviteLink(invToken) {
-    return `${window.location.origin}/?invite=${invToken}`;
+    return `${window.location.origin}/app/?invite=${invToken}`;
   }
 
   function copyLink(inv) {

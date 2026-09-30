@@ -1,8 +1,35 @@
+/* Schibsted Grotesk, selvhostet. Ikke via fonts.googleapis.com: det ville sendt hver brukers
+   IP-adresse til Google på hvert sidelast, og om.html lover at vi ikke gjør den typen ting.
+   To subsett — latin dekker norsk/engelsk, latin-ext dekker litauisk og latvisk.
+   Fonten har INGEN kyrillisk, så russisk UI faller bevisst tilbake på systemfonten;
+   derfor må fallback-stacken under alltid stå, den er ikke bare en sikkerhetsmargin. */
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/schibsted-grotesk-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/schibsted-grotesk-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-  --surface-0: #f4f4f5;
+  --font-sans: "Schibsted Grotesk", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --surface-0: #f4f7fa;
   --surface-1: #ffffff;
   --surface-2: #ffffff;
-  --border: #e4e4e7;
+  --border: #d7dfe8;
   --border-danger: #fecaca;
   --bg-danger: #fef2f2;
 
@@ -11,9 +38,15 @@
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  --text-primary: #18181b;
-  --text-secondary: #71717a;
-  --text-muted: #a1a1aa;
+  --text-primary: #1e2a38;
+  --text-secondary: #556677;
+  /* Målt, ikke valgt på øyemål: 5.0:1 på hvitt og 4.7:1 på --page-bg, altså over WCAG AA sitt
+     krav på 4.5:1. Forrige verdi (#a1a1aa) lå på 2.9:1 og strøk — det betyr mest for en
+     renholder som leser 11px metatekst på telefon i et kjølerom.
+     Prisen er at avstanden opp til --text-secondary er liten: en akromatisk palett har ikke
+     plass til tre gråtoner som alle skal bestå AA. Skill dem med størrelse og vekt i stedet
+     for å gjøre denne lysere igjen. */
+  --text-muted: #5f7186;
   --text-success: #16a34a;
   --text-warning: #d97706;
   --text-danger: #dc2626;
@@ -23,20 +56,28 @@
   --c-red: color-mix(in srgb, #dc2626 15%, transparent);
 
   /* Rentlogg brand theme — shared across the admin panel, cleaner, and customer views.
-     Deep violet rather than orange, and a cool ground rather than warm cream, because
-     cleanlog.no — same market, same pitch (QR-innsjekk → sjekkliste → bilde → kundeportal) —
-     runs #fc6b33 on #fefbf8 behind an orange-gradient chip logo. Against the old #f97316 on
-     #fdfbf7 the two products read as the same company. The whole point of these values is the
-     distance from that, so don't drift them back toward warm orange. */
-  --page-bg: #f9f9fc;
+     Monokrom skifer: ingen merkevarekulør i det hele tatt. Hele identiteten bæres av
+     typografien, hårstrek-kantene og flatene — så det finnes ingen "brand hue" å drifte
+     tilbake til. Erstattet den dypt violette fra 24.09.
+
+     Fordi paletten nå er akromatisk, er HVER farge i appen semantisk: grønn betyr ferdig,
+     oransje betyr pågår, rød betyr avvik, blå betyr kundens eget. Det er poenget med å gi
+     slipp på kuløren, og det gjør at en ny farge aldri skal innføres "bare for å pynte". */
+  --page-bg: #f4f7fa;
   --sidebar-bg: #ffffff;
-  --sidebar-border: #e9e7f2;
-  --sidebar-active-bg: #f5f3ff;
-  --brand: #6d28d9;
-  --brand-dark: #5b21b6;
-  --brand-bg: #f5f3ff;
-  --brand-gradient: linear-gradient(135deg, #7c3aed, var(--brand-dark));
-  --banner-gradient: linear-gradient(90deg, #f0ebff, #faf8ff);
+  --sidebar-border: #d7dfe8;
+  --sidebar-active-bg: #e7ecf1;
+  --brand: #1e2a38;
+  --brand-dark: #0f1822;
+  --brand-bg: #e7ecf1;
+  /* Flat, ikke gradient. Variabelen beholdes fordi flere flater refererer den; en gradient
+     ville vært det eneste stedet i profilen med en myk overgang, og lest som en fremmedlegeme. */
+  --brand-gradient: var(--brand);
+  --banner-gradient: linear-gradient(90deg, #e7ecf1, #f4f7fa);
+
+  /* Knappeflate. Lysere enn --brand med vilje: en heldekkende #1e2a38-knapp ved siden av
+     #1e2a38 brødtekst gjør at knappen forsvinner inn i teksten rundt. */
+  --brand-solid: #475a6e;
 
   /* Orange did not leave the product, it stopped being two things at once. It used to be the
      brand/CTA color AND the "in progress" status; ResponsibleBadge's comment below records why
@@ -52,9 +93,10 @@
   --accent-blue-dark: #2563eb;
   --accent-blue-bg: #eff6ff;
 
-  font: 15px/145% system-ui, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 var(--font-sans);
   color: var(--text-primary);
   background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -65,6 +107,45 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--page-bg);
+  font-family: var(--font-sans);
+}
+
+/* Typeskalaen. Grotesken tåler — og trenger — strammere tracking jo større den settes; uten
+   dette ser store overskrifter luftige og billige ut. Verdiene faller mot 0 på brødtekst,
+   der negativ tracking bare ville skadet lesbarheten.
+
+   Appen setter mye typografi inline i JSX, så disse reglene treffer bare ekte h1–h3. Det er
+   med vilje: de stedene som allerede har en bevisst størrelse skal ikke overstyres herfra. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-sans);
+  text-wrap: balance;
+}
+h1 {
+  font-size: clamp(28px, 4.4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+h2 {
+  font-size: clamp(21px, 2.6vw, 26px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+}
+h3 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+/* Tall som står i kolonne (timelister, statuskort, ATP-verdier) skal ikke danse sidelengs
+   når sifrene endrer seg. */
+table,
+[data-numeric] {
+  font-variant-numeric: tabular-nums;
 }
 
 .c-teal {
@@ -134,7 +215,7 @@ button {
     height: 100vh;
     z-index: 55;
     transition: left 0.2s ease;
-    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 2px 0 16px rgba(30, 42, 56, 0.18);
   }
   .admin-sidebar.open {
     left: 0;

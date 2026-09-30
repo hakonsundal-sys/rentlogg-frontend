@@ -2,9 +2,34 @@
 <html lang="nb">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="theme-color" content="#6d28d9" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#1e2a38" />
+
+    <!--
+      VIDERESENDING — IKKE FJERN.
+
+      De trykte QR-kodene som henger på hver lokasjon peker på `/?checkin=<token>`, og
+      invitasjonslenker som allerede er sendt ut peker på `/?invite=<token>`. Begge traff roten
+      den gang roten var appen. Nå er roten denne landingssiden, så de må sendes videre til
+      /app/ med spørrestrengen intakt.
+
+      Kjører i <head> før første maling, slik at en renholder som skanner en kode aldri ser et
+      glimt av markedsføringstekst. Fjernes dette, slutter hver eneste QR-kode som allerede er
+      hengt opp å virke — og de kan ikke skrives ut på nytt uten å reise rundt til alle bygg.
+    -->
+    <script>
+      (function () {
+        try {
+          var p = new URLSearchParams(window.location.search);
+          if (p.has("checkin") || p.has("invite")) {
+            window.location.replace("/app/" + window.location.search + window.location.hash);
+          }
+        } catch (e) {
+          /* Klarer ikke nettleseren URLSearchParams, er den uansett for gammel for appen. */
+        }
+      })();
+    </script>
 
     <title>Rentlogg — dokumentasjon av renhold</title>
     <meta
@@ -23,44 +48,799 @@
       property="og:description"
       content="Fagsystem for renholdsbedrifter: QR-innsjekk, sjekklister med bildedokumentasjon, avviksmeldinger og dagsrapport til kunden."
     />
+
+    <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+
+    <style>
+      @font-face {
+        font-family: "Schibsted Grotesk";
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url("/fonts/schibsted-grotesk-latin-ext.woff2") format("woff2");
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+          U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+          U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Schibsted Grotesk";
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url("/fonts/schibsted-grotesk-latin.woff2") format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+          U+FEFF, U+FFFD;
+      }
+
+      :root {
+        --ink: #1e2a38;
+        --ink-2: #2b3a4a;
+        --slate: #556677;
+        --muted: #5f7186;
+        --line: #d7dfe8;
+        --line-soft: #e7ecf1;
+        --ground: #f4f7fa;
+        --surface: #ffffff;
+        --solid: #475a6e;
+        --ok: #16a34a;
+        --ok-bg: #dcf5e4;
+        --progress: #ea580c;
+        --progress-bg: #fff1e6;
+        --danger: #dc2626;
+        --kunde: #2563eb;
+        --kunde-bg: #eff6ff;
+        --sans: "Schibsted Grotesk", system-ui, "Segoe UI", Roboto, sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+      }
+
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font: 16px/1.55 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-inline: 20px;
+      }
+
+      a { color: inherit; }
+      :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+      h1, h2, h3 { margin: 0; text-wrap: balance; }
+      h1 {
+        font-size: clamp(42px, 8.2vw, 92px);
+        font-weight: 700;
+        letter-spacing: -0.045em;
+        line-height: 0.98;
+      }
+      h2 {
+        font-size: clamp(29px, 5.2vw, 57px);
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 1.04;
+      }
+      h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+
+      /* Bevisst ikke versaler og ikke utsperret — en liten fet linje i vanlig tekstfarge.
+         Det er den detaljen som skiller profilen fra standard SaaS-maler. */
+      .eyebrow { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
+
+      .lede {
+        font-size: clamp(17px, 2.1vw, 20px);
+        color: var(--slate);
+        max-width: 46ch;
+        margin: 18px 0 0;
+      }
+
+      section { padding-block: clamp(56px, 9vw, 130px); }
+      section + section { border-top: 1px solid var(--line-soft); }
+
+      /* Sidens egne flater: firkantet, hårstrek, ingen skygge. Produkt-UI-en inne i
+         mockupene beholder runde hjørner — den skal se ut som appen, ikke som siden. */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        padding: clamp(20px, 3vw, 32px);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        background: var(--solid);
+        color: #fff;
+        border: 1px solid var(--solid);
+        text-decoration: none;
+        font-size: 17px;
+        font-weight: 600;
+        padding: 15px 34px;
+        cursor: pointer;
+      }
+      .btn:hover { background: var(--ink); border-color: var(--ink); }
+      .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+      .btn.ghost:hover { background: var(--surface); border-color: var(--ink); }
+
+      /* ---------- topplinje ---------- */
+      .top {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--line);
+      }
+      .top-in {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-block: 14px;
+      }
+      .lockup { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+      .lockup svg { color: var(--ink); flex-shrink: 0; }
+      .lockup b { font-size: 20px; font-weight: 700; letter-spacing: -0.021em; }
+      .top nav { display: flex; align-items: center; gap: 26px; }
+      .top nav a { font-size: 14px; font-weight: 500; color: var(--slate); text-decoration: none; }
+      .top nav a:hover { color: var(--ink); }
+      .top .login {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ink);
+        text-decoration: none;
+        border: 1px solid var(--line);
+        padding: 9px 18px;
+        white-space: nowrap;
+      }
+      .top .login:hover { border-color: var(--ink); }
+      @media (max-width: 760px) { .top nav { display: none; } }
+
+      /* ---------- hero ---------- */
+      .hero { padding-block: clamp(48px, 7vw, 96px) clamp(40px, 6vw, 80px); }
+      .hero-grid { display: grid; grid-template-columns: 1fr 340px; gap: clamp(28px, 5vw, 56px); align-items: center; }
+      @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
+      .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+      /* Brytes de til hver sin linje, skal de være like brede — to knapper i ulik bredde
+         under hverandre ser ut som en feil, og et bredere treffområde for tommelen skader ikke. */
+      @media (max-width: 520px) {
+        .hero-cta { flex-direction: column; align-items: stretch; }
+      }
+
+      /* ---------- telefon ---------- */
+      .phone {
+        width: 100%;
+        max-width: 330px;
+        margin-inline: auto;
+        border: 10px solid var(--ink);
+        border-radius: 34px;
+        background: var(--ground);
+        padding: 14px 12px;
+        overflow: hidden;
+      }
+      .phone-notch {
+        width: 92px; height: 20px; border-radius: 999px; background: var(--ink);
+        margin: 0 auto 14px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .room {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        background: var(--surface); border: 1px solid var(--line);
+        border-left: 4px solid var(--line); border-radius: 10px;
+        padding: 10px 12px; margin-bottom: 7px;
+      }
+      .room.done { border-left-color: var(--ok); }
+      .room.doing { border-left-color: var(--progress); border-color: var(--ink); }
+      .room-n { font-size: 14px; }
+      .room-s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+      .tick {
+        width: 22px; height: 22px; border-radius: 999px; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+      }
+      .tick.done { background: var(--ok); color: #fff; }
+      .tick.open { border: 2px solid var(--line); }
+      .pill {
+        font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+        padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+      }
+      .pill.ok { background: var(--ok-bg); color: var(--ok); }
+      .pill.doing { background: var(--progress-bg); color: var(--progress); }
+      .pill.kunde { background: var(--kunde-bg); color: var(--kunde); }
+      .pill.flat { background: var(--line-soft); color: var(--slate); }
+      .track { height: 7px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
+      .fill { height: 100%; border-radius: 999px; background: var(--progress); }
+      .chap {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        margin: 14px 0 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+        text-transform: uppercase; color: var(--slate);
+      }
+      .chap em { font-style: normal; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+      .linkish { font-size: 12.5px; font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; }
+
+      /* ---------- nettleserramme ---------- */
+      .browser { border: 1px solid var(--line); background: var(--surface); }
+      .browser-bar {
+        display: flex; align-items: center; gap: 7px;
+        padding: 11px 14px; border-bottom: 1px solid var(--line-soft); background: var(--ground);
+      }
+      .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--line); }
+      .browser-url {
+        margin-left: 10px; font-size: 11.5px; color: var(--muted);
+      }
+      .browser-body { padding: clamp(16px, 2.4vw, 24px); }
+
+      .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); }
+      .stat { background: var(--surface); padding: 14px 16px; }
+      .stat-l { font-size: 12px; color: var(--slate); }
+      .stat-v { font-size: 27px; font-weight: 700; letter-spacing: -0.03em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+      @media (max-width: 620px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+      .row {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 13px 0; border-top: 1px solid var(--line-soft);
+      }
+      .row:first-of-type { border-top: none; }
+      .row-t { font-weight: 600; font-size: 14.5px; }
+      .row-s { font-size: 12.5px; color: var(--slate); margin-top: 2px; }
+
+      .sample {
+        display: inline-block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em;
+        text-transform: uppercase; color: var(--muted);
+        border: 1px solid var(--line); padding: 3px 8px; margin-bottom: 14px;
+      }
+
+      /* ---------- steg ---------- */
+      .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
+      .step { background: var(--surface); padding: 26px 22px 30px; }
+      .step-n { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .step h3 { margin: 14px 0 7px; }
+      .step p { margin: 0; font-size: 14px; color: var(--slate); }
+      @media (max-width: 820px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 460px) { .steps { grid-template-columns: 1fr; } }
+
+      .two { display: grid; grid-template-columns: 1fr 340px; gap: clamp(28px, 5vw, 56px); align-items: center; margin-top: 44px; }
+      .two.flip { grid-template-columns: 340px 1fr; }
+      @media (max-width: 880px) {
+        .two, .two.flip { grid-template-columns: 1fr; }
+        .two.flip > *:first-child { order: 2; }
+      }
+
+      .feats { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 13px; }
+      .feats li { display: flex; gap: 11px; font-size: 15px; color: var(--slate); }
+      .feats svg { flex-shrink: 0; margin-top: 3px; color: var(--ink); }
+      .feats b { color: var(--ink); font-weight: 600; }
+
+      /* ---------- språk ---------- */
+      .langs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
+      .lang { background: var(--surface); padding: 18px 20px; }
+      .lang-n { font-size: 12px; color: var(--muted); }
+      .lang-t { font-size: 16px; font-weight: 600; margin-top: 5px; letter-spacing: -0.015em; }
+
+      /* ---------- logg ---------- */
+      .log-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+      .log-row:first-of-type { border-top: none; }
+      .avatar {
+        width: 30px; height: 30px; border-radius: 999px; background: var(--line-soft);
+        color: var(--ink); display: inline-flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; flex-shrink: 0;
+      }
+
+      /* ---------- faq ---------- */
+      .faq { margin-top: 38px; border-top: 1px solid var(--line); }
+      details { border-bottom: 1px solid var(--line); }
+      summary {
+        cursor: pointer; list-style: none; padding: 20px 0;
+        font-size: clamp(16px, 2vw, 19px); font-weight: 600; letter-spacing: -0.015em;
+        display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      }
+      summary::-webkit-details-marker { display: none; }
+      summary::after { content: "+"; font-size: 22px; font-weight: 400; color: var(--muted); }
+      details[open] summary::after { content: "−"; }
+      details p { margin: 0 0 22px; color: var(--slate); max-width: 64ch; }
+
+      /* ---------- kontakt + bunn ---------- */
+      .contact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 48px); margin-top: 36px; }
+      @media (max-width: 760px) { .contact { grid-template-columns: 1fr; } }
+      .kv { font-size: 15px; color: var(--slate); margin: 0 0 10px; }
+      .kv b { color: var(--ink); font-weight: 600; }
+
+      footer { border-top: 1px solid var(--line); padding-block: 40px 56px; }
+      .foot {
+        display: flex; flex-wrap: wrap; gap: 16px 28px;
+        align-items: center; justify-content: space-between;
+      }
+      .foot p { margin: 0; font-size: 13.5px; color: var(--slate); max-width: 58ch; }
+      .foot nav { display: flex; gap: 20px; font-size: 13.5px; }
+
+      /* ---------- innfading ---------- */
+      .fade { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+      .fade.in { opacity: 1; transform: none; }
+      /* Uten JS, og for dem som har slått av bevegelse, skal alt stå ferdig synlig. */
+      .no-js .fade { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .fade { opacity: 1; transform: none; transition: none; }
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
 
-    <!--
-      Web-kategoriseringstjenester (Microsoft Defender/SmartScreen, Cisco Talos, Zscaler m.fl.)
-      kjører som regel ikke JavaScript. Uten dette ser de bare et tomt <div id="root">, og et
-      innholdsløst, nyregistrert domene blir stående som "ukategorisert" — som igjen er nok til at
-      bedriftsfiltre blokkerer det for kundene våre. Denne blokken er den eneste teksten de får se,
-      så den skal beskrive tjenesten ærlig og gjenspeile /om.html.
-    -->
-    <noscript>
-      <div style="max-width: 640px; margin: 0 auto; padding: 40px 16px; font: 16px/1.6 system-ui, 'Segoe UI', Roboto, sans-serif; color: #18181b;">
-        <h1 style="font-size: 28px; margin: 0 0 4px;">Rentlogg</h1>
-        <p style="color: #71717a; margin: 0 0 24px;">Dokumentasjon av renhold</p>
-
-        <p>
-          Rentlogg er et norsk fagsystem som lar renholdsbedrifter dokumentere arbeidet de utfører,
-          og lar kunden se det samme. Renholderen sjekker inn på lokasjonen ved å skanne en
-          QR-kode, kvitterer ut oppgavene rom for rom med bilde der det trengs, og melder avvik
-          underveis. Kunden får en dagsrapport på e-post med hva som faktisk ble gjort.
-        </p>
-
-        <p>
-          Tjenesten krever innlogging og er kun for ansatte og kunder hos renholdsbedrifter som
-          allerede bruker Rentlogg. Den er ikke åpen for registrering.
-        </p>
-
-        <p>
-          <a href="/om.html" style="color: #5b21b6;">Les mer om tjenesten, personvern og kontaktinformasjon</a>
-        </p>
-
-        <p style="color: #71717a; font-size: 14px; margin-top: 32px;">
-          Denne siden krever JavaScript for å kunne brukes.
-        </p>
+  <body class="no-js">
+    <header class="top">
+      <div class="wrap top-in">
+        <a class="lockup" href="/" aria-label="Rentlogg, til forsiden">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="currentColor"
+               stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 7.5h12" /><path d="M5 15h9" /><path d="M5 22.5h7" />
+            <path d="m17.5 19.6 3.6 3.6L29 15" />
+          </svg>
+          <b>Rentlogg</b>
+        </a>
+        <nav>
+          <a href="#slik">Slik fungerer det</a>
+          <a href="#renholder">Renholderen</a>
+          <a href="#kunde">Kunden</a>
+          <a href="#sporsmal">Spørsmål</a>
+        </nav>
+        <a class="login" href="/app/">Logg inn</a>
       </div>
-    </noscript>
+    </header>
 
-    <script type="module" src="/src/main.jsx"></script>
+    <main>
+      <!-- ============ HERO ============ -->
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div>
+            <h1>Rom for rom.<br />Kvittert ut.</h1>
+            <p class="lede">
+              Renhold dokumentert mens det gjøres, og synlig for kunden samme dag.
+            </p>
+            <div class="hero-cta">
+              <a class="btn" href="#kontakt">Be om en demo</a>
+              <a class="btn ghost" href="#slik">Se hvordan det fungerer</a>
+            </div>
+          </div>
+
+          <div class="phone" aria-hidden="true">
+            <div class="phone-notch"></div>
+            <div class="card" style="margin-bottom: 12px">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 8px">
+                <span style="font-weight: 600">Nordvik Foods AS</span>
+                <span style="color: var(--slate)">9 / 14 rom</span>
+              </div>
+              <div class="track"><div class="fill" style="width: 64%"></div></div>
+            </div>
+
+            <div class="chap"><span>Produksjon <em>3/5</em></span><span class="linkish">Huk av alle (2)</span></div>
+            <div class="room done">
+              <div><div class="room-n">Skjærerom 1</div><div class="room-s">Ferdig 06:42 · 2 bilder</div></div>
+              <span class="tick done">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+              </span>
+            </div>
+            <div class="room done">
+              <div><div class="room-n">Skjærerom 2</div><div class="room-s">Ferdig 06:58</div></div>
+              <span class="tick done">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+              </span>
+            </div>
+            <div class="room doing">
+              <div><div class="room-n">Pakkeri</div><div class="room-s">4 av 7 oppgaver</div></div>
+              <span class="pill doing">PÅGÅR</span>
+            </div>
+            <div class="room">
+              <div>
+                <div class="room-n">Kjølerom <span class="pill kunde">Kundens</span></div>
+                <div class="room-s">Ikke startet</div>
+              </div>
+              <span class="tick open"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ADMIN ============ -->
+      <section>
+        <div class="wrap">
+          <p class="eyebrow">Én innlogging</p>
+          <h2>Alle kunder og bygg<br />i ett bilde.</h2>
+          <p class="lede">
+            Driftslederen ser hva som er gjort, hva som pågår og hva som står igjen — uten å
+            ringe rundt.
+          </p>
+
+          <div class="browser fade" style="margin-top: 40px">
+            <div class="browser-bar">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="browser-url">www.rentlogg.no/app</span>
+            </div>
+            <div class="browser-body">
+              <span class="sample">Eksempeldata</span>
+              <div class="stats">
+                <div class="stat"><div class="stat-l">Oppdrag i dag</div><div class="stat-v">24</div></div>
+                <div class="stat"><div class="stat-l">Fullført</div><div class="stat-v" style="color: var(--ok)">17</div></div>
+                <div class="stat"><div class="stat-l">Pågående</div><div class="stat-v" style="color: var(--progress)">5</div></div>
+                <div class="stat"><div class="stat-l">Åpne avvik</div><div class="stat-v" style="color: var(--danger)">2</div></div>
+              </div>
+
+              <div style="margin-top: 22px">
+                <div class="row">
+                  <div><div class="row-t">Nordvik Foods AS</div><div class="row-s">Danas P. · 17/17 rom · signert DP</div></div>
+                  <span class="pill ok">FULLFØRT</span>
+                </div>
+                <div class="row">
+                  <div><div class="row-t">Bakeri Sørhaug AS</div><div class="row-s">Simona P. · 9/14 rom</div></div>
+                  <span class="pill doing">PÅGÅR</span>
+                </div>
+                <div class="row">
+                  <div><div class="row-t">Kontorbygg Havnegata</div><div class="row-s">Ikke tildelt</div></div>
+                  <span class="pill flat">PLANLAGT</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIK FUNGERER DET ============ -->
+      <section id="slik">
+        <div class="wrap">
+          <p class="eyebrow">Slik fungerer det</p>
+          <h2>Skann. Vask. Kvitter. Rapport.</h2>
+          <p class="lede">
+            Fire steg, og ingenting å fylle ut i etterkant.
+          </p>
+
+          <div class="steps">
+            <div class="step fade">
+              <div class="step-n">01</div>
+              <h3>Skann</h3>
+              <p>QR-koden ved inngangen sjekker renholderen inn på riktig bygg.</p>
+            </div>
+            <div class="step fade">
+              <div class="step-n">02</div>
+              <h3>Vask</h3>
+              <p>Dagens rom og oppgaver ligger klare, på renholderens eget språk.</p>
+            </div>
+            <div class="step fade">
+              <div class="step-n">03</div>
+              <h3>Kvitter</h3>
+              <p>Ett trykk per rom, med bilde der det kreves. Avvik meldes underveis.</p>
+            </div>
+            <div class="step fade">
+              <div class="step-n">04</div>
+              <h3>Rapport</h3>
+              <p>Dagsrapport på e-post til kunden, og full historikk i portalen.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RENHOLDEREN ============ -->
+      <section id="renholder">
+        <div class="wrap">
+          <p class="eyebrow">Renholderens app</p>
+          <h2>Enkel nok<br />for alle hender.</h2>
+
+          <div class="two">
+            <div>
+              <p class="lede" style="margin-top: 0">
+                Store knapper, få ord og tydelige ikoner. Ingenting å installere — appen åpnes
+                i nettleseren på telefonen renholderen allerede har.
+              </p>
+              <ul class="feats">
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Fem språk</b> — norsk, engelsk, litauisk, latvisk og russisk, valgt av hver bruker.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Tåler dårlig dekning</b> — avkryssinger legges i kø og sendes når nettet er tilbake.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Ingen app å installere</b> — QR-koden åpner riktig bygg med telefonens vanlige kamera.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Rom samlet i områder</b> — «Huk av alle» for et helt område når det er gjort.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="phone fade" aria-hidden="true">
+              <div class="phone-notch"></div>
+              <div class="card" style="text-align: center; padding: 22px 16px">
+                <div style="width: 118px; height: 118px; margin: 0 auto 14px; border: 2px dashed var(--line); border-radius: 12px; display: flex; align-items: center; justify-content: center">
+                  <svg width="52" height="52" viewBox="0 0 32 32" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 11V6.5A2.5 2.5 0 0 1 6.5 4H11" /><path d="M21 4h4.5A2.5 2.5 0 0 1 28 6.5V11" />
+                    <path d="M28 21v4.5a2.5 2.5 0 0 1-2.5 2.5H21" /><path d="M11 28H6.5A2.5 2.5 0 0 1 4 25.5V21" />
+                    <path d="m10.6 16.3 3.9 3.9 7.3-8" />
+                  </svg>
+                </div>
+                <div style="font-weight: 600; font-size: 15px">Skann QR-koden</div>
+                <div style="color: var(--slate); font-size: 13px; margin-top: 4px">
+                  Hold kameraet mot koden ved inngangen
+                </div>
+              </div>
+              <div class="card" style="margin-top: 12px">
+                <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate); margin-bottom: 8px">
+                  Sist besøkt
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 13.5px">
+                  <span>Bakeri Sørhaug AS</span><span style="color: var(--muted)">i går</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ KUNDEN ============ -->
+      <section id="kunde">
+        <div class="wrap">
+          <p class="eyebrow">For kunden</p>
+          <h2>Se hva som<br />faktisk ble gjort.</h2>
+
+          <div class="two flip">
+            <div class="panel fade" aria-hidden="true">
+              <span class="sample">Eksempeldata</span>
+              <div style="font-size: 13px; color: var(--slate)">Nordvik Foods AS</div>
+              <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.025em; margin: 2px 0 16px">
+                I dag, 26. september
+              </div>
+
+              <div class="card" style="border-color: var(--kunde); margin-bottom: 12px">
+                <div style="font-size: 11px; font-weight: 700; color: var(--kunde); letter-spacing: 0.04em">
+                  VENTER PÅ DIN GODKJENNING
+                </div>
+                <div style="font-weight: 600; margin: 6px 0 2px">Pakkeri</div>
+                <div style="font-size: 12.5px; color: var(--slate)">7 av 7 oppgaver · 3 bilder</div>
+                <div style="display: flex; gap: 8px; margin-top: 12px">
+                  <span style="flex: 1; text-align: center; background: var(--ink); color: #fff; font-size: 13px; font-weight: 600; padding: 9px; border-radius: 8px">Godkjenn</span>
+                  <span style="flex: 1; text-align: center; border: 1px solid var(--line); font-size: 13px; font-weight: 600; padding: 9px; border-radius: 8px">Avvis</span>
+                </div>
+              </div>
+
+              <div class="row"><div><div class="row-t">Skjærerom 1</div><div class="row-s">Ferdig 06:42</div></div><span class="pill ok">FULLFØRT</span></div>
+              <div class="row"><div><div class="row-t">Kjølerom</div><div class="row-s">Deres eget ansvar</div></div><span class="pill kunde">DERE</span></div>
+            </div>
+
+            <div>
+              <p class="lede" style="margin-top: 0">
+                Kunden logger inn og ser de samme rommene, bildene og avvikene som renholderen
+                har registrert — ikke en oppsummering skrevet i etterkant.
+              </p>
+              <ul class="feats">
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Dagsrapport på e-post</b> med hva som ble gjort, automatisk.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Godkjenning per rom</b> der dere ønsker en kontroll før rommet regnes som ferdig.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Egne ansvarsområder merket</b> — rom dere selv vasker står tydelig adskilt.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ LOGG ============ -->
+      <section>
+        <div class="wrap">
+          <p class="eyebrow">Rapporter og logg</p>
+          <h2>Hvem, hva og når.</h2>
+          <p class="lede">
+            Hver registrering får tidsstempel, navn og sted. Rapporter hentes ut som PDF.
+          </p>
+
+          <div class="panel fade" style="margin-top: 40px">
+            <span class="sample">Eksempeldata</span>
+            <div class="log-row">
+              <span class="avatar">DP</span>
+              <div style="flex: 1; min-width: 0">
+                <div class="row-t">Besøk avsluttet og signert</div>
+                <div class="row-s">06:58 · Danas P. · Nordvik Foods AS</div>
+              </div>
+              <span class="pill ok">SIGNERT</span>
+            </div>
+            <div class="log-row">
+              <span class="avatar">DP</span>
+              <div style="flex: 1; min-width: 0">
+                <div class="row-t">Rom ferdig, 7 av 7 oppgaver</div>
+                <div class="row-s">06:51 · Danas P. · Pakkeri</div>
+              </div>
+              <span class="pill ok">FERDIG</span>
+            </div>
+            <div class="log-row">
+              <span class="avatar">SP</span>
+              <div style="flex: 1; min-width: 0">
+                <div class="row-t">Avvik meldt med bilde</div>
+                <div class="row-s">06:33 · Simona P. · Skjærerom 2</div>
+              </div>
+              <span class="pill doing">ÅPENT</span>
+            </div>
+            <div class="log-row">
+              <span class="avatar">DP</span>
+              <div style="flex: 1; min-width: 0">
+                <div class="row-t">Sjekket inn med QR</div>
+                <div class="row-s">06:02 · Danas P. · Nordvik Foods AS</div>
+              </div>
+              <span class="pill flat">INNE</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SPRÅK ============ -->
+      <section>
+        <div class="wrap">
+          <p class="eyebrow">Flerspråklig</p>
+          <h2>Snakker renholderens språk.</h2>
+          <p class="lede">
+            Hver bruker velger sitt eget språk. Oppgavetekstene følger med.
+          </p>
+
+          <div class="langs">
+            <div class="lang"><div class="lang-n">Norsk</div><div class="lang-t">Kvitter ut rom</div></div>
+            <div class="lang"><div class="lang-n">English</div><div class="lang-t">Complete room</div></div>
+            <div class="lang"><div class="lang-n">Lietuvių</div><div class="lang-t">Užbaigti patalpą</div></div>
+            <div class="lang"><div class="lang-n">Latviešu</div><div class="lang-t">Pabeigt telpu</div></div>
+            <div class="lang"><div class="lang-n">Русский</div><div class="lang-t">Завершить помещение</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ FAQ ============ -->
+      <section id="sporsmal">
+        <div class="wrap">
+          <p class="eyebrow">Spørsmål</p>
+          <h2>Greit å vite.</h2>
+
+          <div class="faq">
+            <details open>
+              <summary>Hva er Rentlogg?</summary>
+              <p>
+                Et norsk fagsystem for dokumentasjon av renhold. Renholderen sjekker inn på
+                lokasjonen med QR-kode, kvitterer ut oppgavene rom for rom med bilde der det
+                trengs, og melder avvik underveis. Kunden ser det samme i sin egen innlogging og
+                får en dagsrapport på e-post.
+              </p>
+            </details>
+            <details>
+              <summary>Må renholderne installere en app?</summary>
+              <p>
+                Nei. Rentlogg kjører i nettleseren på telefonen. QR-koden ved inngangen kan
+                skannes med telefonens vanlige kamera og åpner riktig bygg direkte.
+              </p>
+            </details>
+            <details>
+              <summary>Fungerer det uten mobildekning?</summary>
+              <p>
+                Avkryssinger og registreringer legges i kø lokalt på telefonen når nettet
+                forsvinner, og sendes automatisk når dekningen er tilbake. Opplasting av bilder
+                krever nett.
+              </p>
+            </details>
+            <details>
+              <summary>Kan kunden se arbeidet selv?</summary>
+              <p>
+                Ja. Kunden får egen innlogging med rom, bilder, avvik og historikk, og kan settes
+                opp til å godkjenne enkeltrom før de regnes som ferdige. Dagsrapporten kommer på
+                e-post.
+              </p>
+            </details>
+            <details>
+              <summary>Kan vi registrere arbeidstid i samme system?</summary>
+              <p>
+                Ja. Timeregistrering er en tilleggsmodul som kobler faktisk tid mot avtalt
+                rammetimetall per lokasjon, med godkjenning og eksport til lønn.
+              </p>
+            </details>
+            <details>
+              <summary>Kan man opprette konto selv?</summary>
+              <p>
+                Nei. Kontoer opprettes av renholdsbedriften. Rentlogg er ikke åpent for
+                registrering, og det finnes ingen offentlig del av appen utover denne siden og
+                <a href="/om.html">siden om tjenesten</a>.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ KONTAKT ============ -->
+      <section id="kontakt">
+        <div class="wrap">
+          <p class="eyebrow">Kontakt</p>
+          <h2>Se Rentlogg i bruk.</h2>
+
+          <div class="contact">
+            <div>
+              <p class="lede" style="margin-top: 0">
+                Send en e-post med litt om driften deres — antall bygg og omtrent hvor mange
+                renholdere — så viser vi systemet på et reelt oppsett.
+              </p>
+              <div style="margin-top: 26px">
+                <a class="btn" href="mailto:hakon@okv-gruppen.no?subject=Demo%20av%20Rentlogg">
+                  hakon@okv-gruppen.no
+                </a>
+              </div>
+            </div>
+
+            <div class="panel">
+              <p class="kv"><b>Ansvarlig for tjenesten</b><br />OKV-GRUPPEN AS</p>
+              <p class="kv"><b>Organisasjonsnummer</b><br />998 084 172</p>
+              <p class="kv"><b>E-post</b><br />hakon@okv-gruppen.no</p>
+              <p class="kv" style="margin-bottom: 0">
+                <b>Personvern</b><br />
+                <a href="/om.html">Hva vi lagrer og hvorfor</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <p>
+          Rentlogg — dokumentasjon av renhold. Et prosjekt fra
+          <a href="https://okv-gruppen.no">OKV Gruppen</a>. Tjenesten krever innlogging og er kun
+          for ansatte og kunder hos renholdsbedrifter som allerede bruker den.
+        </p>
+        <nav>
+          <a href="/om.html">Om tjenesten</a>
+          <a href="/app/">Logg inn</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      // Fjernes med én gang, slik at .fade-reglene får lov til å skjule før observeren tar over.
+      // Rekkefølgen er poenget: uten JavaScript beholder <body> klassen og alt står synlig.
+      document.body.classList.remove("no-js");
+
+      (function () {
+        var items = document.querySelectorAll(".fade");
+        var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        if (still || !("IntersectionObserver" in window)) {
+          items.forEach(function (el) { el.classList.add("in"); });
+          return;
+        }
+
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              entry.target.classList.add("in");
+              io.unobserve(entry.target);
+            });
+          },
+          { rootMargin: "0px 0px -8% 0px", threshold: 0.08 }
+        );
+
+        items.forEach(function (el) { io.observe(el); });
+      })();
+    </script>
   </body>
 </html>

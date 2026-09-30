@@ -937,7 +937,7 @@ function ColumnMenu({ usedTypes, hidden, setHidden, groupBy, setGroupBy, sortBy,
           <div style={{
             position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 41, width: 260,
             background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.18)", padding: 12, maxHeight: 420, overflowY: "auto",
+            boxShadow: "0 8px 24px rgba(30, 42, 56, 0.20)", padding: 12, maxHeight: 420, overflowY: "auto",
           }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 6 }}>
               Gruppert etter

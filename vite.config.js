@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
+
+const here = dirname(fileURLToPath(import.meta.url))
 
 // Vercel exposes the SHA as an env var; git is only the local fallback, and neither is allowed to
 // fail the build — a missing commit id costs a line of diagnostics, not a deploy.
@@ -46,5 +50,26 @@ export default defineConfig({
   define: {
     __BUILD_TIME__: JSON.stringify(BUILD_TIME),
     __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
+  },
+
+  // To sider, ikke én. `index.html` er en statisk landingsside uten JavaScript-bundel, og selve
+  // appen ligger på `app/index.html` → /app/.
+  //
+  // Grunnen til at appen måtte flytte: roten var før en naken innloggingsboks, og en
+  // innloggingsboks uten avsender er nøyaktig formen en phishing-side har. Det er medvirkende
+  // til at bedriftsfiltre ikke fikk kategorisert domenet og blokkerte det for kundene våre.
+  // Kategoriseringstjenester kjører ikke JavaScript, så roten må servere ekte tekst.
+  //
+  // MERK: de trykte QR-kodene på lokasjonene peker på `/?checkin=<token>`, og allerede utsendte
+  // invitasjonslenker på `/?invite=<token>`. Begge treffer nå landingssiden. Den videresender
+  // dem til /app/ i <head> før første maling — se index.html. Fjernes den videresendingen,
+  // slutter hver eneste QR-kode som henger på en vegg å virke.
+  build: {
+    rollupOptions: {
+      input: {
+        landing: resolve(here, 'index.html'),
+        app: resolve(here, 'app/index.html'),
+      },
+    },
   },
 })
