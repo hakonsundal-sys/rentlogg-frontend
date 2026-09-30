@@ -208,7 +208,7 @@
 
       /* ---------- hero ---------- */
       .hero { padding-block: clamp(48px, 7vw, 96px) clamp(40px, 6vw, 80px); }
-      .hero-grid { display: grid; grid-template-columns: 1fr 340px; gap: clamp(28px, 5vw, 56px); align-items: center; }
+      .hero-grid { display: grid; grid-template-columns: 1fr 400px; gap: clamp(28px, 5vw, 56px); align-items: center; }
       @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
       .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
       /* Brytes de til hver sin linje, skal de være like brede — to knapper i ulik bredde
@@ -372,6 +372,11 @@
       .fade.in { opacity: 1; transform: none; }
       /* Uten JS, og for dem som har slått av bevegelse, skal alt stå ferdig synlig. */
       .no-js .fade { opacity: 1; transform: none; }
+      /* Båndet og planrutenettet bygges av JS. Uten JS ville de stått igjen som en tom,
+         innrammet stripe og en forklaring til et rutenett som ikke finnes — verre enn
+         ingenting. Teksten rundt dem er uavhengig og blir stående. */
+      .no-js .strip,
+      .no-js .plan-legend { display: none; }
       @media (prefers-reduced-motion: reduce) {
         .fade { opacity: 1; transform: none; transition: none; }
       }
@@ -412,6 +417,182 @@
       .module h3 { font-size: 23px; letter-spacing: -0.03em; }
       .module > p { color: var(--slate); font-size: 15px; margin: 8px 0 0; }
 
+      /* ============================================================
+         BEVEGELSE OG TEKSTUR
+
+         Alt under her er dekor. Tre regler det ikke rokkes ved:
+         1. Siden skal være ferdig lesbar uten at noe har animert — animasjonene starter fra en
+            synlig tilstand, ikke fra opacity 0. (Unntaket er .fade, som JS slår på og som har
+            .no-js-fallback.)
+         2. prefers-reduced-motion slår ALT av. Ikke «kortere», av.
+         3. Ingenting animerer layout. Kun transform, opacity, background-position og
+            clip-path/scale — egenskaper som ikke tvinger reflow, slik at en gammel Android-telefon
+            i et kjølerom ikke hakker.
+         ============================================================ */
+
+      /* Rutenettet. Samme grep som referansen: to 1px-gradienter som tegner et kvadratisk
+         nett, lagt bak innholdet og maskert bort mot kantene så det ikke får en hard slutt. */
+      .grid-bg { position: relative; isolation: isolate; }
+      .grid-bg::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 120px 120px, 120px 120px;
+        -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 35%, transparent 78%);
+        mask-image: radial-gradient(120% 90% at 50% 0%, #000 35%, transparent 78%);
+        opacity: 0.75;
+        pointer-events: none;
+      }
+      /* Et mykt lysvask øverst, så heroen ikke ligger flatt på grunnfargen. */
+      .wash { position: relative; }
+      .wash::after {
+        content: "";
+        /* Venstre og høyre inset må stå på 0. Negative verdier (for å la vasken blø ut over
+           kanten) øker dokumentets scrollWidth tilsvarende, og hele siden får horisontal
+           scroll — 20 % per side ble 192px på en 980px skjerm. Gradienten faller uansett av
+           til null før kanten, så det ser likt ut. */
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 420px;
+        z-index: -2;
+        background: radial-gradient(70% 100% at 50% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 72%);
+        pointer-events: none;
+      }
+
+      @keyframes floatY { from { transform: translateY(-7px); } to { transform: translateY(7px); } }
+      @keyframes fillX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+      @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+      @keyframes scanY { 0% { top: 4%; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { top: 92%; opacity: 0; } }
+      @keyframes pulseRing { 0% { transform: scale(0.75); opacity: 0.55; } 100% { transform: scale(1.9); opacity: 0; } }
+      @keyframes cellIn { from { opacity: 0; transform: scale(0.55); } to { opacity: 1; transform: scale(1); } }
+
+      /* Svever. Bare på store skjermer — på en telefon er det bare uro. */
+      @media (min-width: 900px) {
+        .float { animation: floatY 7s ease-in-out infinite alternate; }
+        .float.slow { animation-duration: 9s; animation-delay: -3s; }
+      }
+
+      /* Animasjonene under starter først når .fade får .in, altså når seksjonen er rullet inn.
+         Kjører de på sidelast, er de over lenge før noen ser dem. */
+      .fade .bar-fill { transform: scaleX(0); transform-origin: left; }
+      .fade.in .bar-fill { animation: fillX 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+      .fade .tick-pop { opacity: 0; }
+      .fade.in .tick-pop { animation: pop 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; animation-delay: calc(var(--i, 0) * 130ms + 250ms); }
+
+      /* Skannelinja i QR-ruta. Dette er produktets egen mekanikk gjort synlig, ikke et ornament. */
+      .scanbox { position: relative; overflow: hidden; }
+      .scanline {
+        position: absolute; left: 8%; right: 8%; height: 2px; top: 4%;
+        background: linear-gradient(90deg, transparent, var(--ink), transparent);
+        opacity: 0;
+      }
+      .fade.in .scanline { animation: scanY 2.8s ease-in-out infinite; }
+
+      .ring {
+        position: absolute; inset: 0; margin: auto; width: 56px; height: 56px;
+        border: 2px solid var(--ink); border-radius: 999px; opacity: 0;
+      }
+      .fade.in .ring { animation: pulseRing 2.4s ease-out infinite; }
+      .fade.in .ring.d2 { animation-delay: 1.2s; }
+
+      /* ---------- to-lags heroebilde ---------- */
+      /* Begge lagene holdes innenfor kolonnens egen bredde. Frister man med negative offsets
+         for å få dem til å «stikke ut», får man horisontal scroll på mellomstore skjermer. */
+      .stack-shot { position: relative; min-height: 470px; }
+      .shot-desk {
+        position: absolute; z-index: 1; top: 0; left: 0; width: min(278px, 72%);
+        background: var(--surface); border: 1px solid var(--line);
+        box-shadow: 0 22px 44px -26px rgba(30, 42, 56, 0.4);
+      }
+      .stack-shot .phone {
+        position: relative; z-index: 2;
+        max-width: 254px; margin: 104px 0 0 auto;
+      }
+      @media (max-width: 880px) {
+        .stack-shot { min-height: 0; }
+        .shot-desk { display: none; }
+        .stack-shot .phone { margin: 0 auto; max-width: 320px; }
+      }
+
+      /* ---------- marquee ---------- */
+      .strip {
+        border-block: 1px solid var(--line);
+        background: var(--surface);
+        overflow: hidden;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+      }
+      .strip-track { display: flex; width: max-content; animation: drift 42s linear infinite; }
+      @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      .strip-track:hover { animation-play-state: paused; }
+      .strip-item {
+        display: inline-flex; align-items: center; gap: 9px;
+        padding: 15px 26px; font-size: 14px; font-weight: 500; color: var(--slate);
+        white-space: nowrap;
+      }
+      .strip-item svg { color: var(--ink); flex-shrink: 0; }
+
+      /* ---------- vaskeplan-rutenett ---------- */
+      /* Egen horisontal scroll, som appens egen Rapporter-side gjør det. Uten den blir 30
+         dagskolonner 4,5px brede paa en telefon, altsaa uleselig stoy i stedet for et rutenett.
+         Romnavnet laases fast saa man ser hvilken rad man ruller i. */
+      .plan-scroll { overflow-x: auto; }
+      .plan { display: grid; gap: 3px; min-width: 540px; }
+      .plan-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; }
+      .plan-name {
+        font-size: 12px; color: var(--slate); text-align: right;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        position: sticky; left: 0; background: var(--surface); z-index: 1;
+      }
+      .plan-days { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
+      .cell { aspect-ratio: 1; border-radius: 3px; background: var(--line-soft); opacity: 0; }
+      .fade.in .cell { animation: cellIn 0.34s ease-out forwards; animation-delay: calc(var(--d, 0) * 11ms); }
+      .cell.ok { background: #bfe6cd; }
+      .cell.doing { background: #ffd9bd; }
+      .cell.miss { background: #f9c9c9; }
+      .plan-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; font-size: 12.5px; color: var(--slate); }
+      .plan-legend span { display: inline-flex; align-items: center; gap: 7px; }
+      .plan-legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+      @media (max-width: 620px) {
+        .plan-row { grid-template-columns: 64px 1fr; gap: 7px; }
+        .plan-name { font-size: 10.5px; }
+      }
+
+      /* ---------- stolpediagram ---------- */
+      /* stretch, ikke flex-end: hver .bar må arve den faste høyden fra .bars, ellers har en
+         prosenthøyde på .bar-col ingenting å regne mot og stolpen blir null høy. */
+      .bars { display: flex; align-items: stretch; gap: 10px; height: 130px; margin-top: 8px; }
+      .bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; text-align: center; }
+      .bar-col { background: var(--ink); border-radius: 3px 3px 0 0; transform-origin: bottom; }
+      .fade .bar-col { transform: scaleY(0); }
+      .fade.in .bar-col { animation: growY 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; animation-delay: calc(var(--i, 0) * 70ms); }
+      .bar-lab { font-size: 10.5px; color: var(--muted); }
+
+      /* Regel 2. Ingen unntak. */
+      @media (prefers-reduced-motion: reduce) {
+        .float,
+        .strip-track,
+        .fade.in .bar-fill,
+        .fade.in .tick-pop,
+        .fade.in .scanline,
+        .fade.in .ring,
+        .fade.in .cell,
+        .fade.in .bar-col {
+          animation: none !important;
+        }
+        .fade .bar-fill,
+        .fade .bar-col { transform: none; }
+        .fade .tick-pop,
+        .fade .cell { opacity: 1; }
+        .scanline, .ring { display: none; }
+      }
+
       /* ---------- roller ---------- */
       .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
       .role { background: var(--surface); padding: 18px 20px; }
@@ -443,7 +624,7 @@
 
     <main>
       <!-- ============ HERO ============ -->
-      <section class="hero">
+      <section class="hero grid-bg wash">
         <div class="wrap hero-grid">
           <div>
             <h1>Rom for rom.<br />Kvittert ut.</h1>
@@ -456,43 +637,75 @@
             </div>
           </div>
 
-          <div class="phone" aria-hidden="true">
-            <div class="phone-notch"></div>
-            <div class="card" style="margin-bottom: 12px">
-              <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 8px">
-                <span style="font-weight: 600">Nordvik Foods AS</span>
-                <span style="color: var(--slate)">9 / 14 rom</span>
+          <!-- To lag: driftslederens skjerm bak, renholderens telefon foran. Det er hele
+               poenget med produktet i ett bilde — samme besøk, sett fra to sider. -->
+          <div class="stack-shot fade in">
+            <div class="shot-desk float slow" aria-hidden="true">
+              <div class="browser-bar">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               </div>
-              <div class="track"><div class="fill" style="width: 64%"></div></div>
+              <div style="padding: 14px 16px">
+                <div style="font-size: 11px; color: var(--muted)">I dag</div>
+                <div style="display: flex; gap: 18px; margin-top: 8px">
+                  <div><div style="font-size: 10.5px; color: var(--slate)">Fullført</div><div style="font-size: 20px; font-weight: 700; color: var(--ok)">17</div></div>
+                  <div><div style="font-size: 10.5px; color: var(--slate)">Pågår</div><div style="font-size: 20px; font-weight: 700; color: var(--progress)">5</div></div>
+                  <div><div style="font-size: 10.5px; color: var(--slate)">Avvik</div><div style="font-size: 20px; font-weight: 700; color: var(--danger)">2</div></div>
+                </div>
+                <div class="bars" style="height: 58px; gap: 6px; margin-top: 12px">
+                  <div class="bar"><div class="bar-col" style="height: 22px; --i: 0"></div></div>
+                  <div class="bar"><div class="bar-col" style="height: 38px; --i: 1"></div></div>
+                  <div class="bar"><div class="bar-col" style="height: 30px; --i: 2"></div></div>
+                  <div class="bar"><div class="bar-col" style="height: 52px; --i: 3"></div></div>
+                  <div class="bar"><div class="bar-col" style="height: 44px; --i: 4"></div></div>
+                  <div class="bar"><div class="bar-col" style="height: 58px; --i: 5"></div></div>
+                </div>
+              </div>
             </div>
 
-            <div class="chap"><span>Produksjon <em>3/5</em></span><span class="linkish">Huk av alle (2)</span></div>
-            <div class="room done">
-              <div><div class="room-n">Skjærerom 1</div><div class="room-s">Ferdig 06:42 · 2 bilder</div></div>
-              <span class="tick done">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              </span>
-            </div>
-            <div class="room done">
-              <div><div class="room-n">Skjærerom 2</div><div class="room-s">Ferdig 06:58</div></div>
-              <span class="tick done">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              </span>
-            </div>
-            <div class="room doing">
-              <div><div class="room-n">Pakkeri</div><div class="room-s">4 av 7 oppgaver</div></div>
-              <span class="pill doing">PÅGÅR</span>
-            </div>
-            <div class="room">
-              <div>
-                <div class="room-n">Kjølerom <span class="pill kunde">Kundens</span></div>
-                <div class="room-s">Ikke startet</div>
+            <div class="phone float" aria-hidden="true">
+              <div class="phone-notch"></div>
+              <div class="card" style="margin-bottom: 12px">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 8px">
+                  <span style="font-weight: 600">Nordvik Foods AS</span>
+                  <span style="color: var(--slate)">9 / 14 rom</span>
+                </div>
+                <div class="track"><div class="fill bar-fill" style="width: 64%"></div></div>
               </div>
-              <span class="tick open"></span>
+
+              <div class="chap"><span>Produksjon <em>3/5</em></span><span class="linkish">Huk av alle (2)</span></div>
+              <div class="room done">
+                <div><div class="room-n">Skjærerom 1</div><div class="room-s">Ferdig 06:42 · 2 bilder</div></div>
+                <span class="tick done tick-pop" style="--i: 0">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                </span>
+              </div>
+              <div class="room done">
+                <div><div class="room-n">Skjærerom 2</div><div class="room-s">Ferdig 06:58</div></div>
+                <span class="tick done tick-pop" style="--i: 1">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                </span>
+              </div>
+              <div class="room doing">
+                <div><div class="room-n">Pakkeri</div><div class="room-s">4 av 7 oppgaver</div></div>
+                <span class="pill doing">PÅGÅR</span>
+              </div>
+              <div class="room">
+                <div>
+                  <div class="room-n">Kjølerom <span class="pill kunde">Kundens</span></div>
+                  <div class="room-s">Ikke startet</div>
+                </div>
+                <span class="tick open"></span>
+              </div>
             </div>
           </div>
         </div>
       </section>
+
+      <!-- Bånd med det systemet faktisk gjør. Ruller sakte, stopper når man peker på det,
+           og står stille for den som har slått av bevegelse. -->
+      <div class="strip" aria-hidden="true">
+        <div class="strip-track" id="strip"></div>
+      </div>
 
       <!-- ============ ADMIN / HIERARKI ============ -->
       <section>
@@ -587,8 +800,8 @@
             settes opp på den måten som passer det.
           </p>
 
-          <div class="pair">
-            <div class="fade">
+          <div class="pair fade">
+            <div>
               <h3>Én felles sjekkliste</h3>
               <p class="when">For bygg som gjøres i én runde.</p>
               <div class="mini">
@@ -598,7 +811,7 @@
                 <div class="mini-row"><span class="box"></span> Speil og flater</div>
               </div>
             </div>
-            <div class="fade">
+            <div>
               <h3>Rom for rom</h3>
               <p class="when">For anlegg der én lang liste ville vært ubrukelig.</p>
               <div class="mini">
@@ -675,12 +888,15 @@
             <div class="phone fade" aria-hidden="true">
               <div class="phone-notch"></div>
               <div class="card" style="text-align: center; padding: 22px 16px">
-                <div style="width: 118px; height: 118px; margin: 0 auto 14px; border: 2px dashed var(--line); border-radius: 12px; display: flex; align-items: center; justify-content: center">
-                  <svg width="52" height="52" viewBox="0 0 32 32" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <div class="scanbox" style="width: 118px; height: 118px; margin: 0 auto 14px; border: 2px dashed var(--line); border-radius: 12px; display: flex; align-items: center; justify-content: center">
+                  <span class="ring"></span>
+                  <span class="ring d2"></span>
+                  <svg width="52" height="52" viewBox="0 0 32 32" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position: relative; z-index: 1">
                     <path d="M4 11V6.5A2.5 2.5 0 0 1 6.5 4H11" /><path d="M21 4h4.5A2.5 2.5 0 0 1 28 6.5V11" />
                     <path d="M28 21v4.5a2.5 2.5 0 0 1-2.5 2.5H21" /><path d="M11 28H6.5A2.5 2.5 0 0 1 4 25.5V21" />
                     <path d="m10.6 16.3 3.9 3.9 7.3-8" />
                   </svg>
+                  <span class="scanline"></span>
                 </div>
                 <div style="font-weight: 600; font-size: 15px">Skann QR-koden</div>
                 <div style="color: var(--slate); font-size: 13px; margin-top: 4px">
@@ -859,6 +1075,52 @@
             </div>
           </div>
 
+          <div class="panel fade" style="margin-top: 20px">
+            <span class="sample">Eksempeldata</span>
+            <h3 style="margin: 0 0 3px">Vaskeplan, september</h3>
+            <p style="font-size: 13px; color: var(--slate); margin: 0 0 20px">
+              Rom mot dato for en hel måned. Hull i planen synes uten at noen må lete etter dem.
+            </p>
+            <div class="plan-scroll"><div class="plan" id="plan" aria-hidden="true"></div></div>
+            <div class="plan-legend">
+              <span><i style="background: #bfe6cd"></i> Utført</span>
+              <span><i style="background: #ffd9bd"></i> Påbegynt</span>
+              <span><i style="background: #f9c9c9"></i> Ikke gjort</span>
+              <span><i style="background: var(--line-soft)"></i> Ikke planlagt</span>
+            </div>
+          </div>
+
+          <div class="pair fade" style="margin-top: 20px">
+            <div>
+              <h3 style="margin: 0 0 3px">Avvik per uke</h3>
+              <p class="when">Åpne og lukkede, siste åtte uker.</p>
+              <div class="bars" aria-hidden="true">
+                <div class="bar"><div class="bar-col" style="height: 34%; --i: 0"></div><div class="bar-lab">U33</div></div>
+                <div class="bar"><div class="bar-col" style="height: 52%; --i: 1"></div><div class="bar-lab">U34</div></div>
+                <div class="bar"><div class="bar-col" style="height: 28%; --i: 2"></div><div class="bar-lab">U35</div></div>
+                <div class="bar"><div class="bar-col" style="height: 70%; --i: 3"></div><div class="bar-lab">U36</div></div>
+                <div class="bar"><div class="bar-col" style="height: 44%; --i: 4"></div><div class="bar-lab">U37</div></div>
+                <div class="bar"><div class="bar-col" style="height: 22%; --i: 5"></div><div class="bar-lab">U38</div></div>
+                <div class="bar"><div class="bar-col" style="height: 36%; --i: 6"></div><div class="bar-lab">U39</div></div>
+                <div class="bar"><div class="bar-col" style="height: 16%; --i: 7"></div><div class="bar-lab">U40</div></div>
+              </div>
+            </div>
+            <div>
+              <h3 style="margin: 0 0 3px">Rom gjort som planlagt</h3>
+              <p class="when">Siste 30 dager, alle bygg.</p>
+              <div style="font-size: clamp(48px, 9vw, 76px); font-weight: 700; letter-spacing: -0.05em; line-height: 1">
+                94<span style="font-size: 0.45em; color: var(--slate)">&thinsp;%</span>
+              </div>
+              <div class="track" style="margin-top: 16px">
+                <div class="fill bar-fill" style="width: 94%; background: var(--ink); transform-origin: left"></div>
+              </div>
+              <p style="font-size: 12.5px; color: var(--muted); margin: 12px 0 0">
+                Tallet kommer fra de samme avkryssingene som rapportene — ikke fra en egen
+                innrapportering noen må huske å gjøre.
+              </p>
+            </div>
+          </div>
+
           <ul class="feats" style="margin-top: 32px">
             <li>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
@@ -881,7 +1143,7 @@
       </section>
 
       <!-- ============ MODULER ============ -->
-      <section id="moduler">
+      <section id="moduler" class="grid-bg" style="background: var(--surface)">
         <div class="wrap">
           <p class="eyebrow">Tilleggsmoduler</p>
           <h2>To ting til,<br />om dere trenger dem.</h2>
@@ -890,8 +1152,8 @@
             alltid med. Disse to skrus på per bedrift, og koster ekstra.
           </p>
 
-          <div class="modules">
-            <div class="module fade">
+          <div class="modules fade">
+            <div class="module">
               <span class="tag">Tilleggsmodul</span>
               <h3>Opplæring</h3>
               <p>Dokumentasjon på hvem som har fått hvilken opplæring, og signert på den.</p>
@@ -915,7 +1177,7 @@
               </ul>
             </div>
 
-            <div class="module fade">
+            <div class="module">
               <span class="tag">Tilleggsmodul</span>
               <h3>Timeregistrering</h3>
               <p>Stemplet tid per ansatt. Timene starter når renholderen skanner QR-koden.</p>
@@ -1082,6 +1344,61 @@
       // Fjernes med én gang, slik at .fade-reglene får lov til å skjule før observeren tar over.
       // Rekkefølgen er poenget: uten JavaScript beholder <body> klassen og alt står synlig.
       document.body.classList.remove("no-js");
+
+      // Båndet. Innholdet står her og ikke i markupen fordi listen må dupliseres for at
+      // -50%-loopen skal gå sømløst, og to like kopier i HTML er noe man glemmer å holde i synk.
+      (function () {
+        var track = document.getElementById("strip");
+        if (!track) return;
+        var items = [
+          "QR-innsjekk", "Rom for rom", "Bildedokumentasjon", "Avvik begge veier",
+          "Kundegodkjenning", "Dagsrapport på e-post", "Fem språk", "Tåler dårlig dekning",
+          "Periodiske oppgaver", "Månedsrutenett", "Signatur ved besøk",
+          "Opplæring", "Timeregistrering",
+        ];
+        var check =
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+          ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
+        var half = items.map(function (t) {
+          return '<span class="strip-item">' + check + t + "</span>";
+        }).join("");
+        track.innerHTML = half + half;
+      })();
+
+      // Vaskeplanen: rom mot dato, slik Rapporter faktisk tegner den. Bygges her fordi 7 rom
+      // ganger 30 dager er 210 ruter, og de hører ikke hjemme i kildekoden til en side
+      // kategoriseringstjenester skal lese.
+      (function () {
+        var host = document.getElementById("plan");
+        if (!host) return;
+
+        var rooms = [
+          { n: "Skjærerom 1", d: [1, 2, 3, 4, 5], miss: [] },
+          { n: "Skjærerom 2", d: [1, 2, 3, 4, 5], miss: [23] },
+          { n: "Pakkeri", d: [1, 2, 3, 4, 5, 6], miss: [] },
+          { n: "Kjølerom", d: [1, 3, 5], miss: [10] },
+          { n: "Garderobe", d: [1, 2, 3, 4, 5], miss: [17] },
+          { n: "Kontor", d: [2, 4], miss: [] },
+          { n: "Lager", d: [1], miss: [] },
+        ];
+        var DAYS = 30;
+        var TODAY = 27;
+
+        host.innerHTML = rooms.map(function (room, r) {
+          var cells = "";
+          for (var day = 1; day <= DAYS; day++) {
+            var wd = ((day + 1) % 7) || 7;
+            var planned = room.d.indexOf(wd) !== -1;
+            var cls = "cell";
+            if (planned && day < TODAY) cls += room.miss.indexOf(day) !== -1 ? " miss" : " ok";
+            else if (planned && day === TODAY) cls += " doing";
+            // Planlagt, men fram i tid, og alt som ikke er planlagt, står som tom rute.
+            cells += '<span class="' + cls + '" style="--d:' + (day + r * 3) + '"></span>';
+          }
+          return '<div class="plan-row"><span class="plan-name">' + room.n +
+            '</span><span class="plan-days">' + cells + "</span></div>";
+        }).join("");
+      })();
 
       (function () {
         var items = document.querySelectorAll(".fade");
