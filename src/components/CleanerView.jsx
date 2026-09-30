@@ -1745,16 +1745,20 @@ function RoomRow({ room, expanded, onOpen, muted, translatedName }) {
           : <DoorOpen size={17} style={{ color: "var(--text-secondary)" }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 15, fontWeight: 600,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
+        {/* Brytes over to linjer i stedet for å klippes med ellipse. Et avkuttet romnavn er
+            ubrukelig for den som står i bygget og skal finne rommet — «Undersøkelsesro…» og
+            «Undersøkelsesro…» er samme tekst på skjermen. To linjer koster ingenting her.
+            Ble synlig da vi gikk over til Schibsted Grotesk, som er ~7 % bredere enn
+            systemfonten; «Undersøkelsesrom 1» trengte 146px mot 135px tilgjengelig på 375px
+            skjerm. Men det lå allerede 1px over grensen før fontbyttet, så ellipsen var feil
+            verktøy her uansett. */}
+        <div style={{ fontSize: 15, fontWeight: 600, overflowWrap: "break-word" }}>
           {room.name}
         </div>
         {translatedName && (
           <div style={{
             fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic", marginTop: 1,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            overflowWrap: "break-word",
           }}>
             {translatedName}
           </div>
@@ -1763,7 +1767,10 @@ function RoomRow({ room, expanded, onOpen, muted, translatedName }) {
       </div>
       {!muted && !completed && (
         <span style={{
-          fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: "var(--radius-pill)",
+          // 6px, ikke 8: pilla står ved siden av romnavnet, og på 375px avgjorde de fire
+          // pikslene om «Undersøkelsesrom» fikk plass på én linje eller ble brukket midt i ordet.
+          // Navnet er det renholderen trenger å lese; statusen gjentas uansett inne i rommet.
+          fontSize: 10, fontWeight: 600, padding: "3px 6px", borderRadius: "var(--radius-pill)",
           whiteSpace: "nowrap", flexShrink: 0,
           background: "var(--brand-bg)", color: "var(--brand-dark)",
         }}>

@@ -93,7 +93,7 @@ export default function SelskaperPage({ token }) {
           <Card key={company.id}>
             <div style={{
               width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-              background: "linear-gradient(135deg, var(--brand), var(--brand-dark))", color: "white",
+              background: "var(--brand)", color: "white",
               marginBottom: 12,
             }}>
               <Building2 size={20} />

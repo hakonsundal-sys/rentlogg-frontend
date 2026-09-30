@@ -1005,7 +1005,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: "linear-gradient(135deg, var(--brand), var(--brand-dark))", color: "white",
+                    background: "var(--brand)", color: "white",
                   }}>
                     <Building2 size={20} />
                   </div>

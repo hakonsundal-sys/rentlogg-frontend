@@ -161,13 +161,21 @@ export default function DashboardPage({ token, user, summary }) {
           ))}
         </Card>
 
+        {/* Var en heldekkende gradient med hvit tekst. Det fungerte da merkevarefargen var
+            violett, men i den monokrome paletten blir den samme flaten nesten svart og gjør
+            et lokasjonsantall til det tyngste elementet på hele siden — foran både åpne avvik
+            og dagens aktivitet. Paletten sin logikk er at farge betyr noe; dette tallet har
+            ingen status å formidle, så det skal være rolig og bare litt adskilt fra de hvite
+            kortene rundt. */}
         <div style={{
-          background: "linear-gradient(135deg, var(--brand), var(--brand-dark))",
-          borderRadius: 12, padding: 20, color: "white",
+          background: "var(--brand-bg)", border: "1px solid var(--border)",
+          borderRadius: 12, padding: 20,
         }}>
-          <div style={{ fontSize: 13, opacity: 0.9 }}>Aktive lokasjoner</div>
-          <div style={{ fontSize: 40, fontWeight: 700, margin: "4px 0" }}>{summary.activeSites}</div>
-          <div style={{ fontSize: 12, opacity: 0.85 }}>Oversikt over alle dine lokasjoner.</div>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Aktive lokasjoner</div>
+          <div style={{ fontSize: 40, fontWeight: 700, margin: "4px 0", letterSpacing: "-0.03em" }}>
+            {summary.activeSites}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Oversikt over alle dine lokasjoner.</div>
         </div>
       </div>
 
