@@ -6,6 +6,16 @@ import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
 import { hasModule, MODULE_TIMECLOCK } from "../../modules";
 
+// Hygienetrinnene, i utførelsesrekkefølge. Speiler STEP_TYPES i backendens routes/rooms.js —
+// nye verdier må inn begge steder, og backend er porten som faktisk avviser ukjente.
+const STEP_TYPES = [
+  { value: "residue", label: "1 Fjerne rester" },
+  { value: "clean", label: "2 Rengjøre" },
+  { value: "rinse", label: "3 Skylle" },
+  { value: "disinfect", label: "4 Desinfisere" },
+  { value: "control", label: "5 Kontroll" },
+];
+
 const WEEKDAYS = [
   { value: 1, label: "Man" },
   { value: 2, label: "Tir" },
@@ -142,6 +152,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [optionDrafts, setOptionDrafts] = useState({}); // itemId -> text in that task's "nytt valg" field
   const [measureEditorItemId, setMeasureEditorItemId] = useState(null); // task whose måling editor is open
   const [measureDrafts, setMeasureDrafts] = useState({}); // itemId -> { unit, min, max }
+  const [stepEditorItemId, setStepEditorItemId] = useState(null); // task whose hygienetrinn editor is open
+  const [stepDrafts, setStepDrafts] = useState({}); // itemId -> { stepType, contactMinutes, concentration }
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -328,6 +340,44 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // "Trinn": hvilket hygienetrinn oppgaven er i den faste sekvensen et næringsmiddelanlegg
+  // vaskes etter. Kontakttid og konsentrasjon hører til desinfeksjonstrinnet — kontakttiden
+  // håndheves av backend, som ikke lar oppgaven kvitteres ut før tiden faktisk er gått.
+  //
+  // Tømmer man trinnet, blir oppgaven en helt vanlig oppgave igjen og de to andre feltene
+  // nullstilles med den. Kontorbygg skal ikke ha hygienetrinn liggende.
+  async function saveStep(roomId, itemId) {
+    const draft = stepDrafts[itemId] || {};
+    const mins = Number(draft.contactMinutes);
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
+        token,
+        method: "PATCH",
+        body: JSON.stringify({
+          step_type: draft.stepType || "",
+          contact_seconds: draft.contactMinutes && Number.isFinite(mins) ? Math.round(mins * 60) : "",
+          concentration: draft.concentration || "",
+        }),
+      });
+      setStepEditorItemId(null);
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditStep(item) {
+    setStepEditorItemId(item.id);
+    setStepDrafts((d) => ({
+      ...d,
+      [item.id]: {
+        stepType: item.step_type || "",
+        contactMinutes: item.contact_seconds ? String(Math.round(item.contact_seconds / 60)) : "",
+        concentration: item.concentration || "",
+      },
+    }));
   }
 
   function startEditMeasurement(item) {
@@ -1546,7 +1596,59 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                   {item.measure_unit ? "Rediger måling" : "+ Måling"}
                                 </button>
                               )}
+                              {stepEditorItemId !== item.id && (
+                                <button onClick={() => startEditStep(item)} style={linkBtnStyle}>
+                                  {item.step_type ? "Rediger trinn" : "+ Trinn"}
+                                </button>
+                              )}
                             </div>
+                            {(item.step_type || stepEditorItemId === item.id) && (
+                              <div style={{
+                                marginTop: 5, marginLeft: 2, paddingLeft: 8,
+                                borderLeft: "2px solid var(--brand-bg)",
+                              }}>
+                                {stepEditorItemId === item.id ? (
+                                  <>
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                                      <select
+                                        value={stepDrafts[item.id]?.stepType ?? ""}
+                                        onChange={(e) => setStepDrafts((d) => ({ ...d, [item.id]: { ...d[item.id], stepType: e.target.value } }))}
+                                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 140 }}
+                                      >
+                                        <option value="">Ikke et hygienetrinn</option>
+                                        {STEP_TYPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                      </select>
+                                      <input
+                                        value={stepDrafts[item.id]?.concentration ?? ""}
+                                        onChange={(e) => setStepDrafts((d) => ({ ...d, [item.id]: { ...d[item.id], concentration: e.target.value } }))}
+                                        placeholder="Styrke (2 %)"
+                                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 100 }}
+                                      />
+                                      <input
+                                        value={stepDrafts[item.id]?.contactMinutes ?? ""}
+                                        onChange={(e) => setStepDrafts((d) => ({ ...d, [item.id]: { ...d[item.id], contactMinutes: e.target.value } }))}
+                                        placeholder="Kontakttid (min)"
+                                        inputMode="decimal"
+                                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 118 }}
+                                      />
+                                      <button onClick={() => saveStep(room.id, item.id)} style={linkBtnStyle}>Lagre</button>
+                                      <button onClick={() => setStepEditorItemId(null)} style={linkBtnStyle}>Avbryt</button>
+                                    </div>
+                                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, maxWidth: 440 }}>
+                                      Settes kontakttid, må renholderen starte den og vente til den er ute før
+                                      oppgaven kan kvitteres ut. Klokka går på serveren, så den kan ikke omgås
+                                      ved å stille telefonen.
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                                    {STEP_TYPES.find((s) => s.value === item.step_type)?.label || item.step_type}
+                                    {item.concentration ? ` · ${item.concentration}` : ""}
+                                    {item.contact_seconds ? ` · kontakttid ${Math.round(item.contact_seconds / 60)} min` : ""}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {(item.measure_unit || measureEditorItemId === item.id) && (
                               <div style={{
                                 marginTop: 5, marginLeft: 2, paddingLeft: 8,

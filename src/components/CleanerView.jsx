@@ -480,6 +480,12 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     return !!item.measure_unit && (item.measured_value === null || item.measured_value === undefined);
   }
 
+  // Kontakttid som er satt, men ikke startet eller ikke ute ennå.
+  function itemContactPending(item) {
+    if (!item.contact_seconds) return false;
+    return item.contact_remaining === null || item.contact_remaining === undefined || item.contact_remaining > 0;
+  }
+
   // Speiler backendens measurementVerdict slik at tallet farges med én gang, før svaret er
   // tilbake. Backend er fasit — dette er bare for at flaten ikke skal stå og vente.
   function verdictFor(item, value) {
@@ -502,10 +508,37 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       return;
     }
     setMeasureHintItemId(null);
+    // Kontakttiden er serverens avgjørelse; dette er bare for å slippe et trykk som uansett
+    // ville blitt avvist.
+    if (done && item.contact_seconds && (item.contact_remaining === null || item.contact_remaining > 0)) {
+      setMeasureHintItemId(item.id);
+      return;
+    }
     setOptionHintItemId(null);
     setRoomRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
     try {
       await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Starter kontakttiden. Tidspunktet settes av serveren, så dette er ikke kø-bart offline —
+  // en kontakttid som «startet» da telefonen fikk nett igjen ville vært en usannhet i loggen.
+  // Derfor vanlig apiFetch og ikke queueableFetch.
+  async function startContactTime(item) {
+    try {
+      const res = await apiFetch(`/rooms/runs/${roomRun.id}/items/${item.id}/contact-start`, {
+        token, method: "POST", body: JSON.stringify({}),
+      });
+      setRoomRun((r) => ({
+        ...r,
+        items: r.items.map((i) =>
+          i.id === item.id
+            ? { ...i, contact_started_at: res.contact_started_at, contact_remaining: res.contact_remaining }
+            : i
+        ),
+      }));
     } catch (err) {
       setError(err.message);
     }
@@ -582,7 +615,9 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     // samme gjelder en måleoppgave — «Huk av alle» kan ikke gjette en ATP-verdi.
     setRoomRun((r) => ({
       ...r,
-      items: r.items.map((i) => (itemNeedsChoice(i) || itemNeedsMeasurement(i) ? i : { ...i, done: true })),
+      items: r.items.map((i) =>
+        itemNeedsChoice(i) || itemNeedsMeasurement(i) || itemContactPending(i) ? i : { ...i, done: true }
+      ),
     }));
     try {
       await queueableFetch(`/rooms/runs/${roomRun.id}/items/complete-all`, { token, method: "POST" });
@@ -1109,6 +1144,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             onToggle={() => toggleRoomItem(item)}
             onToggleOption={(option) => toggleRoomItemOption(item, option)}
             onMeasure={(raw) => saveRoomItemMeasurement(item, raw)}
+            onStartContact={() => startContactTime(item)}
             translate={planTranslation}
           />
         ))}
@@ -1706,10 +1742,25 @@ function OptionChip({ option, translated, onClick }) {
 // a flervalg task (one carrying options — e.g. which soap was used, see room_run_item_options on
 // the backend) puts its alternatives underneath and is ticked by choosing one, since the choice
 // IS the documentation the task exists for.
-function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption, onMeasure, translate }) {
+function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption, onMeasure, onStartContact, translate }) {
   const { t } = useI18n();
   const hasOptions = item.options?.length > 0;
   const isMeasurement = !!item.measure_unit;
+
+  // Nedtellingen. Utgangspunktet kommer fra serveren (contact_remaining); herfra teller klienten
+  // ned selv, ett sekund av gangen, uten å spørre på nytt. Backend avviser uansett en for tidlig
+  // avkryssing, så en telefonklokke som driver litt kan ikke snike noen forbi kontakttiden.
+  const [remaining, setRemaining] = useState(
+    item.contact_remaining === undefined ? null : item.contact_remaining
+  );
+  useEffect(() => {
+    setRemaining(item.contact_remaining === undefined ? null : item.contact_remaining);
+  }, [item.contact_remaining]);
+  useEffect(() => {
+    if (remaining === null || remaining <= 0) return undefined;
+    const id = setInterval(() => setRemaining((s) => (s === null ? null : Math.max(0, s - 1))), 1000);
+    return () => clearInterval(id);
+  }, [remaining]);
   // Lokal tekst mens det tastes; verdien sendes først ved blur/Enter. Feltet er tekst og ikke
   // number: en number-input på Android spiser komma, og en renholder taster «7,2», ikke «7.2».
   const [draft, setDraft] = useState(
@@ -1771,6 +1822,42 @@ function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption,
           color: hintVisible ? "var(--text-danger)" : "var(--text-secondary)",
         }}>
           {t("cleaner.chooseOptionHint")}
+        </div>
+      )}
+      {item.step_type && (
+        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4, marginLeft: 28 }}>
+          {t(`step.${item.step_type}`)}
+          {item.concentration ? ` · ${item.concentration}` : ""}
+        </div>
+      )}
+      {item.contact_seconds > 0 && !item.done && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, marginLeft: 28, flexWrap: "wrap" }}>
+          {remaining === null ? (
+            <button onClick={onStartContact} style={{
+              background: "var(--brand)", color: "white", border: "none", borderRadius: "var(--radius)",
+              padding: "9px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer",
+            }}>
+              {t("cleaner.contactStart")}
+            </button>
+          ) : remaining > 0 ? (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 7, fontSize: 15, fontWeight: 700,
+              fontVariantNumeric: "tabular-nums", color: "var(--status-progress-dark)",
+            }}>
+              <Clock size={16} />
+              {String(Math.floor(remaining / 60)).padStart(2, "0")}:{String(remaining % 60).padStart(2, "0")}
+            </span>
+          ) : (
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: "var(--radius-pill)",
+              background: "var(--c-teal)", color: "var(--text-success)",
+            }}>
+              {t("cleaner.contactDone")}
+            </span>
+          )}
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+            {t("cleaner.contactLabel", { minutes: Math.round(item.contact_seconds / 60) })}
+          </span>
         </div>
       )}
       {isMeasurement && (
