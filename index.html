@@ -583,15 +583,67 @@
         .fade.in .scanline,
         .fade.in .ring,
         .fade.in .cell,
-        .fade.in .bar-col {
+        .fade.in .bar-col,
+        .fade.in .meter-fill,
+        .fade.in .dial .run {
           animation: none !important;
         }
         .fade .bar-fill,
-        .fade .bar-col { transform: none; }
+        .fade .bar-col,
+        .fade .meter-fill { transform: none; }
         .fade .tick-pop,
         .fade .cell { opacity: 1; }
         .scanline, .ring { display: none; }
+        /* Skiven står stille på full runde i stedet for å forsvinne — tallet i midten er
+           poenget, ringen rundt er bare innpakning. */
+        .dial .run { stroke-dashoffset: 0; }
       }
+
+      /* ---------- hygienesekvens ---------- */
+      /* Trinnene som en kjede. Rekkefølgen ER informasjonen her — fra skitnest til reneste —
+         så de står på rad og ikke i et rutenett som kan brytes vilkårlig. */
+      .chain { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 34px; }
+      .link {
+        display: inline-flex; align-items: center; gap: 9px;
+        border: 1px solid var(--line); background: var(--surface);
+        padding: 11px 15px; font-size: 14px; font-weight: 500;
+      }
+      .link b {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 21px; height: 21px; border-radius: 999px; flex-shrink: 0;
+        background: var(--ink); color: #fff; font-size: 11px; font-weight: 700;
+      }
+      .link.hot b { background: var(--progress); }
+
+      /* ---------- måleverdi mot grense ---------- */
+      .meter-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
+      .meter-val { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+      .meter-bar { position: relative; height: 9px; border-radius: 999px; background: var(--line-soft); margin-top: 9px; }
+      .meter-fill { height: 100%; border-radius: 999px; background: var(--danger); transform-origin: left; }
+      .fade .meter-fill { transform: scaleX(0); }
+      .fade.in .meter-fill { animation: fillX 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      /* Grensestreken ligger over fyllet, så det er tydelig hvor mye verdien bommer med. */
+      .meter-limit { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+      .meter-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+      /* ---------- nedtelling ---------- */
+      .timer { display: flex; align-items: center; gap: 13px; }
+      .dial { position: relative; width: 62px; height: 62px; flex-shrink: 0; }
+      .dial svg { transform: rotate(-90deg); }
+      .dial circle { fill: none; stroke-width: 6; }
+      .dial .track { stroke: var(--line-soft); }
+      .dial .run { stroke: var(--progress); stroke-linecap: round; stroke-dasharray: 169; }
+      .fade.in .dial .run { animation: sweep 9s linear infinite; }
+      @keyframes sweep { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 169; } }
+      .dial-num {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+      }
+
+      /* ---------- sperret frigivelse ---------- */
+      .blocked { border: 1px solid var(--danger); background: #fef2f2; padding: 14px 16px; margin-top: 16px; }
+      .blocked-t { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--danger); }
+      .blocked p { margin: 7px 0 0; font-size: 13px; color: var(--slate); }
 
       /* ---------- roller ---------- */
       .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
@@ -614,6 +666,7 @@
         </a>
         <nav>
           <a href="#slik">Slik fungerer det</a>
+          <a href="#naeringsmiddel">Næringsmiddel</a>
           <a href="#renholder">Renholderen</a>
           <a href="#kunde">Kunden</a>
           <a href="#sporsmal">Spørsmål</a>
@@ -846,6 +899,132 @@
               <span><b>Dokumenter per bygg</b> — kart, avtaler og instrukser ligger der renholderen er.</span>
             </li>
           </ul>
+        </div>
+      </section>
+
+      <!-- ============ NÆRINGSMIDDEL ============ -->
+      <section id="naeringsmiddel" class="grid-bg" style="background: var(--surface)">
+        <div class="wrap">
+          <p class="eyebrow">Næringsmiddel</p>
+          <h2>Der «utført»<br />ikke er godt nok.</h2>
+          <p class="lede">
+            På et anlegg med matproduksjon er det ikke avkryssingen som er dokumentasjonen — det
+            er tallet, styrken og tiden. Rentlogg registrerer alle tre, og lar dem sperre.
+          </p>
+
+          <div class="chain">
+            <span class="link"><b>1</b> Fjerne rester</span>
+            <span class="link"><b>2</b> Rengjøre</span>
+            <span class="link"><b>3</b> Skylle</span>
+            <span class="link hot"><b>4</b> Desinfisere</span>
+            <span class="link"><b>5</b> Skylle</span>
+            <span class="link"><b>6</b> Kontroll</span>
+          </div>
+
+          <div class="pair fade" style="margin-top: 22px">
+            <div>
+              <h3 style="margin: 0 0 3px">Kontakttiden må faktisk gå</h3>
+              <p class="when">Desinfisere · 2 % · 10 minutter.</p>
+              <div class="timer" aria-hidden="true">
+                <span class="dial">
+                  <svg width="62" height="62" viewBox="0 0 62 62">
+                    <circle class="track" cx="31" cy="31" r="27" />
+                    <circle class="run" cx="31" cy="31" r="27" />
+                  </svg>
+                  <span class="dial-num">04:12</span>
+                </span>
+                <div style="font-size: 13.5px; color: var(--slate); max-width: 34ch">
+                  Oppgaven kan ikke kvitteres ut før tiden er ute. Klokka går på serveren, så den
+                  kan ikke omgås ved å stille telefonen.
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 style="margin: 0 0 3px">Målingen mot grensen</h3>
+              <p class="when">ATP-prøve, linje 3.</p>
+              <div aria-hidden="true">
+                <div class="meter-top">
+                  <span class="meter-val" style="color: var(--danger)">420 <span style="font-size: 0.55em; color: var(--slate)">RLU</span></span>
+                  <span style="font-weight: 700; color: var(--danger); font-size: 11px; letter-spacing: 0.04em">UTENFOR</span>
+                </div>
+                <div class="meter-bar">
+                  <span class="meter-fill" style="width: 100%"></span>
+                  <span class="meter-limit" style="left: 36%"></span>
+                </div>
+                <div class="meter-legend"><span>0</span><span>grense 150</span><span>420</span></div>
+              </div>
+              <div class="blocked">
+                <div class="blocked-t">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v6M12 17h.01" /></svg>
+                  Linjen kan ikke frigis
+                </div>
+                <p>
+                  En prøve over grensen stopper frigivelsen. Den kan gis likevel — men det koster en
+                  skriftlig begrunnelse, og begrunnelsen havner i kvalitetsloggen sammen med tallet.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="two" style="margin-top: 44px">
+            <div>
+              <h3 style="margin: 0 0 8px">Kjemikaliene ligger i systemet</h3>
+              <p class="lede" style="margin-top: 0">
+                Ikke bare navnet på midlet, men styrken det blandes i, hvor lenge det skal stå, og
+                det renholderen må vite før hun åpner kanna.
+              </p>
+              <ul class="feats">
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Ett register per bedrift</b> — samme såpe på tvers av byggene, én dosering å oppdatere.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Vises når midlet velges</b> — ikke fem advarsler ved siden av hverandre som ingen leser.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Sikkerhetsdatabladet er ett trykk unna</b>, fra samme skjerm.</span>
+                </li>
+                <li>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Byttes midlet, står historikken</b> — gamle besøk viser fortsatt hva som faktisk ble brukt.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="phone fade" aria-hidden="true">
+              <div class="phone-notch"></div>
+              <div class="card">
+                <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px">Hvilket middel ble brukt</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                  <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid var(--ink); background: var(--line-soft)">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.5 12.5 2.5 2.5 5-5.5" /></svg>
+                    Alkalisk skumvask
+                  </span>
+                  <span style="display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px; font-size: 13px; border: 1px solid var(--line); color: var(--slate)">
+                    Bare vann
+                  </span>
+                </div>
+              </div>
+
+              <div style="margin-top: 10px; padding: 11px 13px; background: var(--line-soft); border-left: 3px solid var(--ink)">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+                  <span style="font-size: 13px; font-weight: 600">Alkalisk skumvask</span>
+                  <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface)">2 %</span>
+                </div>
+                <div style="display: flex; gap: 7px; margin-top: 7px; font-size: 12px; color: var(--slate)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px"><path d="M12 3l7 3v6c0 4.2-2.9 7.9-7 9-4.1-1.1-7-4.8-7-9V6z" /><path d="m9 12 2 2 4-4" /></svg>
+                  <span>Bruk hansker og vernebriller. Skal aldri blandes med syre.</span>
+                </div>
+                <div style="display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; font-size: 12px; font-weight: 500">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v8H3V6h8" /></svg>
+                  Sikkerhetsdatablad
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
