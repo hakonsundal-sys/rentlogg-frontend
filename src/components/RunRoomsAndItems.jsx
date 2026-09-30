@@ -89,6 +89,28 @@ function ItemRow({ item, variant, onToggle, onToggleApprove, onToggleOption }) {
           </div>
         )
       )}
+      {/* Måleoppgave: her er den skrivebeskyttet. Admin og kunde skal kunne lese tallet og se
+          om det lå innenfor, men verdien registreres der prøven tas — endrer noen den i
+          etterkant fra en kontorskjerm, er den ikke lenger et måleresultat. */}
+      {item.measure_unit && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 11, margin: "0 0 4px 26px" }}>
+          <span style={{ color: "var(--text-secondary)" }}>
+            {item.measured_value === null || item.measured_value === undefined
+              ? t("run.measureMissing")
+              : `${item.measured_value} ${item.measure_unit}`}
+          </span>
+          {item.measure_label && <span style={{ color: "var(--text-muted)" }}>{item.measure_label}</span>}
+          {item.verdict && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+              background: item.verdict === "fail" ? "var(--bg-danger)" : "var(--c-teal)",
+              color: item.verdict === "fail" ? "var(--text-danger)" : "var(--text-success)",
+            }}>
+              {t(item.verdict === "fail" ? "run.measureOutside" : "run.measureInside")}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

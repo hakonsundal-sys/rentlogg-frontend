@@ -156,6 +156,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   // Set when a tap tried to tick a flervalg task with nothing chosen — shows the hint under that
   // one task instead of the page-level error banner, which is far away from the thing tapped.
   const [optionHintItemId, setOptionHintItemId] = useState(null);
+  const [measureHintItemId, setMeasureHintItemId] = useState(null);
   const [roomFilter, setRoomFilter] = useState("");
   // Rooms on another schedule are collapsed by default — on a site with 25+ rooms they used to
   // bury the handful actually due today under a wall of grey rows nobody scrolls past.
@@ -473,16 +474,75 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     return item.options?.length > 0 && !item.options.some((o) => o.selected);
   }
 
+  // Samme sak for en måleoppgave: enheten gjør den til en måling, og uten et tall er det ikke
+  // dokumentert noe. `measure_unit` kommer fra besøket, ikke fra dagens oppgavemal.
+  function itemNeedsMeasurement(item) {
+    return !!item.measure_unit && (item.measured_value === null || item.measured_value === undefined);
+  }
+
+  // Speiler backendens measurementVerdict slik at tallet farges med én gang, før svaret er
+  // tilbake. Backend er fasit — dette er bare for at flaten ikke skal stå og vente.
+  function verdictFor(item, value) {
+    if (!item.measure_unit || value === null || value === undefined) return null;
+    const under = item.measure_min !== null && item.measure_min !== undefined && value < item.measure_min;
+    const over = item.measure_max !== null && item.measure_max !== undefined && value > item.measure_max;
+    return under || over ? "fail" : "pass";
+  }
+
   async function toggleRoomItem(item) {
     const done = !item.done;
     if (done && itemNeedsChoice(item)) {
       setOptionHintItemId(item.id);
       return;
     }
+    // En måleoppgave uten tall kan ikke hukes av — backend avviser den uansett, men det er
+    // bedre at renholderen får feltet i fokus enn en feilmelding etter et trykk.
+    if (done && itemNeedsMeasurement(item)) {
+      setMeasureHintItemId(item.id);
+      return;
+    }
+    setMeasureHintItemId(null);
     setOptionHintItemId(null);
     setRoomRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
     try {
       await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Registrerer måleverdien, og huker av oppgaven i samme slengen — på samme måte som et
+  // flervalg: tallet ER dokumentasjonen, så det ville vært et unødvendig ekstra trykk å be om
+  // avkryssingen etterpå. Tømmer man feltet, huker den av igjen.
+  //
+  // Verdien sendes ikke mens man taster, men når feltet forlates eller Enter trykkes. På en
+  // telefon i et kjølerom med ustabil dekning er hvert tastetrykk en kø-oppføring man ikke vil ha.
+  async function saveRoomItemMeasurement(item, raw) {
+    const trimmed = String(raw ?? "").trim();
+    const cleared = trimmed === "";
+    const parsed = Number(trimmed.replace(",", "."));
+    if (!cleared && !Number.isFinite(parsed)) {
+      setError(t("cleaner.measureNotANumber"));
+      return;
+    }
+    const value = cleared ? null : parsed;
+    const nextDone = !cleared;
+    setMeasureHintItemId(null);
+    setRoomRun((r) => ({
+      ...r,
+      items: r.items.map((i) =>
+        i.id === item.id ? { ...i, measured_value: value, done: nextDone, verdict: verdictFor(i, value) } : i
+      ),
+    }));
+    try {
+      await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}/measurement`, {
+        token, method: "PATCH", body: JSON.stringify({ value: cleared ? "" : value }),
+      });
+      if (nextDone !== item.done) {
+        await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, {
+          token, method: "PATCH", body: JSON.stringify({ done: nextDone }),
+        });
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -518,8 +578,12 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
 
   async function markAllRoomItems() {
     // Mirrors the backend's own rule: a bulk tick can't answer a flervalg task for the cleaner,
-    // so those stay open (and visibly so) until someone says which alternative was used.
-    setRoomRun((r) => ({ ...r, items: r.items.map((i) => (itemNeedsChoice(i) ? i : { ...i, done: true })) }));
+    // so those stay open (and visibly so) until someone says which alternative was used. Det
+    // samme gjelder en måleoppgave — «Huk av alle» kan ikke gjette en ATP-verdi.
+    setRoomRun((r) => ({
+      ...r,
+      items: r.items.map((i) => (itemNeedsChoice(i) || itemNeedsMeasurement(i) ? i : { ...i, done: true })),
+    }));
     try {
       await queueableFetch(`/rooms/runs/${roomRun.id}/items/complete-all`, { token, method: "POST" });
     } catch (err) {
@@ -1041,8 +1105,10 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             key={item.id}
             item={item}
             hintVisible={optionHintItemId === item.id}
+            measureHint={measureHintItemId === item.id}
             onToggle={() => toggleRoomItem(item)}
             onToggleOption={(option) => toggleRoomItemOption(item, option)}
+            onMeasure={(raw) => saveRoomItemMeasurement(item, raw)}
             translate={planTranslation}
           />
         ))}
@@ -1640,9 +1706,18 @@ function OptionChip({ option, translated, onClick }) {
 // a flervalg task (one carrying options — e.g. which soap was used, see room_run_item_options on
 // the backend) puts its alternatives underneath and is ticked by choosing one, since the choice
 // IS the documentation the task exists for.
-function RoomTaskRow({ item, hintVisible, onToggle, onToggleOption, translate }) {
+function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption, onMeasure, translate }) {
   const { t } = useI18n();
   const hasOptions = item.options?.length > 0;
+  const isMeasurement = !!item.measure_unit;
+  // Lokal tekst mens det tastes; verdien sendes først ved blur/Enter. Feltet er tekst og ikke
+  // number: en number-input på Android spiser komma, og en renholder taster «7,2», ikke «7.2».
+  const [draft, setDraft] = useState(
+    item.measured_value === null || item.measured_value === undefined ? "" : String(item.measured_value)
+  );
+  useEffect(() => {
+    setDraft(item.measured_value === null || item.measured_value === undefined ? "" : String(item.measured_value));
+  }, [item.measured_value]);
   // Under, not instead of. She ticks off the Norwegian line — that is what the signature and the
   // report attest to — so replacing it would mean signing a sentence she never saw.
   const translated = translate?.(item.label);
@@ -1696,6 +1771,44 @@ function RoomTaskRow({ item, hintVisible, onToggle, onToggleOption, translate })
           color: hintVisible ? "var(--text-danger)" : "var(--text-secondary)",
         }}>
           {t("cleaner.chooseOptionHint")}
+        </div>
+      )}
+      {isMeasurement && (
+        <div style={{ marginTop: 8, marginLeft: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={() => onMeasure(draft)}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              inputMode="decimal"
+              placeholder={t("cleaner.measureValue")}
+              aria-label={`${item.label} — ${item.measure_unit}`}
+              style={{
+                width: 108, padding: "9px 10px", fontSize: 16, borderRadius: "var(--radius)",
+                background: "var(--surface-0)", color: "var(--text-primary)",
+                border: `1px solid ${item.verdict === "fail" ? "var(--text-danger)" : "var(--border)"}`,
+              }}
+            />
+            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{item.measure_unit}</span>
+            {item.measure_label && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{item.measure_label}</span>
+            )}
+            {item.verdict && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-pill)",
+                background: item.verdict === "fail" ? "var(--bg-danger)" : "var(--c-teal)",
+                color: item.verdict === "fail" ? "var(--text-danger)" : "var(--text-success)",
+              }}>
+                {t(item.verdict === "fail" ? "cleaner.measureOutside" : "cleaner.measureInside")}
+              </span>
+            )}
+          </div>
+          {measureHint && (
+            <div style={{ fontSize: 12, marginTop: 6, color: "var(--text-danger)" }}>
+              {t("cleaner.measureRequiredHint")}
+            </div>
+          )}
         </div>
       )}
     </div>

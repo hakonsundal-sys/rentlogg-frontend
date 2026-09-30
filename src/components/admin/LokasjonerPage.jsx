@@ -140,6 +140,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [editItemLabel, setEditItemLabel] = useState("");
   const [optionEditorItemId, setOptionEditorItemId] = useState(null); // task whose flervalg editor is open
   const [optionDrafts, setOptionDrafts] = useState({}); // itemId -> text in that task's "nytt valg" field
+  const [measureEditorItemId, setMeasureEditorItemId] = useState(null); // task whose måling editor is open
+  const [measureDrafts, setMeasureDrafts] = useState({}); // itemId -> { unit, min, max }
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editSiteForm, setEditSiteForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -299,6 +301,45 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // "Måling": oppgaven ber om et tall i stedet for bare en avkryssing — en ATP-prøve mot en
+  // grenseverdi, temperaturen på skyllevannet, konsentrasjonen i et desinfeksjonsbad. Enheten
+  // er markøren: har oppgaven en enhet, er den en måling. Grensene er valgfrie hver for seg,
+  // så "maks 150", "minst 82" og "mellom 5 og 9" dekkes uten et eget retningsvalg.
+  //
+  // Tømmer man enheten, blir oppgaven en helt vanlig avkryssingsoppgave igjen, og backend
+  // nullstiller grensene med den. Allerede registrerte målinger på tidligere besøk beholder
+  // både verdien sin og grensen de ble målt mot.
+  async function saveMeasurement(roomId, itemId) {
+    const draft = measureDrafts[itemId] || {};
+    try {
+      await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
+        token,
+        method: "PATCH",
+        body: JSON.stringify({
+          measure_unit: (draft.unit || "").trim(),
+          measure_min: draft.min ?? "",
+          measure_max: draft.max ?? "",
+        }),
+      });
+      setMeasureEditorItemId(null);
+      refreshRoomItems(roomId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditMeasurement(item) {
+    setMeasureEditorItemId(item.id);
+    setMeasureDrafts((d) => ({
+      ...d,
+      [item.id]: {
+        unit: item.measure_unit || "",
+        min: item.measure_min ?? "",
+        max: item.measure_max ?? "",
+      },
+    }));
   }
 
   // "Flervalg": a task can carry a list of alternatives the cleaner ticks instead of just
@@ -1498,7 +1539,66 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                   {item.options?.length > 0 ? "Rediger valg" : "+ Flervalg"}
                                 </button>
                               )}
+                              {/* Måling: oppgaven ber om et tall mot en grenseverdi. Skjult til
+                                  den blir bedt om, på samme måte som flervalg. */}
+                              {measureEditorItemId !== item.id && (
+                                <button onClick={() => startEditMeasurement(item)} style={linkBtnStyle}>
+                                  {item.measure_unit ? "Rediger måling" : "+ Måling"}
+                                </button>
+                              )}
                             </div>
+                            {(item.measure_unit || measureEditorItemId === item.id) && (
+                              <div style={{
+                                marginTop: 5, marginLeft: 2, paddingLeft: 8,
+                                borderLeft: "2px solid var(--brand-bg)",
+                              }}>
+                                {measureEditorItemId === item.id ? (
+                                  <>
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                                      <input
+                                        value={measureDrafts[item.id]?.unit ?? ""}
+                                        onChange={(e) => setMeasureDrafts((d) => ({ ...d, [item.id]: { ...d[item.id], unit: e.target.value } }))}
+                                        placeholder="Enhet (RLU, °C, pH)"
+                                        autoFocus
+                                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 130 }}
+                                      />
+                                      <input
+                                        value={measureDrafts[item.id]?.min ?? ""}
+                                        onChange={(e) => setMeasureDrafts((d) => ({ ...d, [item.id]: { ...d[item.id], min: e.target.value } }))}
+                                        placeholder="Minst"
+                                        inputMode="decimal"
+                                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 68 }}
+                                      />
+                                      <input
+                                        value={measureDrafts[item.id]?.max ?? ""}
+                                        onChange={(e) => setMeasureDrafts((d) => ({ ...d, [item.id]: { ...d[item.id], max: e.target.value } }))}
+                                        placeholder="Maks"
+                                        inputMode="decimal"
+                                        style={{ ...inputStyle, padding: "3px 6px", fontSize: 11, width: 68 }}
+                                      />
+                                      <button onClick={() => saveMeasurement(room.id, item.id)} style={linkBtnStyle}>Lagre</button>
+                                      <button onClick={() => setMeasureEditorItemId(null)} style={linkBtnStyle}>Avbryt</button>
+                                    </div>
+                                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, maxWidth: 420 }}>
+                                      Renholder må registrere tallet før oppgaven kan kvitteres ut. Fyll bare ut
+                                      den grensen som gjelder — bare «Maks» for ATP, bare «Minst» for temperatur,
+                                      begge for et intervall. Tøm enheten for å gjøre den om til en vanlig oppgave igjen.
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                                    Måling i {item.measure_unit}
+                                    {item.measure_min != null && item.measure_max != null
+                                      ? ` · ${item.measure_min}–${item.measure_max}`
+                                      : item.measure_max != null
+                                        ? ` · maks ${item.measure_max}`
+                                        : item.measure_min != null
+                                          ? ` · minst ${item.measure_min}`
+                                          : " · uten grense"}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {(item.options?.length > 0 || optionEditorItemId === item.id) && (
                               <div style={{
                                 marginTop: 5, marginLeft: 2, paddingLeft: 8,
