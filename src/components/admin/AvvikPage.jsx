@@ -168,6 +168,7 @@ export default function AvvikPage({ token, refreshSummary }) {
                           : "Venter på kundegodkjenning"}
                       </div>
                     )}
+                    <DeviationSteps dev={dev} token={token} onChanged={loadAll} onError={setError} />
                     {dev.photos?.length > 0 && (
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                         {dev.photos.map((ph) => (
@@ -223,3 +224,171 @@ const secondaryBtnStyle = {
   background: "none", border: "1px solid var(--border)", color: "var(--text-primary)",
   padding: "6px 12px", borderRadius: "var(--radius)", fontSize: 12, cursor: "pointer",
 };
+
+// Avviksbehandlingen i fire steg, som en vertikal sekvens — fordi det ER en sekvens, og fordi
+// et tilsyn leser den ovenfra og ned. Hvert utfylt steg bærer sine egne initialer og sitt eget
+// tidspunkt, siden stegene skjer på ulike tidspunkt og ofte av ulike folk.
+//
+// Steg 1 er alltid utfylt (det er selve meldingen). De tre neste kan fylles ut i hvilken som
+// helst rekkefølge — virkeligheten går ikke alltid pent nedover — men lukkingen krever at det
+// korrigerende tiltaket står. Se routes/deviations.js for hvorfor bare det ene er påkrevd.
+const DEV_STEPS = [
+  { key: "immediate", label: "Strakstiltak", hint: "Hva ble gjort umiddelbart for å gjøre det trygt?" },
+  { key: "cause", label: "Årsak", hint: "Hvorfor skjedde det?" },
+  { key: "corrective", label: "Korrigerende tiltak", hint: "Hva hindrer at det skjer igjen?" },
+];
+
+function StepNode({ filled, last, children }) {
+  return (
+    <div style={{ display: "flex", gap: 12 }}>
+      {/* Sporet: prikken og streken ned til neste steg. Streken er det som gjør det til en
+          sekvens og ikke fire løsrevne felt. */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+        <span style={{
+          width: 20, height: 20, borderRadius: 999, flexShrink: 0,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          background: filled ? "var(--brand)" : "var(--surface-0)",
+          border: filled ? "none" : "2px solid var(--border)",
+          color: "white",
+        }}>
+          {filled && (
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
+                 strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m5 12.5 4.5 4.5L19 7" />
+            </svg>
+          )}
+        </span>
+        {!last && <span style={{ flex: 1, width: 2, background: "var(--border)", minHeight: 14 }} />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0, paddingBottom: last ? 0 : 14 }}>{children}</div>
+    </div>
+  );
+}
+
+function DeviationSteps({ dev, token, onChanged, onError }) {
+  const [openStep, setOpenStep] = useState(null);
+  const [draft, setDraft] = useState({ text: "", initials: "" });
+  const [signature, setSignature] = useState("");
+  const [closing, setClosing] = useState(false);
+
+  async function saveStep(step) {
+    if (!draft.text.trim() || !draft.initials.trim()) return;
+    try {
+      await apiFetch(`/deviations/${dev.id}/step/${step}`, {
+        token, method: "PATCH", body: JSON.stringify(draft),
+      });
+      setOpenStep(null);
+      setDraft({ text: "", initials: "" });
+      onChanged();
+    } catch (err) {
+      onError(err.message);
+    }
+  }
+
+  async function close() {
+    if (!signature.trim()) return;
+    try {
+      await apiFetch(`/deviations/${dev.id}/close`, {
+        token, method: "PATCH", body: JSON.stringify({ signature }),
+      });
+      setClosing(false);
+      setSignature("");
+      onChanged();
+    } catch (err) {
+      onError(err.message);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+        color: "var(--text-secondary)", marginBottom: 12,
+      }}>
+        Behandling
+      </div>
+
+      <StepNode filled>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Meldt</div>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 1 }}>
+          {dev.reported_by_initials || "—"} · {String(dev.created_at || "").slice(0, 16)}
+        </div>
+      </StepNode>
+
+      {DEV_STEPS.map((s) => {
+        const text = dev[`${s.key === "immediate" ? "immediate_action" : s.key === "cause" ? "root_cause" : "corrective_action"}`];
+        const by = dev[`${s.key === "immediate" ? "immediate_action_by" : s.key === "cause" ? "root_cause_by" : "corrective_action_by"}`];
+        const at = dev[`${s.key === "immediate" ? "immediate_action_at" : s.key === "cause" ? "root_cause_at" : "corrective_action_at"}`];
+        return (
+          <StepNode key={s.key} filled={!!text}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{s.label}</div>
+            {text ? (
+              <>
+                <div style={{ fontSize: 13, marginTop: 2 }}>{text}</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 1 }}>
+                  {by} · {String(at || "").slice(0, 16)}
+                </div>
+              </>
+            ) : openStep === s.key ? (
+              <div style={{ marginTop: 6 }}>
+                <textarea
+                  value={draft.text}
+                  onChange={(e) => setDraft((d) => ({ ...d, text: e.target.value }))}
+                  placeholder={s.hint}
+                  autoFocus
+                  style={{ ...inputStyle, minHeight: 52, resize: "vertical", fontSize: 13 }}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <input
+                    value={draft.initials}
+                    onChange={(e) => setDraft((d) => ({ ...d, initials: e.target.value }))}
+                    placeholder="Ditt navn"
+                    style={{ ...inputStyle, width: 150, fontSize: 13 }}
+                  />
+                  <button onClick={() => saveStep(s.key)} style={primaryBtnStyle}>Lagre</button>
+                  <button onClick={() => { setOpenStep(null); setDraft({ text: "", initials: "" }); }} style={linkBtnStyle}>
+                    Avbryt
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setOpenStep(s.key); setDraft({ text: "", initials: "" }); }}
+                style={{ ...linkBtnStyle, marginTop: 2 }}
+              >
+                + {s.label}
+              </button>
+            )}
+          </StepNode>
+        );
+      })}
+
+      <StepNode filled={!!dev.closed_at} last>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Lukket og signert</div>
+        {dev.closed_at ? (
+          <div style={{ fontSize: 12, color: "var(--text-success)", marginTop: 1 }}>
+            {dev.closed_signature} · {String(dev.closed_at).slice(0, 16)}
+          </div>
+        ) : closing ? (
+          <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              value={signature}
+              onChange={(e) => setSignature(e.target.value)}
+              placeholder="Signer med navnet ditt"
+              autoFocus
+              style={{ ...inputStyle, width: 190, fontSize: 13 }}
+            />
+            <button onClick={close} style={primaryBtnStyle}>Lukk avviket</button>
+            <button onClick={() => { setClosing(false); setSignature(""); }} style={linkBtnStyle}>Avbryt</button>
+          </div>
+        ) : dev.corrective_action ? (
+          <button onClick={() => setClosing(true)} style={{ ...linkBtnStyle, marginTop: 2 }}>+ Signer og lukk</button>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>
+            Krever at korrigerende tiltak er fylt ut
+          </div>
+        )}
+      </StepNode>
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, CheckCircle2, FileText, Clock, AlertTriangle, Send } from "lucide-react";
-import { apiFetch, downloadCsv } from "../../api";
-import { Card, primaryBtnStyle } from "../shared";
+import { apiFetch, downloadCsv, downloadZip } from "../../api";
+import { Card, Field, Loading, TabButton, primaryBtnStyle } from "../shared";
 import RoomGrid from "../RoomGrid";
 import RunDetailModal from "../RunDetailModal";
 
@@ -33,6 +33,7 @@ export default function RapporterPage({ token, user }) {
   const [digestRecipients, setDigestRecipients] = useState([]); // checked subset of the selected site's own recipients
   const [digestSending, setDigestSending] = useState(false);
   const [digestResult, setDigestResult] = useState(null);
+  const [tab, setTab] = useState("manedlig"); // "manedlig" | "revisjon"
   const [openDate, setOpenDate] = useState(null); // "YYYY-MM-DD" — which grid day's checklist is open
 
   useEffect(() => {
@@ -107,6 +108,23 @@ export default function RapporterPage({ token, user }) {
     }
   }
 
+  // Revisjonssporet er sin egen fane og ikke en seksjon lenger ned på månedsrapporten: det
+  // leses i en helt annen situasjon — når noen spør etter dokumentasjon — og med sin egen
+  // periode, ikke den valgte måneden.
+  if (tab === "revisjon") {
+    return (
+      <div>
+        <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Rapporter</h1>
+        <div style={{ color: "var(--text-secondary)", marginBottom: 16 }}>Revisjonsspor og eksport</div>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+          <TabButton active={false} onClick={() => setTab("manedlig")}>Månedlig</TabButton>
+          <TabButton active onClick={() => setTab("revisjon")}>Revisjon</TabButton>
+        </div>
+        <RevisjonPanel token={token} sites={sites} />
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -132,6 +150,10 @@ export default function RapporterPage({ token, user }) {
         </div>
       </div>
 
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+        <TabButton active onClick={() => setTab("manedlig")}>Månedlig</TabButton>
+        <TabButton active={false} onClick={() => setTab("revisjon")}>Revisjon</TabButton>
+      </div>
       <Card style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
@@ -265,3 +287,119 @@ const inputStyle = {
 };
 const thStyle = { padding: 12, fontWeight: 500 };
 const tdStyle = { padding: 12 };
+
+// Revisjonsfanen: sporet man kan lese, og pakken man kan levere.
+//
+// quality_log ble skrevet samvittighetsfullt i et år uten at noen kunne slå opp i den. Dette er
+// leseflaten. Og knappen ved siden av er de samme dataene pakket slik man gir dem fra seg:
+// én zip med PDF, CSV-er og bilder, lesbar uten Rentlogg.
+function RevisjonPanel({ token, sites }) {
+  const [from, setFrom] = useState(firstOfMonth());
+  const [to, setTo] = useState(todayStr());
+  const [siteId, setSiteId] = useState("");
+  const [rows, setRows] = useState(null);
+  const [error, setError] = useState("");
+
+  function load() {
+    const q = new URLSearchParams({ from, to, ...(siteId ? { site_id: siteId } : {}) });
+    apiFetch(`/reports/quality-log?${q}`, { token })
+      .then(setRows)
+      .catch((err) => setError(err.message));
+  }
+  useEffect(load, [token, from, to, siteId]);
+
+  const valgtLokasjon = sites.find((s) => String(s.id) === String(siteId));
+
+  return (
+    <div>
+      <Card style={{ marginBottom: 18 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <Field label="Fra">
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Til">
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Lokasjon">
+            <select value={siteId} onChange={(e) => setSiteId(e.target.value)} style={inputStyle}>
+              <option value="">Alle lokasjoner</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+          <button
+            onClick={() => downloadCsv(`/reports/quality-log.csv?from=${from}&to=${to}${siteId ? `&site_id=${siteId}` : ""}`, token, "revisjonsspor.csv")}
+            style={{ ...primaryBtnStyle, background: "var(--surface-0)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+          >
+            Last ned CSV
+          </button>
+          {/* Hele pakken krever én lokasjon: en revisjonseksport er alltid for ett anlegg —
+              et tilsyn spør om dette bygget, ikke om alt firmaet gjør. */}
+          <button
+            onClick={() => downloadZip(`/reports/sites/${siteId}/revisjon.zip?from=${from}&to=${to}`, token, `revisjon-${from}_${to}.zip`)}
+            disabled={!siteId}
+            title={siteId ? "" : "Velg én lokasjon først"}
+            style={{ ...primaryBtnStyle, opacity: siteId ? 1 : 0.45, cursor: siteId ? "pointer" : "not-allowed" }}
+          >
+            <Download size={15} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+            Last ned revisjonspakke
+          </button>
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 10 }}>
+          {valgtLokasjon
+            ? `Pakken inneholder rapport som PDF, måleresultater og revisjonsspor som CSV, og alle bilder for ${valgtLokasjon.name} i perioden.`
+            : "Velg én lokasjon for å laste ned hele revisjonspakken."}
+        </div>
+      </Card>
+
+      {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+
+      {rows === null ? (
+        <Loading />
+      ) : rows.length === 0 ? (
+        <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+          Ingen hendelser i perioden. Sporet fylles når noen melder eller behandler et avvik,
+          frigir tross en måling utenfor grensen, eller fjerner dokumentasjon.
+        </div>
+      ) : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "var(--surface-0)" }}>
+                  {["Tidspunkt", "Hendelse", "Hvor", "Utført av", "Detalj"].map((h) => (
+                    <th key={h} style={{ textAlign: "left", padding: "9px 12px", fontWeight: 600, fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
+                      {String(r.occurred_at).slice(0, 16)}
+                    </td>
+                    <td style={{ padding: "9px 12px", fontWeight: 500 }}>{r.action_label}</td>
+                    <td style={{ padding: "9px 12px", color: "var(--text-secondary)" }}>
+                      {[r.site_name, r.room_name].filter(Boolean).join(" · ") || "—"}
+                    </td>
+                    <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>{r.after_value || r.user_name || "—"}</td>
+                    <td style={{ padding: "9px 12px", color: "var(--text-secondary)", maxWidth: 360 }}>{r.comment || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function firstOfMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+function todayStr() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
+}
