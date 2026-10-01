@@ -24,7 +24,9 @@ export default function KjemikalierPage({ token }) {
   useEffect(load, [token]);
 
   // Kontakttiden skrives i minutter og lagres i sekunder — ingen taster «600» når de mener ti
-  // minutter, men backend regner i sekunder fordi det er det nedtellingen trenger.
+  // minutter. Merk at DETTE tallet ikke sperrer noe: det er det leverandøren oppgir, til oppslag.
+  // Nedtellingen som faktisk blokkerer avkryssingen settes per oppgave («+ Trinn» under
+  // Lokasjoner) og hører til hygiene-modulen. Registeret her er kjerne og gjelder alle.
   function toBody(f) {
     const mins = Number(f.contact_seconds);
     return {
@@ -113,6 +115,9 @@ export default function KjemikalierPage({ token }) {
                 inputMode="decimal"
                 style={inputStyle}
               />
+              <span style={{ display: "block", marginTop: 4, fontWeight: 400, fontSize: 11 }}>
+                Det leverandøren oppgir. Sperrer ikke avkryssingen.
+              </span>
             </Field>
             <Field label="Sikkerhetsdatablad (lenke)">
               <input

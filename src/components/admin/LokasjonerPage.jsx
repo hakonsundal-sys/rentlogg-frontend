@@ -121,9 +121,12 @@ const SHOW_FLAT_CHECKLIST = false;
 
 export default function LokasjonerPage({ token, user, refreshSummary }) {
   const showTimeSettings = hasModule(user, MODULE_TIMECLOCK);
-  // Måleoppgaver, hygienetrinn og kjemikalieregisteret er hygiene-modulen. Uten den
-  // skal de ikke stå som valg i oppgaveeditoren i det hele tatt — for et kontorvask-firma er
-  // svaret alltid nei, og da er de bare to knapper til i en skjerm som har mange fra før.
+  // Måleoppgaver og hygienetrinn er hygiene-modulen. Uten den skal de ikke stå som valg i
+  // oppgaveeditoren i det hele tatt — for et kontorvask-firma er svaret alltid nei, og da er de
+  // bare to knapper til i en skjerm som har mange fra før.
+  //
+  // Kjemikalieregisteret står med vilje IKKE bak denne flaggen: det er kjerne (se backendens
+  // server.js ved /chemicals-monteringen for hvorfor).
   const showHygiene = hasModule(user, MODULE_HYGIENE);
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
@@ -212,9 +215,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   // kunne koble et alternativ til et middel. Feiler det, blir velgeren bare borte — registeret
   // er valgfritt, og et tomt register skal ikke hindre noen i å sette opp vanlige oppgaver.
   useEffect(() => {
-    if (!showHygiene) return;
     apiFetch("/chemicals", { token }).then(setChemicals).catch(() => setChemicals([]));
-  }, [token, showHygiene]);
+  }, [token]);
 
   function refreshRoomsForSite(siteId) {
     apiFetch(`/sites/${siteId}/rooms`, { token }).then((rows) => setRooms((prev) => ({ ...prev, [siteId]: rows })));
@@ -977,8 +979,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
 
   // Kjemikalieregisteret er bedriftens eget oppsett, ikke en lokasjons — men det brukes av
   // oppgavene som settes opp her, så det bor som en fane i stedet for et eget menypunkt. Samme
-  // avveining som Kundebrukere under Kunder.
-  if (showHygiene && mainTab === "kjemikalier") {
+  // avveining som Kundebrukere under Kunder. Fanen gjelder alle: registeret er kjerne.
+  if (mainTab === "kjemikalier") {
     return (
       <div>
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
@@ -993,12 +995,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   return (
     <div>
       <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfSelected} style={{ display: "none" }} />
-      {showHygiene && (
-        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
-          <TabButton active onClick={() => setMainTab("lokasjoner")}>Lokasjoner</TabButton>
-          <TabButton active={false} onClick={() => setMainTab("kjemikalier")}>Kjemikalier</TabButton>
-        </div>
-      )}
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+        <TabButton active onClick={() => setMainTab("lokasjoner")}>Lokasjoner</TabButton>
+        <TabButton active={false} onClick={() => setMainTab("kjemikalier")}>Kjemikalier</TabButton>
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Lokasjoner</h1>
@@ -1782,7 +1782,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                       {/* Kobler alternativet til kjemikalieregisteret. Velges et
                                           middel, følger styrken og sikkerhetsnotatet med ut i
                                           renholderens skjerm når hun krysser av for det. */}
-                                      {showHygiene && chemicals.length > 0 && (
+                                      {chemicals.length > 0 && (
                                         <select
                                           value={optionChemical[item.id] || ""}
                                           onChange={(e) => setOptionChemical((c) => ({ ...c, [item.id]: e.target.value }))}
