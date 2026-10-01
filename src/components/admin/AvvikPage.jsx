@@ -271,6 +271,17 @@ function DeviationSteps({ dev, token, onChanged, onError }) {
   const [signature, setSignature] = useState("");
   const [closing, setClosing] = useState(false);
 
+  // Et urørt avvik viser én lenke, ikke hele sporet.
+  //
+  // Da dette først ble bygget fikk «lyspære gikk» på et kontorbygg fem noder og tre tomme felt
+  // der det tidligere sto «Merk løst». Firetrinnsbehandling er riktig for et avvik som fortjener
+  // det, og unødig tyngde for et som ikke gjør det — og de fleste avvik gjør ikke. Sporet folder
+  // seg derfor ut når noen faktisk begynner å behandle saken, og er én lenke fram til det.
+  // Dette skjuler aldri noe som finnes: har ett steg innhold, står hele sporet åpent.
+  const harBehandling = !!(dev.immediate_action || dev.root_cause || dev.corrective_action || dev.closed_at);
+  const [utfoldet, setUtfoldet] = useState(false);
+  const vis = harBehandling || utfoldet;
+
   async function saveStep(step) {
     if (!draft.text.trim() || !draft.initials.trim()) return;
     try {
@@ -297,6 +308,16 @@ function DeviationSteps({ dev, token, onChanged, onError }) {
     } catch (err) {
       onError(err.message);
     }
+  }
+
+  if (!vis) {
+    return (
+      <div style={{ marginTop: 10 }}>
+        <button onClick={() => setUtfoldet(true)} style={linkBtnStyle}>
+          + Behandle avviket
+        </button>
+      </div>
+    );
   }
 
   return (
