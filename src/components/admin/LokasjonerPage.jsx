@@ -5,7 +5,7 @@ import { Card, AddressAutocomplete, DocumentsList, Field, Loading, ResponsibleBa
 import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
 import KjemikalierPage from "./KjemikalierPage";
-import { hasModule, MODULE_TIMECLOCK, MODULE_FOODSAFETY } from "../../modules";
+import { hasModule, MODULE_TIMECLOCK, MODULE_HYGIENE } from "../../modules";
 
 // Hygienetrinnene, i utførelsesrekkefølge. Speiler STEP_TYPES i backendens routes/rooms.js —
 // nye verdier må inn begge steder, og backend er porten som faktisk avviser ukjente.
@@ -121,10 +121,10 @@ const SHOW_FLAT_CHECKLIST = false;
 
 export default function LokasjonerPage({ token, user, refreshSummary }) {
   const showTimeSettings = hasModule(user, MODULE_TIMECLOCK);
-  // Måleoppgaver, hygienetrinn og kjemikalieregisteret er næringsmiddel-modulen. Uten den
+  // Måleoppgaver, hygienetrinn og kjemikalieregisteret er hygiene-modulen. Uten den
   // skal de ikke stå som valg i oppgaveeditoren i det hele tatt — for et kontorvask-firma er
   // svaret alltid nei, og da er de bare to knapper til i en skjerm som har mange fra før.
-  const showFoodSafety = hasModule(user, MODULE_FOODSAFETY);
+  const showHygiene = hasModule(user, MODULE_HYGIENE);
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -212,9 +212,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   // kunne koble et alternativ til et middel. Feiler det, blir velgeren bare borte — registeret
   // er valgfritt, og et tomt register skal ikke hindre noen i å sette opp vanlige oppgaver.
   useEffect(() => {
-    if (!showFoodSafety) return;
+    if (!showHygiene) return;
     apiFetch("/chemicals", { token }).then(setChemicals).catch(() => setChemicals([]));
-  }, [token, showFoodSafety]);
+  }, [token, showHygiene]);
 
   function refreshRoomsForSite(siteId) {
     apiFetch(`/sites/${siteId}/rooms`, { token }).then((rows) => setRooms((prev) => ({ ...prev, [siteId]: rows })));
@@ -978,7 +978,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   // Kjemikalieregisteret er bedriftens eget oppsett, ikke en lokasjons — men det brukes av
   // oppgavene som settes opp her, så det bor som en fane i stedet for et eget menypunkt. Samme
   // avveining som Kundebrukere under Kunder.
-  if (showFoodSafety && mainTab === "kjemikalier") {
+  if (showHygiene && mainTab === "kjemikalier") {
     return (
       <div>
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
@@ -993,7 +993,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   return (
     <div>
       <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfSelected} style={{ display: "none" }} />
-      {showFoodSafety && (
+      {showHygiene && (
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
           <TabButton active onClick={() => setMainTab("lokasjoner")}>Lokasjoner</TabButton>
           <TabButton active={false} onClick={() => setMainTab("kjemikalier")}>Kjemikalier</TabButton>
@@ -1629,18 +1629,18 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                               )}
                               {/* Måling: oppgaven ber om et tall mot en grenseverdi. Skjult til
                                   den blir bedt om, på samme måte som flervalg. */}
-                              {showFoodSafety && measureEditorItemId !== item.id && (
+                              {showHygiene && measureEditorItemId !== item.id && (
                                 <button onClick={() => startEditMeasurement(item)} style={linkBtnStyle}>
                                   {item.measure_unit ? "Rediger måling" : "+ Måling"}
                                 </button>
                               )}
-                              {showFoodSafety && stepEditorItemId !== item.id && (
+                              {showHygiene && stepEditorItemId !== item.id && (
                                 <button onClick={() => startEditStep(item)} style={linkBtnStyle}>
                                   {item.step_type ? "Rediger trinn" : "+ Trinn"}
                                 </button>
                               )}
                             </div>
-                            {showFoodSafety && (item.step_type || stepEditorItemId === item.id) && (
+                            {showHygiene && (item.step_type || stepEditorItemId === item.id) && (
                               <div style={{
                                 marginTop: 5, marginLeft: 2, paddingLeft: 8,
                                 borderLeft: "2px solid var(--brand-bg)",
@@ -1687,7 +1687,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                 )}
                               </div>
                             )}
-                            {showFoodSafety && (item.measure_unit || measureEditorItemId === item.id) && (
+                            {showHygiene && (item.measure_unit || measureEditorItemId === item.id) && (
                               <div style={{
                                 marginTop: 5, marginLeft: 2, paddingLeft: 8,
                                 borderLeft: "2px solid var(--brand-bg)",
@@ -1782,7 +1782,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                       {/* Kobler alternativet til kjemikalieregisteret. Velges et
                                           middel, følger styrken og sikkerhetsnotatet med ut i
                                           renholderens skjerm når hun krysser av for det. */}
-                                      {showFoodSafety && chemicals.length > 0 && (
+                                      {showHygiene && chemicals.length > 0 && (
                                         <select
                                           value={optionChemical[item.id] || ""}
                                           onChange={(e) => setOptionChemical((c) => ({ ...c, [item.id]: e.target.value }))}

@@ -6,7 +6,7 @@
 // stale or hand-edited copy here can't reach anything it shouldn't.
 export const MODULE_TRAINING = "training";
 export const MODULE_TIMECLOCK = "timeclock";
-export const MODULE_FOODSAFETY = "foodsafety";
+export const MODULE_HYGIENE = "hygiene";
 
 export function hasModule(user, key) {
   return Array.isArray(user?.modules) && user.modules.includes(key);
