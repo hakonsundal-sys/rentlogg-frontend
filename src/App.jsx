@@ -10,6 +10,7 @@ import { BrandMark, RoleBadge } from "./components/shared";
 import LanguagePicker from "./components/LanguagePicker";
 import { I18nProvider, useT } from "./i18n";
 import { apiFetch } from "./api";
+import { applyBrandColor, fetchHostBranding } from "./branding";
 
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
@@ -108,6 +109,22 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth?.token]);
 
+  // White-label. To kilder, og rekkefølgen er poenget: verten gjelder før innlogging (så en
+  // kunde på sitt eget domene ser sin egen logo på innloggingsskjermen), brukerens firma
+  // gjelder etterpå — også på rentlogg.no, så profilen ikke avhenger av at domenet er satt opp.
+  //
+  // Settes den aktive til null ved utlogging, fjernes overstyringen helt. Uten det ville forrige
+  // kundes farge hengt igjen på en delt arbeids-PC.
+  const [hostBranding, setHostBranding] = useState(null);
+  useEffect(() => {
+    fetchHostBranding().then(setHostBranding);
+  }, []);
+
+  const branding = auth?.user?.branding || hostBranding || null;
+  useEffect(() => {
+    applyBrandColor(branding?.brand_color);
+  }, [branding?.brand_color]);
+
   // A ?checkin= link means something for a cleaner (their check-in flow) or a customer (jumps
   // to that site's "Fyll ut sjekkliste i dag") — for every other role it's just dead weight
   // sitting in the address bar, so drop it once we know who actually logged in.
@@ -126,11 +143,11 @@ function AppInner() {
 
   function renderBody() {
     if (inviteToken) {
-      return <Shell><AcceptInvitePage token={inviteToken} onLogin={handleAuthenticated} onCancel={clearInviteParam} /></Shell>;
+      return <Shell branding={branding}><AcceptInvitePage token={inviteToken} onLogin={handleAuthenticated} onCancel={clearInviteParam} /></Shell>;
     }
 
     if (!auth) {
-      return <Shell><LoginView onLogin={handleAuthenticated} checkinPending={!!checkinToken} /></Shell>;
+      return <Shell branding={branding}><LoginView onLogin={handleAuthenticated} checkinPending={!!checkinToken} /></Shell>;
     }
 
     const { token, user } = auth;
@@ -155,7 +172,7 @@ function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
   const t = useT();
 
   return (
-    <Shell>
+    <Shell branding={branding}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>{user.name}</span>
@@ -178,7 +195,7 @@ function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
   );
 }
 
-function Shell({ children }) {
+function Shell({ children, branding }) {
   const t = useT();
 
   return (
@@ -188,8 +205,11 @@ function Shell({ children }) {
           log in first and change the language afterwards. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <BrandMark size={30} />
-          <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.021em" }}>Rentlogg</div>
+          {/* Kundens egen logo når firmaet har en, ellers loggstrek-merket. Logoen er en
+              data-URI fra /branding — se src/branding.js for hvorfor den ikke er en fil. */}
+          {branding?.logo_data_url
+            ? <img src={branding.logo_data_url} alt={branding.name || ""} style={{ height: 30, maxWidth: 150, objectFit: "contain", flexShrink: 0 }} />
+            : <><BrandMark size={30} /><div style={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.021em" }}>Rentlogg</div></>}
         </div>
         <LanguagePicker compact />
       </div>
