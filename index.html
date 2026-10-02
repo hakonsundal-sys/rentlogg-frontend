@@ -464,12 +464,6 @@
       }
 
       @keyframes floatY { from { transform: translateY(-7px); } to { transform: translateY(7px); } }
-      @keyframes fillX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-      @keyframes growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-      @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
-      @keyframes scanY { 0% { top: 4%; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { top: 92%; opacity: 0; } }
-      @keyframes pulseRing { 0% { transform: scale(0.75); opacity: 0.55; } 100% { transform: scale(1.9); opacity: 0; } }
-      @keyframes cellIn { from { opacity: 0; transform: scale(0.55); } to { opacity: 1; transform: scale(1); } }
 
       /* Svever. Bare på store skjermer — på en telefon er det bare uro. */
       @media (min-width: 900px) {
@@ -479,11 +473,7 @@
 
       /* Animasjonene under starter først når .fade får .in, altså når seksjonen er rullet inn.
          Kjører de på sidelast, er de over lenge før noen ser dem. */
-      .fade .bar-fill { transform: scaleX(0); transform-origin: left; }
-      .fade.in .bar-fill { animation: fillX 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
-      .fade .tick-pop { opacity: 0; }
-      .fade.in .tick-pop { animation: pop 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; animation-delay: calc(var(--i, 0) * 130ms + 250ms); }
 
       /* Skannelinja i QR-ruta. Dette er produktets egen mekanikk gjort synlig, ikke et ornament. */
       .scanbox { position: relative; overflow: hidden; }
@@ -492,13 +482,11 @@
         background: linear-gradient(90deg, transparent, var(--ink), transparent);
         opacity: 0;
       }
-      .fade.in .scanline { animation: scanY 2.8s ease-in-out infinite; }
 
       .ring {
         position: absolute; inset: 0; margin: auto; width: 56px; height: 56px;
         border: 2px solid var(--ink); border-radius: 999px; opacity: 0;
       }
-      .fade.in .ring { animation: pulseRing 2.4s ease-out infinite; }
       .fade.in .ring.d2 { animation-delay: 1.2s; }
 
       /* ---------- to-lags heroebilde ---------- */
@@ -552,7 +540,6 @@
       }
       .plan-days { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
       .cell { aspect-ratio: 1; border-radius: 3px; background: var(--line-soft); opacity: 0; }
-      .fade.in .cell { animation: cellIn 0.34s ease-out forwards; animation-delay: calc(var(--d, 0) * 11ms); }
       .cell.ok { background: #bfe6cd; }
       .cell.doing { background: #ffd9bd; }
       .cell.miss { background: #f9c9c9; }
@@ -570,8 +557,6 @@
       .bars { display: flex; align-items: stretch; gap: 10px; height: 130px; margin-top: 8px; }
       .bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; text-align: center; }
       .bar-col { background: var(--ink); border-radius: 3px 3px 0 0; transform-origin: bottom; }
-      .fade .bar-col { transform: scaleY(0); }
-      .fade.in .bar-col { animation: growY 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; animation-delay: calc(var(--i, 0) * 70ms); }
       .bar-lab { font-size: 10.5px; color: var(--muted); }
 
       /* Regel 2. Ingen unntak. */
@@ -592,7 +577,6 @@
         .fade .bar-col,
         .fade .meter-fill { transform: none; }
         .fade .tick-pop,
-        .fade .cell { opacity: 1; }
         .scanline, .ring { display: none; }
         /* Skiven står stille på full runde i stedet for å forsvinne — tallet i midten er
            poenget, ringen rundt er bare innpakning. */
@@ -621,7 +605,6 @@
       .meter-bar { position: relative; height: 9px; border-radius: 999px; background: var(--line-soft); margin-top: 9px; }
       .meter-fill { height: 100%; border-radius: 999px; background: var(--danger); transform-origin: left; }
       .fade .meter-fill { transform: scaleX(0); }
-      .fade.in .meter-fill { animation: fillX 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
       /* Grensestreken ligger over fyllet, så det er tydelig hvor mye verdien bommer med. */
       .meter-limit { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
       .meter-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 8px; }
@@ -633,8 +616,6 @@
       .dial circle { fill: none; stroke-width: 6; }
       .dial .track { stroke: var(--line-soft); }
       .dial .run { stroke: var(--progress); stroke-linecap: round; stroke-dasharray: 169; }
-      .fade.in .dial .run { animation: sweep 9s linear infinite; }
-      @keyframes sweep { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 169; } }
       .dial-num {
         position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
         font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
@@ -666,9 +647,8 @@
         </a>
         <nav>
           <a href="#slik">Slik fungerer det</a>
-          <a href="#hygiene">Hygiene</a>
-          <a href="#renholder">Renholderen</a>
-          <a href="#kunde">Kunden</a>
+          <a href="#hva">Hva du får</a>
+          <a href="#moduler">Tilleggsmoduler</a>
           <a href="#sporsmal">Spørsmål</a>
         </nav>
         <a class="login" href="/app/">Logg inn</a>
@@ -760,56 +740,6 @@
         <div class="strip-track" id="strip"></div>
       </div>
 
-      <!-- ============ ADMIN / HIERARKI ============ -->
-      <section>
-        <div class="wrap">
-          <p class="eyebrow">Én innlogging</p>
-          <h2>Alle kunder og bygg<br />i ett bilde.</h2>
-          <p class="lede">
-            Kunde, bygg og rom henger sammen i ett hierarki, og avdelinger deler driften opp
-            der bedriften er stor nok til å trenge det.
-          </p>
-
-          <div class="browser fade" style="margin-top: 40px">
-            <div class="browser-bar">
-              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-              <span class="browser-url">www.rentlogg.no/app</span>
-            </div>
-            <div class="browser-body">
-              <span class="sample">Eksempeldata</span>
-              <div class="stats">
-                <div class="stat"><div class="stat-l">Oppdrag i dag</div><div class="stat-v">24</div></div>
-                <div class="stat"><div class="stat-l">Fullført</div><div class="stat-v" style="color: var(--ok)">17</div></div>
-                <div class="stat"><div class="stat-l">Pågående</div><div class="stat-v" style="color: var(--progress)">5</div></div>
-                <div class="stat"><div class="stat-l">Åpne avvik</div><div class="stat-v" style="color: var(--danger)">2</div></div>
-              </div>
-
-              <div style="margin-top: 22px">
-                <div class="row">
-                  <div><div class="row-t">Nordvik Foods AS</div><div class="row-s">Danas P. · 17/17 rom · signert DP</div></div>
-                  <span class="pill ok">FULLFØRT</span>
-                </div>
-                <div class="row">
-                  <div><div class="row-t">Bakeri Sørhaug AS</div><div class="row-s">Simona P. · 9/14 rom</div></div>
-                  <span class="pill doing">PÅGÅR</span>
-                </div>
-                <div class="row">
-                  <div><div class="row-t">Kontorbygg Havnegata</div><div class="row-s">Ikke tildelt</div></div>
-                  <span class="pill flat">PLANLAGT</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="roles">
-            <div class="role"><b>Administrator</b><span>Setter opp kunder, bygg, rom og ansatte.</span></div>
-            <div class="role"><b>Driftsleder</b><span>Følger dagen, fordeler oppdrag og lukker avvik.</span></div>
-            <div class="role"><b>Renholder</b><span>Skanner, kvitterer ut og melder avvik.</span></div>
-            <div class="role"><b>Kunde</b><span>Ser sine egne bygg, godkjenner og henter rapporter.</span></div>
-          </div>
-        </div>
-      </section>
-
       <!-- ============ SLIK FUNGERER DET ============ -->
       <section id="slik">
         <div class="wrap">
@@ -843,484 +773,59 @@
         </div>
       </section>
 
-      <!-- ============ TO OPPSETT ============ -->
-      <section id="oppsett">
+
+      <!-- ============ HVA DU FÅR ============ -->
+      <!--
+        Én seksjon i stedet for sju. Siden hadde tidligere en egen seksjon med telefonmockup for
+        hver funksjon — renholderen, avvik, kunden, rapporter, hygiene, oppsett, språk. Det var
+        1600 linjer markedsføring for et produkt med en håndfull kunder, skrevet for å matche en
+        konkurrent. Innholdet står her i stedet, uten mockupene og uten animasjonene: det som
+        faktisk er bygget, i klartekst.
+      -->
+      <section id="hva">
         <div class="wrap">
-          <p class="eyebrow">Oppsett per bygg</p>
-          <h2>To måter å sette opp<br />et bygg på.</h2>
+          <p class="eyebrow">Hva du får</p>
+          <h2>Dokumentasjonen,<br />uten merarbeidet.</h2>
           <p class="lede">
-            Et lite lokale og et næringsmiddelanlegg trenger ikke samme struktur. Hvert bygg
-            settes opp på den måten som passer det.
+            Renholderen skanner, huker av og signerer. Alt det andre — planen, rapporten,
+            avvikssporet, historikken — faller ut av det hun allerede gjorde.
           </p>
 
-          <div class="pair fade">
-            <div>
-              <h3>Én felles sjekkliste</h3>
-              <p class="when">For bygg som gjøres i én runde.</p>
-              <div class="mini">
-                <div class="mini-row"><span class="box on"></span> Tømme avfall</div>
-                <div class="mini-row"><span class="box on"></span> Støvsuge fellesareal</div>
-                <div class="mini-row"><span class="box"></span> Vaske toaletter</div>
-                <div class="mini-row"><span class="box"></span> Speil og flater</div>
-              </div>
+          <div class="pair" style="margin-top: 36px">
+            <div class="panel">
+              <h3>For renholderen</h3>
+              <ul class="feats">
+                <li><span><b>QR-innsjekk på vegg</b> — skann med telefonkameraet, ingen app å installere.</span></li>
+                <li><span><b>Rom for rom, oppgave for oppgave</b>, gruppert etter område i bygget.</span></li>
+                <li><span><b>Bilder der det trengs</b>, og avvik meldt på stedet.</span></li>
+                <li><span><b>Fem språk</b> — norsk, engelsk, litauisk, latvisk og russisk.</span></li>
+                <li><span><b>Tåler dårlig dekning</b> og at telefonen låser seg midt i et skift.</span></li>
+              </ul>
             </div>
-            <div>
-              <h3>Rom for rom</h3>
-              <p class="when">For anlegg der én lang liste ville vært ubrukelig.</p>
-              <div class="mini">
-                <div class="mini-head">Produksjon</div>
-                <div class="mini-row"><span class="box on"></span> Skjærerom 1 <span class="pill ok" style="margin-left:auto">FERDIG</span></div>
-                <div class="mini-row"><span class="box"></span> Pakkeri <span class="pill doing" style="margin-left:auto">PÅGÅR</span></div>
-                <div class="mini-head">Garderobe</div>
-                <div class="mini-row"><span class="box"></span> Garderobe herrer</div>
-              </div>
+
+            <div class="panel">
+              <h3>For den som har ansvaret</h3>
+              <ul class="feats">
+                <li><span><b>Renholdsplan per bygg</b> — daglig, ukentlig, månedlig, intervall eller bestemte måneder.</span></li>
+                <li><span><b>Avvik i fire trinn</b>: strakstiltak, årsak, korrigerende tiltak, signert lukking.</span></li>
+                <li><span><b>Rapport per besøk og per periode</b>, som PDF eller på e-post hver morgen.</span></li>
+                <li><span><b>Kvalitetslogg</b> som viser hvem som endret hva, og når.</span></li>
+                <li><span><b>Kundeportal</b> der kunden ser og eventuelt godkjenner arbeidet selv.</span></li>
+              </ul>
             </div>
           </div>
 
-          <ul class="feats" style="margin-top: 32px">
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Egen plan per rom</b> — hvert rom har sine egne oppgaver og sine egne ukedager.</span>
-            </li>
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Periodiske oppgaver</b> — noe skal bare gjøres i bestemte måneder, og dukker opp da.</span>
-            </li>
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Rom samlet i områder</b> — med «Huk av alle» for et helt område når det er gjort.</span>
-            </li>
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Flervalg der det trengs</b> — en oppgave kan spørre <em>hvilket</em> middel eller hvilken metode som ble brukt, ikke bare om den er gjort.</span>
-            </li>
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Dokumenter per bygg</b> — kart, avtaler og instrukser ligger der renholderen er.</span>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ============ HYGIENE OG MÅLING ============ -->
-      <section id="hygiene" class="grid-bg" style="background: var(--surface)">
-        <div class="wrap">
-          <span class="tag">Tilleggsmodul</span>
-          <p class="eyebrow">Hygiene og måling</p>
-          <h2>Der «utført»<br />ikke er godt nok.</h2>
-          <p class="lede">
-            På et næringsmiddelanlegg er det ikke avkryssingen som er dokumentasjonen — det er
-            tallet, styrken og tiden. Rentlogg registrerer alle tre, og lar dem sperre. Det
-            samme gjelder et legesenter, en barnehage under et utbrudd eller et treningssenter:
-            overalt der et middel må stå lenge nok, og en prøve må være under en grense.
+          <!--
+            Ærlighetsgrense: her står kun det som faktisk er bygget og verifisert. Ikke skriv noe
+            inn her uten å ha sett det virke i appen først — forrige versjon av denne siden lovet
+            at renholderen hadde sikkerhetsdatabladet ett trykk unna, og det stemte ikke før
+            funksjonen faktisk ble bygget dagen etter.
+          -->
+          <p class="lede" style="margin-top: 32px">
+            Dokumentasjonen er lagt opp etter kravene til internkontroll i
+            næringsmiddellovgivningen: hva som ble gjort, av hvem, når — og hva som ble gjort med
+            avviket for at det ikke skal gjenta seg.
           </p>
-
-          <div class="chain">
-            <span class="link"><b>1</b> Fjerne rester</span>
-            <span class="link"><b>2</b> Rengjøre</span>
-            <span class="link"><b>3</b> Skylle</span>
-            <span class="link hot"><b>4</b> Desinfisere</span>
-            <span class="link"><b>5</b> Skylle</span>
-            <span class="link"><b>6</b> Kontroll</span>
-          </div>
-
-          <div class="pair fade" style="margin-top: 22px">
-            <div>
-              <h3 style="margin: 0 0 3px">Kontakttiden må faktisk gå</h3>
-              <p class="when">Desinfisere · 2 % · 10 minutter.</p>
-              <div class="timer" aria-hidden="true">
-                <span class="dial">
-                  <svg width="62" height="62" viewBox="0 0 62 62">
-                    <circle class="track" cx="31" cy="31" r="27" />
-                    <circle class="run" cx="31" cy="31" r="27" />
-                  </svg>
-                  <span class="dial-num">04:12</span>
-                </span>
-                <div style="font-size: 13.5px; color: var(--slate); max-width: 34ch">
-                  Oppgaven kan ikke kvitteres ut før tiden er ute. Klokka går på serveren, så den
-                  kan ikke omgås ved å stille telefonen.
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 style="margin: 0 0 3px">Målingen mot grensen</h3>
-              <p class="when">ATP-prøve, linje 3.</p>
-              <div aria-hidden="true">
-                <div class="meter-top">
-                  <span class="meter-val" style="color: var(--danger)">420 <span style="font-size: 0.55em; color: var(--slate)">RLU</span></span>
-                  <span style="font-weight: 700; color: var(--danger); font-size: 11px; letter-spacing: 0.04em">UTENFOR</span>
-                </div>
-                <div class="meter-bar">
-                  <span class="meter-fill" style="width: 100%"></span>
-                  <span class="meter-limit" style="left: 36%"></span>
-                </div>
-                <div class="meter-legend"><span>0</span><span>grense 150</span><span>420</span></div>
-              </div>
-              <div class="blocked">
-                <div class="blocked-t">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v6M12 17h.01" /></svg>
-                  Linjen kan ikke frigis
-                </div>
-                <p>
-                  En prøve over grensen stopper frigivelsen. Den kan gis likevel — men det koster en
-                  skriftlig begrunnelse, og begrunnelsen havner i kvalitetsloggen sammen med tallet.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ RENHOLDEREN ============ -->
-      <section id="renholder">
-        <div class="wrap">
-          <p class="eyebrow">Renholderens app</p>
-          <h2>Enkel nok<br />for alle hender.</h2>
-
-          <div class="two">
-            <div>
-              <p class="lede" style="margin-top: 0">
-                Store knapper, få ord og tydelige ikoner. Ingenting å installere — appen åpnes
-                i nettleseren på telefonen renholderen allerede har.
-              </p>
-              <ul class="feats">
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Fem språk</b> — norsk, engelsk, litauisk, latvisk og russisk, valgt av hver bruker.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Tåler dårlig dekning</b> — avkryssinger legges i kø og sendes når nettet er tilbake.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Tåler at telefonen låser seg</b> — kommer du tilbake, står du der du slapp, midt i rommet.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Bilder og signatur</b> — dokumentasjon tas der arbeidet gjøres, ikke etterpå.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Min uke</b> — hva som venter de neste dagene, ikke bare i dag.</span>
-                </li>
-              </ul>
-            </div>
-
-            <div class="phone fade" aria-hidden="true">
-              <div class="phone-notch"></div>
-              <div class="card" style="text-align: center; padding: 22px 16px">
-                <div class="scanbox" style="width: 118px; height: 118px; margin: 0 auto 14px; border: 2px dashed var(--line); border-radius: 12px; display: flex; align-items: center; justify-content: center">
-                  <span class="ring"></span>
-                  <span class="ring d2"></span>
-                  <svg width="52" height="52" viewBox="0 0 32 32" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position: relative; z-index: 1">
-                    <path d="M4 11V6.5A2.5 2.5 0 0 1 6.5 4H11" /><path d="M21 4h4.5A2.5 2.5 0 0 1 28 6.5V11" />
-                    <path d="M28 21v4.5a2.5 2.5 0 0 1-2.5 2.5H21" /><path d="M11 28H6.5A2.5 2.5 0 0 1 4 25.5V21" />
-                    <path d="m10.6 16.3 3.9 3.9 7.3-8" />
-                  </svg>
-                  <span class="scanline"></span>
-                </div>
-                <div style="font-weight: 600; font-size: 15px">Skann QR-koden</div>
-                <div style="color: var(--slate); font-size: 13px; margin-top: 4px">
-                  Hold kameraet mot koden ved inngangen
-                </div>
-              </div>
-              <div class="card" style="margin-top: 12px">
-                <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate); margin-bottom: 8px">
-                  Sist besøkt
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 13.5px">
-                  <span>Bakeri Sørhaug AS</span><span style="color: var(--muted)">i går</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="two" style="margin-top: 44px">
-            <div>
-              <h3 style="margin: 0 0 8px">Kjemikaliene ligger i systemet</h3>
-              <p class="lede" style="margin-top: 0">
-                Ikke bare navnet på midlet, men styrken det blandes i, hvor lenge det skal stå, og
-                det renholderen må vite før hun åpner kanna.
-              </p>
-              <ul class="feats">
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Ett register per bedrift</b> — samme såpe på tvers av byggene, én dosering å oppdatere.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Vises når midlet velges</b> — ikke fem advarsler ved siden av hverandre som ingen leser.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Sikkerhetsdatabladet er ett trykk unna</b>, fra samme skjerm.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Byttes midlet, står historikken</b> — gamle besøk viser fortsatt hva som faktisk ble brukt.</span>
-                </li>
-              </ul>
-            </div>
-
-            <div class="phone fade" aria-hidden="true">
-              <div class="phone-notch"></div>
-              <div class="card">
-                <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px">Hvilket middel ble brukt</div>
-                <div style="display: flex; gap: 6px; flex-wrap: wrap">
-                  <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid var(--ink); background: var(--line-soft)">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.5 12.5 2.5 2.5 5-5.5" /></svg>
-                    Alkalisk skumvask
-                  </span>
-                  <span style="display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px; font-size: 13px; border: 1px solid var(--line); color: var(--slate)">
-                    Bare vann
-                  </span>
-                </div>
-              </div>
-
-              <div style="margin-top: 10px; padding: 11px 13px; background: var(--line-soft); border-left: 3px solid var(--ink)">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
-                  <span style="font-size: 13px; font-weight: 600">Alkalisk skumvask</span>
-                  <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface)">2 %</span>
-                </div>
-                <div style="display: flex; gap: 7px; margin-top: 7px; font-size: 12px; color: var(--slate)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px"><path d="M12 3l7 3v6c0 4.2-2.9 7.9-7 9-4.1-1.1-7-4.8-7-9V6z" /><path d="m9 12 2 2 4-4" /></svg>
-                  <span>Bruk hansker og vernebriller. Skal aldri blandes med syre.</span>
-                </div>
-                <div style="display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; font-size: 12px; font-weight: 500">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v8H3V6h8" /></svg>
-                  Sikkerhetsdatablad
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ AVVIK ============ -->
-      <section id="avvik">
-        <div class="wrap">
-          <p class="eyebrow">Avvik</p>
-          <h2>Når noe ikke er<br />som det skal.</h2>
-
-          <div class="two flip">
-            <div class="panel fade" aria-hidden="true">
-              <span class="sample">Eksempeldata</span>
-              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
-                <div>
-                  <div style="font-weight: 600; font-size: 16px">Knust vindu i kjølerom</div>
-                  <div style="font-size: 12.5px; color: var(--slate); margin-top: 3px">
-                    Nordvik Foods AS · 06:33 · Simona P.
-                  </div>
-                </div>
-                <span class="pill" style="background: #fef2f2; color: var(--danger)">ÅPEN</span>
-              </div>
-              <div style="font-size: 13px; color: var(--slate); margin-top: 12px">
-                Prioritet <b style="color: var(--danger)">Høy</b> · 1 bilde
-              </div>
-              <div style="border-top: 1px solid var(--line-soft); margin-top: 14px; padding-top: 14px">
-                <div style="font-size: 12.5px; color: var(--slate)">Svar fra kunden · 07:12</div>
-                <div style="font-size: 13.5px; margin-top: 3px">Vaktmester varslet, glassmester kommer i dag.</div>
-              </div>
-            </div>
-
-            <div>
-              <p class="lede" style="margin-top: 0">
-                Avvik meldes der og da, med bilde og prioritet. Både renholderen og kunden kan
-                melde, begge kan svare, og saken lukkes først når den faktisk er lukket.
-              </p>
-              <ul class="feats">
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Bilde og prioritet</b> — lav, middels eller høy, satt av den som melder.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Går begge veier</b> — kunden kan melde avvik selv, ikke bare lese dem.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Dialog på saken</b> — svar og oppfølging ligger på avviket, ikke i en e-posttråd.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Kunden godkjenner lukkingen</b> der dere ønsker det.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ KUNDEN ============ -->
-      <section id="kunde">
-        <div class="wrap">
-          <p class="eyebrow">For kunden</p>
-          <h2>Se hva som<br />faktisk ble gjort.</h2>
-
-          <div class="two">
-            <div>
-              <p class="lede" style="margin-top: 0">
-                Kunden logger inn og ser de samme rommene, bildene og avvikene som renholderen
-                har registrert — ikke en oppsummering skrevet i etterkant.
-              </p>
-              <ul class="feats">
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Dagsrapport på e-post</b> automatisk, til det klokkeslettet dere velger per bygg.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Godkjenning per rom</b> — rommet er ikke ferdig før dere har sagt ja.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Egne ansvarsområder merket</b> — rom dere selv vasker står tydelig adskilt.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><b>Egen innlogging per kontaktperson</b> — flere hos kunden kan ha hver sin.</span>
-                </li>
-              </ul>
-            </div>
-
-            <div class="panel fade" aria-hidden="true">
-              <span class="sample">Eksempeldata</span>
-              <div style="font-size: 13px; color: var(--slate)">Nordvik Foods AS</div>
-              <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.025em; margin: 2px 0 16px">
-                I dag, 26. september
-              </div>
-
-              <div class="card" style="border-color: var(--kunde); margin-bottom: 12px">
-                <div style="font-size: 11px; font-weight: 700; color: var(--kunde); letter-spacing: 0.04em">
-                  VENTER PÅ DIN GODKJENNING
-                </div>
-                <div style="font-weight: 600; margin: 6px 0 2px">Pakkeri</div>
-                <div style="font-size: 12.5px; color: var(--slate)">7 av 7 oppgaver · 3 bilder</div>
-                <div style="display: flex; gap: 8px; margin-top: 12px">
-                  <span style="flex: 1; text-align: center; background: var(--ink); color: #fff; font-size: 13px; font-weight: 600; padding: 9px; border-radius: 8px">Godkjenn</span>
-                  <span style="flex: 1; text-align: center; border: 1px solid var(--line); font-size: 13px; font-weight: 600; padding: 9px; border-radius: 8px">Avvis</span>
-                </div>
-              </div>
-
-              <div class="row"><div><div class="row-t">Skjærerom 1</div><div class="row-s">Ferdig 06:42</div></div><span class="pill ok">FULLFØRT</span></div>
-              <div class="row"><div><div class="row-t">Kjølerom</div><div class="row-s">Deres eget ansvar</div></div><span class="pill kunde">DERE</span></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ RAPPORTER ============ -->
-      <section>
-        <div class="wrap">
-          <p class="eyebrow">Rapporter og logg</p>
-          <h2>Hvem, hva og når.</h2>
-          <p class="lede">
-            Hver registrering får tidsstempel, navn og sted — og kommer ut igjen i det formatet
-            mottakeren trenger.
-          </p>
-
-          <div class="panel fade" style="margin-top: 40px">
-            <span class="sample">Eksempeldata</span>
-            <div class="log-row">
-              <span class="avatar">DP</span>
-              <div style="flex: 1; min-width: 0">
-                <div class="row-t">Besøk avsluttet og signert</div>
-                <div class="row-s">06:58 · Danas P. · Nordvik Foods AS</div>
-              </div>
-              <span class="pill ok">SIGNERT</span>
-            </div>
-            <div class="log-row">
-              <span class="avatar">DP</span>
-              <div style="flex: 1; min-width: 0">
-                <div class="row-t">Rom ferdig, 7 av 7 oppgaver</div>
-                <div class="row-s">06:51 · Danas P. · Pakkeri</div>
-              </div>
-              <span class="pill ok">FERDIG</span>
-            </div>
-            <div class="log-row">
-              <span class="avatar">SP</span>
-              <div style="flex: 1; min-width: 0">
-                <div class="row-t">Avvik meldt med bilde</div>
-                <div class="row-s">06:33 · Simona P. · Skjærerom 2</div>
-              </div>
-              <span class="pill doing">ÅPENT</span>
-            </div>
-            <div class="log-row">
-              <span class="avatar">DP</span>
-              <div style="flex: 1; min-width: 0">
-                <div class="row-t">Sjekket inn med QR</div>
-                <div class="row-s">06:02 · Danas P. · Nordvik Foods AS</div>
-              </div>
-              <span class="pill flat">INNE</span>
-            </div>
-          </div>
-
-          <div class="panel fade" style="margin-top: 20px">
-            <span class="sample">Eksempeldata</span>
-            <h3 style="margin: 0 0 3px">Vaskeplan, september</h3>
-            <p style="font-size: 13px; color: var(--slate); margin: 0 0 20px">
-              Rom mot dato for en hel måned. Hull i planen synes uten at noen må lete etter dem.
-            </p>
-            <div class="plan-scroll"><div class="plan" id="plan" aria-hidden="true"></div></div>
-            <div class="plan-legend">
-              <span><i style="background: #bfe6cd"></i> Utført</span>
-              <span><i style="background: #ffd9bd"></i> Påbegynt</span>
-              <span><i style="background: #f9c9c9"></i> Ikke gjort</span>
-              <span><i style="background: var(--line-soft)"></i> Ikke planlagt</span>
-            </div>
-          </div>
-
-          <div class="pair fade" style="margin-top: 20px">
-            <div>
-              <h3 style="margin: 0 0 3px">Avvik per uke</h3>
-              <p class="when">Åpne og lukkede, siste åtte uker.</p>
-              <div class="bars" aria-hidden="true">
-                <div class="bar"><div class="bar-col" style="height: 34%; --i: 0"></div><div class="bar-lab">U33</div></div>
-                <div class="bar"><div class="bar-col" style="height: 52%; --i: 1"></div><div class="bar-lab">U34</div></div>
-                <div class="bar"><div class="bar-col" style="height: 28%; --i: 2"></div><div class="bar-lab">U35</div></div>
-                <div class="bar"><div class="bar-col" style="height: 70%; --i: 3"></div><div class="bar-lab">U36</div></div>
-                <div class="bar"><div class="bar-col" style="height: 44%; --i: 4"></div><div class="bar-lab">U37</div></div>
-                <div class="bar"><div class="bar-col" style="height: 22%; --i: 5"></div><div class="bar-lab">U38</div></div>
-                <div class="bar"><div class="bar-col" style="height: 36%; --i: 6"></div><div class="bar-lab">U39</div></div>
-                <div class="bar"><div class="bar-col" style="height: 16%; --i: 7"></div><div class="bar-lab">U40</div></div>
-              </div>
-            </div>
-            <div>
-              <h3 style="margin: 0 0 3px">Rom gjort som planlagt</h3>
-              <p class="when">Siste 30 dager, alle bygg.</p>
-              <div style="font-size: clamp(48px, 9vw, 76px); font-weight: 700; letter-spacing: -0.05em; line-height: 1">
-                94<span style="font-size: 0.45em; color: var(--slate)">&thinsp;%</span>
-              </div>
-              <div class="track" style="margin-top: 16px">
-                <div class="fill bar-fill" style="width: 94%; background: var(--ink); transform-origin: left"></div>
-              </div>
-              <p style="font-size: 12.5px; color: var(--muted); margin: 12px 0 0">
-                Tallet kommer fra de samme avkryssingene som rapportene — ikke fra en egen
-                innrapportering noen må huske å gjøre.
-              </p>
-            </div>
-          </div>
-
-          <ul class="feats" style="margin-top: 32px">
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Rapport per besøk</b> som PDF, og per bygg for en hel periode.</span>
-            </li>
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Månedsrutenett</b> — rom mot dato, så hull i planen synes med én gang.</span>
-            </li>
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Alle bilder som nedlasting</b> når kunden eller et tilsyn ber om dem.</span>
-            </li>
-            <li>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-              <span><b>Sammendrag med CSV</b> for den som vil regne videre selv.</span>
-            </li>
-          </ul>
         </div>
       </section>
 
@@ -1404,34 +909,12 @@
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
                   <span>Frigivelse sperret ved prøve utenfor grensen, med begrunnelse i loggen.</span>
                 </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span><a href="#hygiene" style="color: var(--ink); font-weight: 600">Se hvordan det ser ut ↑</a></span>
-                </li>
               </ul>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ============ SPRÅK ============ -->
-      <section>
-        <div class="wrap">
-          <p class="eyebrow">Flerspråklig</p>
-          <h2>Snakker renholderens språk.</h2>
-          <p class="lede">
-            Hver bruker velger sitt eget språk. Oppgavetekstene følger med.
-          </p>
-
-          <div class="langs">
-            <div class="lang"><div class="lang-n">Norsk</div><div class="lang-t">Kvitter ut rom</div></div>
-            <div class="lang"><div class="lang-n">English</div><div class="lang-t">Complete room</div></div>
-            <div class="lang"><div class="lang-n">Lietuvių</div><div class="lang-t">Užbaigti patalpą</div></div>
-            <div class="lang"><div class="lang-n">Latviešu</div><div class="lang-t">Pabeigt telpu</div></div>
-            <div class="lang"><div class="lang-n">Русский</div><div class="lang-t">Завершить помещение</div></div>
-          </div>
-        </div>
-      </section>
 
       <!-- ============ FAQ ============ -->
       <section id="sporsmal">
@@ -1572,40 +1055,6 @@
         track.innerHTML = half + half;
       })();
 
-      // Vaskeplanen: rom mot dato, slik Rapporter faktisk tegner den. Bygges her fordi 7 rom
-      // ganger 30 dager er 210 ruter, og de hører ikke hjemme i kildekoden til en side
-      // kategoriseringstjenester skal lese.
-      (function () {
-        var host = document.getElementById("plan");
-        if (!host) return;
-
-        var rooms = [
-          { n: "Skjærerom 1", d: [1, 2, 3, 4, 5], miss: [] },
-          { n: "Skjærerom 2", d: [1, 2, 3, 4, 5], miss: [23] },
-          { n: "Pakkeri", d: [1, 2, 3, 4, 5, 6], miss: [] },
-          { n: "Kjølerom", d: [1, 3, 5], miss: [10] },
-          { n: "Garderobe", d: [1, 2, 3, 4, 5], miss: [17] },
-          { n: "Kontor", d: [2, 4], miss: [] },
-          { n: "Lager", d: [1], miss: [] },
-        ];
-        var DAYS = 30;
-        var TODAY = 27;
-
-        host.innerHTML = rooms.map(function (room, r) {
-          var cells = "";
-          for (var day = 1; day <= DAYS; day++) {
-            var wd = ((day + 1) % 7) || 7;
-            var planned = room.d.indexOf(wd) !== -1;
-            var cls = "cell";
-            if (planned && day < TODAY) cls += room.miss.indexOf(day) !== -1 ? " miss" : " ok";
-            else if (planned && day === TODAY) cls += " doing";
-            // Planlagt, men fram i tid, og alt som ikke er planlagt, står som tom rute.
-            cells += '<span class="' + cls + '" style="--d:' + (day + r * 3) + '"></span>';
-          }
-          return '<div class="plan-row"><span class="plan-name">' + room.n +
-            '</span><span class="plan-days">' + cells + "</span></div>";
-        }).join("");
-      })();
 
       (function () {
         var items = document.querySelectorAll(".fade");
