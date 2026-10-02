@@ -17,7 +17,7 @@
   "step.control": "Check",
   "cleaner.contactStart": "Start contact time",
   "cleaner.contactDone": "CONTACT TIME DONE",
-  "cleaner.contactLabel": "contact time {{minutes}} min",
+  "cleaner.contactLabel": "contact time {minutes} min",
   "cleaner.measureValue": "Value",
   "cleaner.measureInside": "WITHIN",
   "cleaner.measureOutside": "OUTSIDE",

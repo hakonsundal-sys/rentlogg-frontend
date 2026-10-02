@@ -18,7 +18,7 @@
   "step.control": "Pārbaude",
   "cleaner.contactStart": "Sākt iedarbības laiku",
   "cleaner.contactDone": "IEDARBĪBAS LAIKS BEIDZIES",
-  "cleaner.contactLabel": "iedarbības laiks {{minutes}} min",
+  "cleaner.contactLabel": "iedarbības laiks {minutes} min",
   "cleaner.measureValue": "Vērtība",
   "cleaner.measureInside": "ATBILST",
   "cleaner.measureOutside": "NEATBILST",

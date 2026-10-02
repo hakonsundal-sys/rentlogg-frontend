@@ -17,7 +17,7 @@
   "step.control": "Kontroll",
   "cleaner.contactStart": "Start kontakttid",
   "cleaner.contactDone": "KONTAKTTID FERDIG",
-  "cleaner.contactLabel": "kontakttid {{minutes}} min",
+  "cleaner.contactLabel": "kontakttid {minutes} min",
   "cleaner.measureValue": "Verdi",
   "cleaner.measureInside": "INNENFOR",
   "cleaner.measureOutside": "UTENFOR",

@@ -19,7 +19,7 @@
   "step.control": "Контроль",
   "cleaner.contactStart": "Запустить время воздействия",
   "cleaner.contactDone": "ВРЕМЯ ВОЗДЕЙСТВИЯ ИСТЕКЛО",
-  "cleaner.contactLabel": "время воздействия {{minutes}} мин",
+  "cleaner.contactLabel": "время воздействия {minutes} мин",
   "cleaner.measureValue": "Значение",
   "cleaner.measureInside": "В НОРМЕ",
   "cleaner.measureOutside": "ВНЕ НОРМЫ",

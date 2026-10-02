@@ -19,7 +19,7 @@
   "step.control": "Patikra",
   "cleaner.contactStart": "Pradėti poveikio laiką",
   "cleaner.contactDone": "POVEIKIO LAIKAS BAIGTAS",
-  "cleaner.contactLabel": "poveikio laikas {{minutes}} min",
+  "cleaner.contactLabel": "poveikio laikas {minutes} min",
   "cleaner.measureValue": "Reikšmė",
   "cleaner.measureInside": "ATITINKA",
   "cleaner.measureOutside": "NEATITINKA",
