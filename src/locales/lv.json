@@ -444,5 +444,7 @@
   "weekday.short.3": "Tr",
   "weekday.short.4": "Ce",
   "weekday.short.5": "Pk",
-  "weekday.short.6": "Se"
+  "weekday.short.6": "Se",
+  "cleaner.noTasksToday": "Šodien nav uzdevumu",
+  "cleaner.noTasksTodayExplain": "Neviens šīs telpas uzdevums nav ieplānots šodien, tāpēc nav ko apstiprināt."
 }

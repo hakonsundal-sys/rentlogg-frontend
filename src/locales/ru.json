@@ -456,5 +456,7 @@
   "weekday.short.3": "Ср",
   "weekday.short.4": "Чт",
   "weekday.short.5": "Пт",
-  "weekday.short.6": "Сб"
+  "weekday.short.6": "Сб",
+  "cleaner.noTasksToday": "Сегодня задач нет",
+  "cleaner.noTasksTodayExplain": "Ни одна задача в этом помещении не запланирована на сегодня, подтверждать нечего."
 }

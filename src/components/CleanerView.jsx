@@ -1216,12 +1216,31 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
               when it was in fact waiting on somebody else, so nobody knew to chase the sign-off.
               RunRoomsAndItems has always labelled this correctly — this is the live cleaner view
               catching up to it. */}
-          <button onClick={completeRoom} style={{
-            background: "var(--text-success)", color: "white", border: "none",
-            padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
-          }}>
-            {room.requires_approval ? t("run.sendForApproval") : t("cleaner.completeRoom")}
-          </button>
+          {/* Nothing planned here today: say so instead of offering a button that signs for an
+              empty checklist. The room is still open for a note or a photo — she may well have
+              been in there — but the sign-off is what has to mean something, and on a gated room
+              it is the customer who would have been asked to put her name to a blank page.
+
+              Read off the open visit's own items rather than the room list's dueItemCount, even
+              though the two normally agree: the list is fetched once and refreshed on actions, so
+              an admin changing the plan mid-shift leaves it stale, and gating on it put this
+              sentence under a checklist that was visibly showing a task. The counter above and
+              this decision now read the same array. */}
+          {room.itemCount > 0 && roomRun.items.length === 0 ? (
+            <div style={{
+              padding: "12px", borderRadius: "var(--radius)", fontSize: 13,
+              background: "var(--surface-1)", color: "var(--text-secondary)", textAlign: "center",
+            }}>
+              {t("cleaner.noTasksTodayExplain")}
+            </div>
+          ) : (
+            <button onClick={completeRoom} style={{
+              background: "var(--text-success)", color: "white", border: "none",
+              padding: "12px", borderRadius: "var(--radius)", fontSize: 14, cursor: "pointer",
+            }}>
+              {room.requires_approval ? t("run.sendForApproval") : t("cleaner.completeRoom")}
+            </button>
+          )}
         </div>
       </Card>
     );
@@ -1969,7 +1988,13 @@ function RoomRow({ room, expanded, onOpen, muted, translatedName }) {
       : t("cleaner.neverCleaned")
     : completed && room.signedInitials
       ? t("cleaner.signedBy", { name: room.signedInitials })
-      : tn("cleaner.taskCount", room.itemCount);
+      // The count has to be today's, not the room's total. A room whose tasks all fall on other
+      // days was advertising "1 oppgave" and then opening empty, which reads as a bug in the app
+      // rather than as a plan — and with the periodic-months mode that is most of the year for a
+      // task due in two months. A room with no tasks at all keeps saying so.
+      : room.itemCount > 0 && room.dueItemCount === 0
+        ? t("cleaner.noTasksToday")
+        : tn("cleaner.taskCount", room.dueItemCount ?? room.itemCount);
 
   return (
     <div

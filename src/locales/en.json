@@ -432,5 +432,7 @@
   "weekday.short.3": "We",
   "weekday.short.4": "Th",
   "weekday.short.5": "Fr",
-  "weekday.short.6": "Sa"
+  "weekday.short.6": "Sa",
+  "cleaner.noTasksToday": "No tasks today",
+  "cleaner.noTasksTodayExplain": "None of this room's tasks are scheduled for today, so there is nothing to sign off."
 }

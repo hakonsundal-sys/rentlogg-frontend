@@ -432,5 +432,7 @@
   "weekday.short.3": "On",
   "weekday.short.4": "To",
   "weekday.short.5": "Fr",
-  "weekday.short.6": "Lø"
+  "weekday.short.6": "Lø",
+  "cleaner.noTasksToday": "Ingen oppgaver i dag",
+  "cleaner.noTasksTodayExplain": "Ingen av oppgavene i dette rommet er planlagt i dag, så det er ingenting å kvittere ut."
 }

@@ -456,5 +456,7 @@
   "weekday.short.3": "Tr",
   "weekday.short.4": "Kt",
   "weekday.short.5": "Pn",
-  "weekday.short.6": "Št"
+  "weekday.short.6": "Št",
+  "cleaner.noTasksToday": "Šiandien užduočių nėra",
+  "cleaner.noTasksTodayExplain": "Nė viena šio kambario užduotis šiandien neplanuota, todėl nėra ko patvirtinti."
 }
