@@ -163,11 +163,11 @@ function AppInner() {
       return <AdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
     }
 
-    return <UserShell auth={auth} onLogout={() => setAuth(null)} checkinToken={checkinToken} onCheckinHandled={clearCheckinParam} />;
+    return <UserShell auth={auth} branding={branding} onLogout={() => setAuth(null)} checkinToken={checkinToken} onCheckinHandled={clearCheckinParam} />;
   }
 }
 
-function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
+function UserShell({ auth, branding, onLogout, checkinToken, onCheckinHandled }) {
   const { token, user } = auth;
   const t = useT();
 
