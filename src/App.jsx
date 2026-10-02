@@ -122,6 +122,28 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth?.token]);
 
+  // The server stops honouring a token when its account is deactivated, its password changes, or the
+  // 12 hours run out. Without this the person stayed on a screen where every request failed with
+  // "invalid token" and had to work out for themselves that they should log in again. Only a
+  // response to *this* session's token counts (see apiFetch), and a password change made here swaps
+  // the token for the fresh one the server returned rather than ending the session.
+  useEffect(() => {
+    if (!auth?.token) return undefined;
+    function onEnded(e) {
+      if (e.detail?.token === auth.token) setAuth(null);
+    }
+    function onRefreshed(e) {
+      if (e.detail?.from === auth.token) setAuth({ ...auth, token: e.detail.to });
+    }
+    window.addEventListener("rentlogg:session-ended", onEnded);
+    window.addEventListener("rentlogg:token-refreshed", onRefreshed);
+    return () => {
+      window.removeEventListener("rentlogg:session-ended", onEnded);
+      window.removeEventListener("rentlogg:token-refreshed", onRefreshed);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth]);
+
   // A ?checkin= link means something for a cleaner (their check-in flow) or a customer (jumps
   // to that site's "Fyll ut sjekkliste i dag") — for every other role it's just dead weight
   // sitting in the address bar, so drop it once we know who actually logged in.

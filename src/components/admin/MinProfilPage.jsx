@@ -71,10 +71,16 @@ export default function MinProfilPage({ token }) {
     }
     setPwSaving(true);
     try {
-      await apiFetch("/auth/me/password", {
+      const result = await apiFetch("/auth/me/password", {
         token, method: "PATCH",
         body: JSON.stringify({ currentPassword: pw.current, newPassword: pw.next }),
       });
+      // Changing the password ends every session under the old one, this tab's included, so the
+      // server hands back a fresh token. App swaps it in; without it the next request here would
+      // come back 401 and log her out of the page she just used.
+      if (result?.token) {
+        window.dispatchEvent(new CustomEvent("rentlogg:token-refreshed", { detail: { from: token, to: result.token } }));
+      }
       setPw({ current: "", next: "", confirm: "" });
       setPwSaved(true);
       setTimeout(() => setPwSaved(false), 4000);

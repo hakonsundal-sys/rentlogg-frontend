@@ -16,6 +16,13 @@ export async function apiFetch(path, { token, ...options } = {}) {
   const data = contentType.includes("application/json") ? await res.json() : null;
 
   if (!res.ok) {
+    // The server no longer honours this login token — expired, or ended on purpose (the account was
+    // deactivated, the password changed). Say which token, so App only reacts when it was the one
+    // the person is actually using: an old token replayed from the offline queue must not log out
+    // whoever has since signed in.
+    if (res.status === 401 && token && data?.code === "invalid_token") {
+      window.dispatchEvent(new CustomEvent("rentlogg:session-ended", { detail: { token } }));
+    }
     const err = new Error(translateApiError(data?.code, data?.error) || `Request failed (${res.status})`);
     err.code = data?.code;
     err.status = res.status;
