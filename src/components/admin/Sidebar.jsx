@@ -51,11 +51,8 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, n
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, paddingLeft: 4 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 700, letterSpacing: "-0.021em" }}>
-              {/* Kundens egen logo der firmaet har en. Admin sitter her hele dagen, så
-                  white-label som bare gjaldt innloggingsskjermen ville vært halvveis. */}
-              {user?.branding?.logo_data_url
-                ? <img src={user.branding.logo_data_url} alt={user.branding.name || ""} style={{ height: 26, maxWidth: 140, objectFit: "contain", flexShrink: 0 }} />
-                : <><BrandMark size={26} />Rentlogg</>}
+              <BrandMark size={26} />
+              Rentlogg
             </div>
             <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2, marginLeft: 34 }}>
               Dokumentert etterkontroll

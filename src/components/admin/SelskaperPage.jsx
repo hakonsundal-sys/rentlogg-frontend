@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Building2, Check, Pencil, X } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, linkBtnStyle } from "../shared";
+import { Card } from "../shared";
 
 export default function SelskaperPage({ token }) {
   const [companies, setCompanies] = useState([]);
@@ -50,44 +50,6 @@ export default function SelskaperPage({ token }) {
       setError(err.message);
     } finally {
       setSavingName(false);
-    }
-  }
-
-  // Logoen leses til en data-URI i nettleseren og sendes som tekst. Det finnes derfor ingen
-  // opplastingsrute og ingen fil på disk — se src/branding.js og companies i backendens db.js
-  // for hvorfor en logo er det ene bildet i dette systemet som ikke er en fil.
-  //
-  // Grensen her er 150 kB på den ferdige data-URI-en, altså etter base64, fordi det er den
-  // strengen som faktisk sendes. En base64-streng er ~33 % større enn filen, så en 120 kB PNG
-  // havner over. Backend håndhever det samme; dette er bare for å si fra før opplastingen.
-  const MAX_LOGO_CHARS = 150 * 1024;
-
-  function pickLogo(companyId, event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || "");
-      if (dataUrl.length > MAX_LOGO_CHARS) {
-        setError(`Logoen er for stor (${Math.round(dataUrl.length / 1024)} kB etter koding). Maks 150 kB.`);
-        return;
-      }
-      saveBranding(companyId, { logo_data_url: dataUrl });
-    };
-    reader.onerror = () => setError("Klarte ikke å lese filen.");
-    reader.readAsDataURL(file);
-  }
-
-  async function saveBranding(companyId, fields) {
-    setError("");
-    try {
-      await apiFetch(`/companies/${companyId}/branding`, {
-        token, method: "PATCH", body: JSON.stringify(fields),
-      });
-      loadAll();
-    } catch (err) {
-      setError(err.message);
     }
   }
 
@@ -193,64 +155,6 @@ export default function SelskaperPage({ token }) {
                 </div>
               </div>
             )}
-            {/* White-label. Bevisst her og ikke hos firmaets egen admin: dette er noe vi slår på
-                for en kunde, ikke en innstilling de roter med selv midt i en arbeidsdag. */}
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8 }}>Egen profil</div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5 }}>
-                  <input
-                    type="color"
-                    value={company.brand_color || "#1e2a38"}
-                    onChange={(e) => saveBranding(company.id, { brand_color: e.target.value })}
-                    style={{ width: 34, height: 28, padding: 0, border: "1px solid var(--border)", background: "none", cursor: "pointer" }}
-                  />
-                  Kulør
-                </label>
-                {company.brand_color && (
-                  <button onClick={() => saveBranding(company.id, { brand_color: "" })} style={linkBtnStyle}>
-                    Nullstill kulør
-                  </button>
-                )}
-
-                {company.logo_data_url ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <img src={company.logo_data_url} alt="" style={{ height: 24, maxWidth: 110, objectFit: "contain" }} />
-                    <button onClick={() => saveBranding(company.id, { logo_data_url: "" })} style={linkBtnStyle}>
-                      Fjern logo
-                    </button>
-                  </span>
-                ) : (
-                  <label style={{ fontSize: 12.5, cursor: "pointer", color: "var(--brand-dark)", fontWeight: 500 }}>
-                    + Last opp logo
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                      onChange={(e) => pickLogo(company.id, e)}
-                      style={{ display: "none" }}
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <input
-                  defaultValue={company.custom_domain || ""}
-                  onBlur={(e) => {
-                    const v = e.target.value.trim();
-                    if (v !== (company.custom_domain || "")) saveBranding(company.id, { custom_domain: v });
-                  }}
-                  placeholder="rent.kundensdomene.no"
-                  style={{ ...inputStyle, width: 230, fontSize: 12.5 }}
-                />
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Eget domene</span>
-              </div>
-              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.5, maxWidth: 440 }}>
-                Kuløren og logoen virker med én gang. Domenet er bare oppslaget &mdash; DNS, sertifikat,
-                domenet lagt til i Vercel og <code>ALLOWED_ORIGINS</code> må settes opp for hånd per kunde
-                før verten faktisk svarer.
-              </div>
-            </div>
           </Card>
         ))}
       </div>
