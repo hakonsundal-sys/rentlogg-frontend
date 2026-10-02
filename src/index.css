@@ -26,10 +26,10 @@
 :root {
   --font-sans: "Schibsted Grotesk", system-ui, "Segoe UI", Roboto, sans-serif;
 
-  --surface-0: #f4f7fa;
+  --surface-0: #f9f9fc;
   --surface-1: #ffffff;
   --surface-2: #ffffff;
-  --border: #d7dfe8;
+  --border: #e4e4e7;
   --border-danger: #fecaca;
   --bg-danger: #fef2f2;
 
@@ -38,15 +38,14 @@
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  --text-primary: #1e2a38;
-  --text-secondary: #556677;
-  /* Målt, ikke valgt på øyemål: 5.0:1 på hvitt og 4.7:1 på --page-bg, altså over WCAG AA sitt
-     krav på 4.5:1. Forrige verdi (#a1a1aa) lå på 2.9:1 og strøk — det betyr mest for en
-     renholder som leser 11px metatekst på telefon i et kjølerom.
-     Prisen er at avstanden opp til --text-secondary er liten: en akromatisk palett har ikke
-     plass til tre gråtoner som alle skal bestå AA. Skill dem med størrelse og vekt i stedet
-     for å gjøre denne lysere igjen. */
-  --text-muted: #5f7186;
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  /* Målt, ikke valgt på øyemål: 5.2:1 på hvitt, over WCAG AA sitt krav på 4.5:1.
+     Den opprinnelige violett-paletten hadde #a1a1aa her, som lå på 2.6:1 og strøk. Da
+     kuløren kom tilbake 02.10 ble IKKE den verdien med — det betyr mest for en renholder
+     som leser 11px metatekst på telefon i et kjølerom, og den feilen skal ikke gjeninnføres
+     fordi den tilfeldigvis hørte til samme palett. */
+  --text-muted: #6e6a7a;
   --text-success: #16a34a;
   --text-warning: #d97706;
   --text-danger: #dc2626;
@@ -56,28 +55,28 @@
   --c-red: color-mix(in srgb, #dc2626 15%, transparent);
 
   /* Rentlogg brand theme — shared across the admin panel, cleaner, and customer views.
-     Monokrom skifer: ingen merkevarekulør i det hele tatt. Hele identiteten bæres av
-     typografien, hårstrek-kantene og flatene — så det finnes ingen "brand hue" å drifte
-     tilbake til. Erstattet den dypt violette fra 24.09.
+     Dyp violett. Lå her fra 24.09, ble byttet ut med monokrom skifer 30.09, og kom tilbake
+     02.10: skiferen ble valgt mens vi la oss tett opptil Vaskelogg, og da den linja ble
+     forlatt var det ingen grunn igjen til å holde på en palett vi ikke hadde valgt selv.
 
-     Fordi paletten nå er akromatisk, er HVER farge i appen semantisk: grønn betyr ferdig,
-     oransje betyr pågår, rød betyr avvik, blå betyr kundens eget. Det er poenget med å gi
-     slipp på kuløren, og det gjør at en ny farge aldri skal innføres "bare for å pynte". */
-  --page-bg: #f4f7fa;
+     Kuløren bærer merkevaren og alt som er handling: knapper, aktive menyrader, lenker.
+     De semantiske fargene står urørt ved siden av — grønn betyr ferdig, oransje betyr
+     pågår, rød betyr avvik, blå betyr kundens eget. Ikke la violetten ta noen av de fire
+     betydningene, og ikke innfør en femte farge for å pynte. */
+  --page-bg: #f9f9fc;
   --sidebar-bg: #ffffff;
-  --sidebar-border: #d7dfe8;
-  --sidebar-active-bg: #e7ecf1;
-  --brand: #1e2a38;
-  --brand-dark: #0f1822;
-  --brand-bg: #e7ecf1;
-  /* Flat, ikke gradient. Variabelen beholdes fordi flere flater refererer den; en gradient
-     ville vært det eneste stedet i profilen med en myk overgang, og lest som en fremmedlegeme. */
-  --brand-gradient: var(--brand);
-  --banner-gradient: linear-gradient(90deg, #e7ecf1, #f4f7fa);
+  --sidebar-border: #e9e7f2;
+  --sidebar-active-bg: #f5f3ff;
+  --brand: #6d28d9;
+  --brand-dark: #5b21b6;
+  --brand-bg: #f5f3ff;
+  --brand-gradient: linear-gradient(135deg, #7c3aed, var(--brand-dark));
+  --banner-gradient: linear-gradient(90deg, #f0ebff, #faf8ff);
 
-  /* Knappeflate. Lysere enn --brand med vilje: en heldekkende #1e2a38-knapp ved siden av
-     #1e2a38 brødtekst gjør at knappen forsvinner inn i teksten rundt. */
-  --brand-solid: #475a6e;
+  /* Knappeflate. Her er den lik --brand: hvit tekst på #6d28d9 gir 7.1:1, og kuløren skiller
+     seg allerede tydelig fra brødteksten. Skiferen trengte en lysere variant fordi knappen
+     ellers forsvant inn i teksten rundt — det problemet finnes ikke med en kulør. */
+  --brand-solid: #6d28d9;
 
   /* Orange did not leave the product, it stopped being two things at once. It used to be the
      brand/CTA color AND the "in progress" status; ResponsibleBadge's comment below records why
