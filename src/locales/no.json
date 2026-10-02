@@ -1,5 +1,6 @@
 {
   "app.logout": "Logg ut",
+  "app.logoutPending": "Det ligger endringer som ikke er sendt ennå ({count}). De går tapt hvis du logger ut. Logg ut likevel?",
   "app.tagline": "Dokumentert etterkontroll",
   "cleaner.attachPhoto": "Legg ved bilde",
   "cleaner.back": "Tilbake",
@@ -186,6 +187,7 @@
   "error.signature_required": "Skriv inn navnet ditt for å signere.",
   "error.site_and_description_required": "Lokasjon og beskrivelse er påkrevd.",
   "error.too_many_login_attempts": "For mange innloggingsforsøk. Prøv igjen om litt.",
+  "error.too_many_requests": "For mange forespørsler. Prøv igjen om litt.",
   "error.unknown_order": "Ukjent ordre.",
   "error.unknown_qr_code": "Ukjent QR-kode.",
   "error.unknown_room": "Ukjent rom.",

@@ -1,5 +1,6 @@
 {
   "app.logout": "Atsijungti",
+  "app.logoutPending": "Yra dar neišsiųstų pakeitimų ({count}). Jei atsijungsite, jie bus prarasti. Vis tiek atsijungti?",
   "app.tagline": "Dokumentuota valymo kontrolė",
   "cleaner.attachPhoto": "Pridėti nuotrauką",
   "cleaner.back": "Atgal",
@@ -200,6 +201,7 @@
   "error.signature_required": "Įveskite savo vardą, kad pasirašytumėte.",
   "error.site_and_description_required": "Reikia nurodyti objektą ir aprašymą.",
   "error.too_many_login_attempts": "Per daug bandymų prisijungti. Pabandykite kiek vėliau.",
+  "error.too_many_requests": "Per daug užklausų. Pabandykite kiek vėliau.",
   "error.unknown_order": "Nežinomas užsakymas.",
   "error.unknown_qr_code": "Nežinomas QR kodas.",
   "error.unknown_room": "Nežinoma patalpa.",

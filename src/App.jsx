@@ -8,8 +8,9 @@ import CleanerView, { clearCleanerContext } from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
 import { BrandMark, RoleBadge } from "./components/shared";
 import LanguagePicker from "./components/LanguagePicker";
-import { I18nProvider, useT } from "./i18n";
+import { I18nProvider, useT, translateNow } from "./i18n";
 import { apiFetch } from "./api";
+import { pendingCount, clearQueue } from "./offlineQueue";
 
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
@@ -60,6 +61,19 @@ function AppInner() {
     // A cleaner's device is usually shared (one work phone, not one per person) — don't let the
     // next person who logs in on it inherit whichever site/room the previous cleaner had open.
     if (!value) clearCleanerContext();
+  }
+
+  // The offline queue keeps the login token of every unsent action (a replay has to authenticate),
+  // and it is not emptied by clearing the session. Logging out with something still queued would
+  // either leave a live token on a shared phone or, if it were wiped silently, throw away a
+  // cleaner's unsent work without a word — so ask first, and clear only on a yes.
+  async function logout() {
+    const pending = await pendingCount();
+    if (pending > 0) {
+      if (!window.confirm(translateNow("app.logoutPending", { count: pending }))) return;
+      await clearQueue();
+    }
+    setAuth(null);
   }
 
   // A language switch applies instantly in the UI (see i18n.jsx) — this just makes it follow the
@@ -139,14 +153,14 @@ function AppInner() {
     // 2026-09-21): the people using them read Norwegian, and the ~380 strings behind LokasjonerPage
     // and friends would have swamped the translation pass that actually matters — the cleaner's.
     if (user.role === "super_admin") {
-      return <SuperAdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
+      return <SuperAdminLayout token={token} user={user} onLogout={logout} />;
     }
 
     if (user.role === "admin" || user.role === "manager") {
-      return <AdminLayout token={token} user={user} onLogout={() => setAuth(null)} />;
+      return <AdminLayout token={token} user={user} onLogout={logout} />;
     }
 
-    return <UserShell auth={auth} onLogout={() => setAuth(null)} checkinToken={checkinToken} onCheckinHandled={clearCheckinParam} />;
+    return <UserShell auth={auth} onLogout={logout} checkinToken={checkinToken} onCheckinHandled={clearCheckinParam} />;
   }
 }
 

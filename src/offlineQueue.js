@@ -150,6 +150,34 @@ export async function queueableFetch(path, options = {}) {
   }
 }
 
+// Each queued entry carries the login token it was made under (a replay has to authenticate), so a
+// non-empty queue is the one place a token outlives a logout. The count lets the logout flow ask
+// before throwing unsent work away, and clearQueue removes the entries — and the tokens — once the
+// person has agreed.
+export async function pendingCount() {
+  try {
+    const db = await openDb();
+    return (await getAllEntries(db)).length;
+  } catch {
+    return 0; // IndexedDB unavailable — nothing was queued either
+  }
+}
+
+export async function clearQueue() {
+  try {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).clear();
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    notify({ type: "queue-changed" });
+  } catch {
+    // Nothing to clear if the store can't be opened.
+  }
+}
+
 export function useQueueStatus() {
   const [pendingCount, setPendingCount] = useState(0);
 

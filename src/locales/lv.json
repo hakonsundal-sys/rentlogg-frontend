@@ -1,5 +1,6 @@
 {
   "app.logout": "Atteikties",
+  "app.logoutPending": "Ir vēl neiesūtītas izmaiņas ({count}). Ja izrakstīsieties, tās tiks zaudētas. Tomēr izrakstīties?",
   "app.tagline": "Dokumentēta uzkopšanas kontrole",
   "cleaner.attachPhoto": "Pievienot fotoattēlu",
   "cleaner.back": "Atpakaļ",
@@ -193,6 +194,7 @@
   "error.signature_required": "Ievadiet savu vārdu, lai parakstītu.",
   "error.site_and_description_required": "Nepieciešams objekts un apraksts.",
   "error.too_many_login_attempts": "Pārāk daudz pieteikšanās mēģinājumu. Mēģiniet nedaudz vēlāk.",
+  "error.too_many_requests": "Pārāk daudz pieprasījumu. Mēģiniet nedaudz vēlāk.",
   "error.unknown_order": "Nezināms pasūtījums.",
   "error.unknown_qr_code": "Nezināms QR kods.",
   "error.unknown_room": "Nezināma telpa.",

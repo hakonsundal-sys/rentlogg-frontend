@@ -82,6 +82,13 @@ export function translateApiError(code, fallbackText) {
   return dict[key] ?? DICTS[DEFAULT_LANGUAGE][key] ?? fallbackText ?? key;
 }
 
+// Translate outside React, in whatever language is active right now — for the few places that run
+// before or above the provider, such as App's own logout confirmation.
+export function translateNow(key, vars) {
+  const dict = DICTS[activeLanguage] || DICTS[DEFAULT_LANGUAGE];
+  return interpolate(dict[key] ?? DICTS[DEFAULT_LANGUAGE][key] ?? key, vars);
+}
+
 export function I18nProvider({ user, onLanguageChange, children }) {
   const [language, setLanguageState] = useState(() => resolveLanguage(user));
 

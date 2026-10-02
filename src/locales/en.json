@@ -1,5 +1,6 @@
 {
   "app.logout": "Log out",
+  "app.logoutPending": "There are changes that have not been sent yet ({count}). They will be lost if you log out. Log out anyway?",
   "app.tagline": "Documented cleaning checks",
   "cleaner.attachPhoto": "Attach a photo",
   "cleaner.back": "Back",
@@ -186,6 +187,7 @@
   "error.signature_required": "Enter your name to sign.",
   "error.site_and_description_required": "A location and a description are required.",
   "error.too_many_login_attempts": "Too many login attempts. Try again shortly.",
+  "error.too_many_requests": "Too many requests. Try again in a moment.",
   "error.unknown_order": "Unknown order.",
   "error.unknown_qr_code": "Unknown QR code.",
   "error.unknown_room": "Unknown room.",

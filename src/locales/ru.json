@@ -1,5 +1,6 @@
 {
   "app.logout": "Выйти",
+  "app.logoutPending": "Есть ещё не отправленные изменения ({count}). Если выйти, они будут потеряны. Всё равно выйти?",
   "app.tagline": "Документированный контроль уборки",
   "cleaner.attachPhoto": "Прикрепить фото",
   "cleaner.back": "Назад",
@@ -200,6 +201,7 @@
   "error.signature_required": "Введите своё имя, чтобы подписать.",
   "error.site_and_description_required": "Требуются объект и описание.",
   "error.too_many_login_attempts": "Слишком много попыток входа. Попробуйте чуть позже.",
+  "error.too_many_requests": "Слишком много запросов. Попробуйте чуть позже.",
   "error.unknown_order": "Неизвестный заказ.",
   "error.unknown_qr_code": "Неизвестный QR-код.",
   "error.unknown_room": "Неизвестное помещение.",
