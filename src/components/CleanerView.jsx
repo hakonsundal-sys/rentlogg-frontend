@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays, Search, GraduationCap, Languages,
+  QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, ExternalLink, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays, Search, GraduationCap, Languages,
 } from "lucide-react";
 import { apiFetch, API_URL } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
@@ -1816,12 +1816,12 @@ function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption,
           ))}
         </div>
       )}
-      {/* Kjemikaliet renholderen faktisk valgte: styrke og sikkerhetsnotat, vist først når
+      {/* Kjemikaliet renholderen faktisk valgte: styrke, sikkerhetsnotat og datablad, vist først når
           valget er tatt. Vist før ville det vært fem kort med advarsler ved siden av hverandre,
           som ingen leser. Etter er det ett kort om det midlet hun står med i hånda.
           Verdiene er besøkets egen kopi, ikke et oppslag i registeret — byttes doseringen neste
           år, viser gamle besøk fortsatt hva som faktisk ble brukt. */}
-      {hasOptions && item.options.filter((o) => o.selected && (o.chemical_strength || o.chemical_safety_note)).map((o) => (
+      {hasOptions && item.options.filter((o) => o.selected && (o.chemical_strength || o.chemical_safety_note || o.chemical_sds_url)).map((o) => (
         <div key={`chem-${o.id}`} style={{
           marginTop: 8, marginLeft: 28, padding: "10px 12px",
           background: "var(--brand-bg)", borderRadius: "var(--radius)",
@@ -1843,6 +1843,25 @@ function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption,
               <ShieldCheck size={14} style={{ flexShrink: 0, marginTop: 1, color: "var(--brand)" }} />
               <span>{o.chemical_safety_note}</span>
             </div>
+          )}
+          {/* Sikkerhetsdatabladet der arbeidet gjøres. Forskrift om utførelse av arbeid § 2-4
+              krever at databladet er tilgjengelig «på det enkelte arbeidssted» — for en
+              renholder er det denne skjermen, ikke adminens kjemikaliefane.
+              Bare http(s): backend validerer det ved lagring, men snapshotet kan være gammelt,
+              og en javascript:-lenke her ville kjørt i hennes innloggede økt. */}
+          {/^https?:\/\//i.test(o.chemical_sds_url || "") && (
+            <a
+              href={o.chemical_sds_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8,
+                fontSize: 12, fontWeight: 500, color: "var(--brand-dark)",
+              }}
+            >
+              <ExternalLink size={13} style={{ flexShrink: 0 }} />
+              {t("cleaner.safetyDataSheet")}
+            </a>
           )}
         </div>
       ))}
