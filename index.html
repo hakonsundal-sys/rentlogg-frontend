@@ -405,17 +405,12 @@
       }
       .mini-head:first-child { border-top: none; }
 
-      /* ---------- tilleggsmoduler ---------- */
-      .modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
-      @media (max-width: 820px) { .modules { grid-template-columns: 1fr; } }
-      .module { background: var(--surface); padding: clamp(22px, 3vw, 32px); }
-      .tag {
-        display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
-        text-transform: uppercase; color: var(--slate); border: 1px solid var(--line);
-        padding: 4px 9px; margin-bottom: 16px;
-      }
-      .module h3 { font-size: 23px; letter-spacing: -0.03em; }
-      .module > p { color: var(--slate); font-size: 15px; margin: 8px 0 0; }
+      /* ---------- sjekk det ---------- */
+      .sjekk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
+      @media (max-width: 820px) { .sjekk { grid-template-columns: 1fr; } }
+      .sjekk > div { background: var(--surface); padding: clamp(22px, 3vw, 32px); }
+      .sjekk h3 { font-size: 23px; letter-spacing: -0.03em; }
+      .sjekk > div > p { color: var(--slate); font-size: 15px; margin: 8px 0 0; }
 
       /* ============================================================
          BEVEGELSE OG TEKSTUR
@@ -648,7 +643,7 @@
         <nav>
           <a href="#slik">Slik fungerer det</a>
           <a href="#hva">Hva du får</a>
-          <a href="#moduler">Tilleggsmoduler</a>
+          <a href="#sjekk-det">Sjekk det</a>
           <a href="#sporsmal">Spørsmål</a>
         </nav>
         <a class="login" href="/app/">Logg inn</a>
@@ -829,92 +824,66 @@
         </div>
       </section>
 
-      <!-- ============ MODULER ============ -->
-      <section id="moduler" class="grid-bg" style="background: var(--surface)">
+      <!-- ============ SJEKK DET ============ -->
+      <!--
+        Den eneste tilleggsmodulen som omtales her. De andre (Opplæring, Timeregistrering, Hygiene og
+        måling) holdes bevisst ute av offentlig tekst til de er ferdig utviklet — Håkons beslutning
+        2026-10-03. Ikke lov offline-støtte her: sjekklistene bruker ikke offline-køen.
+      -->
+      <section id="sjekk-det" class="grid-bg" style="background: var(--surface)">
         <div class="wrap">
-          <p class="eyebrow">Tilleggsmoduler</p>
-          <h2>Tre ting til,<br />om dere trenger dem.</h2>
+          <p class="eyebrow">Sjekk det – det er kjekt det</p>
+          <h2>Bare sjekklister,<br />for alle som ikke vasker.</h2>
           <p class="lede">
-            Kjernen — QR-innsjekk, rom og sjekklister, avvik, kjemikalieregister, kunde­portal
-            og rapporter — er alltid med. Disse tre skrus på per bedrift, og koster ekstra.
+            Et bakeri, en butikk eller et verksted har rutiner som skal krysses av og dokumenteres —
+            åpning, stenging, brannvernrunde, kontroll av utstyr — uten kunder, rom eller renholdsplan.
+            Sjekk det er den delen av Rentlogg, alene.
           </p>
 
-          <div class="modules fade">
-            <div class="module">
-              <span class="tag">Tilleggsmodul</span>
-              <h3>Opplæring</h3>
-              <p>Dokumentasjon på hvem som har fått hvilken opplæring, og signert på den.</p>
+          <div class="sjekk fade">
+            <div>
+              <h3>For den ansatte</h3>
+              <p>Dagens lister på telefonen, og ett trykk per punkt.</p>
               <ul class="feats">
                 <li>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Kurs bygget av lysbilder med innlest tale — på hvert enkelt språk, ikke tekstet video.</span>
+                  <span>Hvert punkt besvares som OK, avvik eller ikke relevant.</span>
                 </li>
                 <li>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Tildeling per ansatt, med framdrift underveis.</span>
+                  <span>Et avvik må forklares, og kan dokumenteres med bilde.</span>
                 </li>
                 <li>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Signert kursbevis som PDF, klart til å legges fram.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Opplæring gitt utenfor systemet kan registreres manuelt.</span>
+                  <span>Lista sendes inn med navn og tidspunkt, og kan ikke endres etterpå.</span>
                 </li>
               </ul>
             </div>
-
-            <div class="module">
-              <span class="tag">Tilleggsmodul</span>
-              <h3>Timeregistrering</h3>
-              <p>Stemplet tid per ansatt. Timene starter når renholderen skanner QR-koden.</p>
+            <div>
+              <h3>For lederen</h3>
+              <p>Hva som er gjort, og hva som mangler.</p>
               <ul class="feats">
                 <li>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Samme skann som innsjekken — ingen egen stemplingsrutine å huske.</span>
+                  <span>Ukeoversikt per liste: utført, avvik eller mangler.</span>
                 </li>
                 <li>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Faktisk tid mot avtalt rammetimetall, per lokasjon.</span>
+                  <span>Logg med filter på periode, liste, person og avvik.</span>
                 </li>
                 <li>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Godkjenning nivå for nivå, og lås av perioden når den er sendt til lønn.</span>
+                  <span>PDF av hver utfylling, og eksport av loggen til CSV.</span>
                 </li>
                 <li>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Ordrenummer og lønnsarter, med eksport til Excel, PDF og CSV.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Endringslogg og en egen liste over ugyldige data, før noe går videre.</span>
-                </li>
-              </ul>
-            </div>
-
-            <div class="module">
-              <span class="tag">Tilleggsmodul</span>
-              <h3>Hygiene og måling</h3>
-              <p>For bygg der dokumentasjonen er tallet, styrken og tiden — ikke avkryssingen.</p>
-              <ul class="feats">
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Hygienetrinn i fast sekvens, med kontakttid som faktisk må gå.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Måleverdier mot grenseverdi — ATP, temperatur, pH — med pass eller ikke.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Frigivelse sperret ved prøve utenfor grensen, med begrunnelse i loggen.</span>
+                  <span>Egne lister, med ukedager eller «ved behov», og ferdige maler å starte fra.</span>
                 </li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
 
       <!-- ============ FAQ ============ -->
       <section id="sporsmal">
@@ -961,14 +930,6 @@
                 Ja. Kunden får egen innlogging med rom, bilder, avvik og historikk, og kan settes
                 opp til å godkjenne enkeltrom før de regnes som ferdige. Dagsrapporten kommer på
                 e-post til det klokkeslettet dere velger per bygg.
-              </p>
-            </details>
-            <details>
-              <summary>Hva koster tilleggsmodulene?</summary>
-              <p>
-                Opplæring, Timeregistrering og Hygiene og måling ligger utenfor grunnprisen og skrus
-                på per bedrift.
-                Har dere dem ikke, finnes de ikke i menyen. Ta kontakt for pris.
               </p>
             </details>
             <details>
@@ -1044,7 +1005,7 @@
           "QR-innsjekk", "Rom for rom", "Bildedokumentasjon", "Avvik begge veier",
           "Kundegodkjenning", "Dagsrapport på e-post", "Fem språk", "Tåler dårlig dekning",
           "Periodiske oppgaver", "Månedsrutenett", "Signatur ved besøk",
-          "Opplæring", "Timeregistrering",
+          "Sjekk det",
         ];
         var check =
           '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
