@@ -3,10 +3,13 @@ import { GraduationCap, KeyRound, Pencil, Trash2, UserPlus } from "lucide-react"
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 import { LANGUAGES, DEFAULT_LANGUAGE } from "../../i18n";
-import { hasModule, MODULE_TRAINING } from "../../modules";
+import { hasModule, isChecklistOnly, MODULE_TRAINING } from "../../modules";
 import OpplaeringPage from "./OpplaeringPage";
 
 const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "Renholder" };
+// Et firma som bare bruker sjekklistene driver ikke renhold — der er en «renholder» bare en ansatt.
+// Samme roller i databasen, bare andre ord på skjermen.
+const CHECKLIST_ROLE_LABEL = { admin: "Administrator", manager: "Leder", cleaner: "Ansatt" };
 
 // Renholder is what this form creates nearly every time — an admin or driftsleder is rare enough
 // to be worth deliberately changing the dropdown for.
@@ -36,6 +39,7 @@ function canResetPassword(role) {
 // The Opplæring tab exists only for a company that has the add-on module (see src/modules.js);
 // super_admin has no company of its own and therefore never sees it.
 export default function AnsattePage({ token, user }) {
+  const roleLabels = isChecklistOnly(user) ? CHECKLIST_ROLE_LABEL : ROLE_LABEL;
   const [activeTab, setActiveTab] = useState("ansatte");
   // Who the Opplæring tab should open when you jump there from a row in the staff list. Without
   // this the only way into one person's training was clicking their name in the matrix, which does
@@ -309,7 +313,7 @@ function StaffList({ token, user, onOpenTraining }) {
               </Field>
               <Field label="Rolle" style={{ minWidth: 140 }}>
                 <select value={newUser.role} onChange={(e) => updateNewUser("role", e.target.value)} style={inputStyle}>
-                  {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </Field>
               {isSuperAdmin && (
@@ -376,7 +380,7 @@ function StaffList({ token, user, onOpenTraining }) {
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.email}</td>
                     <td style={{ padding: "10px 14px" }}>
                       {isSelf ? (
-                        ROLE_LABEL[u.role] || u.role
+                        roleLabels[u.role] || u.role
                       ) : (
                         <select
                           value={u.role}
@@ -384,7 +388,7 @@ function StaffList({ token, user, onOpenTraining }) {
                           onChange={(e) => changeRole(u.id, e.target.value)}
                           style={{ ...inputStyle, padding: "4px 8px", fontSize: 12, width: 120 }}
                         >
-                          {Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          {Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </select>
                       )}
                     </td>

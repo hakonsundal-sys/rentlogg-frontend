@@ -53,9 +53,12 @@ const ROLE_BADGE = {
   customer: { key: "role.customer", bg: "var(--surface-0)", color: "var(--text-secondary)" },
 };
 
-export function RoleBadge({ role }) {
+// checklistOnly: the company uses only the Sjekklister module and does no cleaning, so a "cleaner"
+// account is labelled as an employee instead.
+export function RoleBadge({ role, checklistOnly = false }) {
   const t = useT();
-  const r = ROLE_BADGE[role] || ROLE_BADGE.customer;
+  const base = ROLE_BADGE[role] || ROLE_BADGE.customer;
+  const r = checklistOnly && role === "cleaner" ? { ...base, key: "role.employee" } : base;
   return (
     <span style={{
       display: "inline-flex", alignItems: "center",

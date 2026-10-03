@@ -227,3 +227,11 @@ button {
     z-index: 50;
   }
 }
+
+/* Sjekk det — the setup tab's list/editor split stacks on a phone (SjekklisterPage.jsx). The
+   !important is needed because the two-column grid is set inline. */
+@media (max-width: 768px) {
+  .sc-setup {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

@@ -53,6 +53,21 @@ export default function SelskaperPage({ token }) {
     }
   }
 
+  async function toggleChecklistOnly(companyId, enabled) {
+    setError("");
+    setSavingModule(`${companyId}:checklist_only`);
+    try {
+      const updated = await apiFetch(`/companies/${companyId}/checklist-only`, {
+        token, method: "PATCH", body: JSON.stringify({ enabled }),
+      });
+      setCompanies((list) => list.map((c) => (c.id === updated.id ? { ...c, checklist_only: updated.checklist_only, modules: updated.modules } : c)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingModule(null);
+    }
+  }
+
   async function toggleModule(companyId, moduleKey, enabled) {
     setError("");
     setSavingModule(`${companyId}:${moduleKey}`);
@@ -150,6 +165,23 @@ export default function SelskaperPage({ token }) {
                     </span>
                   </label>
                 ))}
+                {/* Ikke en modul, men et valg om hva firmaet ER: et firma som ikke driver renhold
+                    ser bare sjekklistene. Skrur sjekkliste-modulen på av seg selv. */}
+                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--border)" }}>
+                  <input
+                    type="checkbox"
+                    checked={!!company.checklist_only}
+                    disabled={savingModule === `${company.id}:checklist_only`}
+                    onChange={(e) => toggleChecklistOnly(company.id, e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>Kun sjekkliste (ikke renhold)</span>
+                    <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                      Skjuler lokasjoner, kunder, avvik og renholdsvisningen. Firmaet ser bare «Sjekk det», Ansatte og Timer/Opplæring om de har dem.
+                    </span>
+                  </span>
+                </label>
                 <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.5 }}>
                   Skrur du av en modul, skjules den bare &mdash; ingenting slettes.
                 </div>

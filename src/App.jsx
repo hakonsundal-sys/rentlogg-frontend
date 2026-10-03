@@ -6,6 +6,8 @@ import AdminLayout from "./components/admin/AdminLayout";
 import SuperAdminLayout from "./components/admin/SuperAdminLayout";
 import CleanerView, { clearCleanerContext } from "./components/CleanerView";
 import CustomerView from "./components/CustomerView";
+import ChecklistEmployeeView, { clearChecklistContext } from "./components/checklist/ChecklistEmployeeView";
+import { hasModule, isChecklistOnly, MODULE_CHECKLIST } from "./modules";
 import { BrandMark, RoleBadge } from "./components/shared";
 import LanguagePicker from "./components/LanguagePicker";
 import { I18nProvider, useT, translateNow } from "./i18n";
@@ -60,7 +62,10 @@ function AppInner() {
     }
     // A cleaner's device is usually shared (one work phone, not one per person) — don't let the
     // next person who logs in on it inherit whichever site/room the previous cleaner had open.
-    if (!value) clearCleanerContext();
+    if (!value) {
+      clearCleanerContext();
+      clearChecklistContext();
+    }
   }
 
   // The offline queue keeps the login token of every unsent action (a replay has to authenticate),
@@ -112,10 +117,11 @@ function AppInner() {
   // vanish on a dead signal, and the backend's own requireModule is what actually enforces it.
   useEffect(() => {
     if (!auth?.token) return;
-    apiFetch("/modules", { token: auth.token })
-      .then((modules) => {
-        if (modules.join() !== (auth.user.modules || []).join()) {
-          setAuth({ ...auth, user: { ...auth.user, modules } });
+    // /auth/me rather than /modules: it carries checklist_only too, which flips the whole shell.
+    apiFetch("/auth/me", { token: auth.token })
+      .then(({ modules = [], checklist_only = false }) => {
+        if (modules.join() !== (auth.user.modules || []).join() || checklist_only !== !!auth.user.checklist_only) {
+          setAuth({ ...auth, user: { ...auth.user, modules, checklist_only } });
         }
       })
       .catch(() => {});
@@ -189,13 +195,26 @@ function AppInner() {
 function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
   const { token, user } = auth;
   const t = useT();
+  const checklistOnly = isChecklistOnly(user);
+  // A cleaning company can have the checklist module too (internal routines like a vehicle check).
+  // Its cleaners then get a switch between the two — kept up here in the shell so the cleaning view
+  // itself, which the whole workforce uses every day, is not touched by it.
+  const canSwitch = user.role === "cleaner" && !checklistOnly && hasModule(user, MODULE_CHECKLIST);
+  const [view, setView] = useState("cleaning");
+  const showChecklists = user.role === "cleaner" && (checklistOnly || (canSwitch && view === "checklists"));
+
+  // A QR check-in link means nothing to a checklist-only company — drop it rather than leaving it.
+  useEffect(() => {
+    if (checklistOnly && checkinToken) onCheckinHandled();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checklistOnly, checkinToken]);
 
   return (
     <Shell>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>{user.name}</span>
-          <RoleBadge role={user.role} />
+          <RoleBadge role={user.role} checklistOnly={checklistOnly} />
         </div>
         <button onClick={onLogout} style={{
           display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--border)",
@@ -204,7 +223,27 @@ function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
           <LogOut size={14} /> {t("app.logout")}
         </button>
       </div>
-      {user.role === "cleaner" && (
+      {canSwitch && (
+        <div style={{ display: "flex", gap: 4, padding: 4, background: "var(--surface-0)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", marginBottom: 16 }}>
+          {[["cleaning", t("sc.switch.cleaning")], ["checklists", t("sc.switch.checklists")]].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              style={{
+                flex: 1, border: "none", borderRadius: "var(--radius-pill)", padding: "8px 10px", cursor: "pointer",
+                fontSize: 14, fontWeight: 600,
+                background: view === key ? "var(--surface-1)" : "transparent",
+                color: view === key ? "var(--brand-dark)" : "var(--text-secondary)",
+                boxShadow: view === key ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {showChecklists && <ChecklistEmployeeView token={token} user={user} />}
+      {user.role === "cleaner" && !showChecklists && (
         <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
       )}
       {user.role === "customer" && (

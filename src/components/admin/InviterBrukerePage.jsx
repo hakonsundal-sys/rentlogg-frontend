@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Send, Link2, X } from "lucide-react";
 import { apiFetch } from "../../api";
+import { isChecklistOnly } from "../../modules";
 import { Card, RoleBadge, Field, Loading, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 
 const STATUS_LABEL = { used: "Brukt", revoked: "Trukket tilbake", expired: "Utløpt" };
 
 export default function InviterBrukerePage({ token, user }) {
+  const checklistOnly = isChecklistOnly(user);
   const isSuperAdmin = user?.role === "super_admin";
   const [clients, setClients] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -82,7 +84,9 @@ export default function InviterBrukerePage({ token, user }) {
     <div>
       <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Invitasjoner</h1>
       <div style={{ color: "var(--text-secondary)", marginBottom: 20 }}>
-        Send invitasjonslenke til renholdere eller kunder. De velger eget passord ved registrering.
+        {checklistOnly
+          ? "Send invitasjonslenke til de ansatte. De velger eget passord ved registrering."
+          : "Send invitasjonslenke til renholdere eller kunder. De velger eget passord ved registrering."}
       </div>
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
@@ -97,9 +101,10 @@ export default function InviterBrukerePage({ token, user }) {
           </Field>
           <Field label="Rolle">
             <select value={role} onChange={(e) => setRole(e.target.value)} style={inputStyle}>
-              <option value="cleaner">Renholder</option>
-              <option value="manager">Driftsleder</option>
-              <option value="customer">Kunde</option>
+              <option value="cleaner">{checklistOnly ? "Ansatt" : "Renholder"}</option>
+              <option value="manager">{checklistOnly ? "Leder" : "Driftsleder"}</option>
+              {/* Et sjekkliste-firma har ingen kunder å invitere. */}
+              {!checklistOnly && <option value="customer">Kunde</option>}
               <option value="admin">Admin</option>
             </select>
           </Field>
@@ -146,7 +151,7 @@ export default function InviterBrukerePage({ token, user }) {
               <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Utløper {inv.expires_at}</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <RoleBadge role={inv.role} />
+              <RoleBadge role={inv.role} checklistOnly={checklistOnly} />
               <button onClick={() => copyLink(inv)} style={linkBtnStyle}>
                 <Link2 size={13} style={{ verticalAlign: -2, marginRight: 3 }} />
                 {copiedId === inv.id ? "Kopiert!" : "Kopier lenke"}
@@ -171,7 +176,7 @@ export default function InviterBrukerePage({ token, user }) {
           }}>
             <span>{inv.email}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <RoleBadge role={inv.role} />
+              <RoleBadge role={inv.role} checklistOnly={checklistOnly} />
               <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{STATUS_LABEL[inv.status] || inv.status}</span>
             </span>
           </div>

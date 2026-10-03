@@ -11,6 +11,8 @@ import InviterBrukerePage from "./InviterBrukerePage";
 import RapporterPage from "./RapporterPage";
 import MinProfilPage from "./MinProfilPage";
 import TimerPage from "./TimerPage";
+import SjekklisterPage from "./SjekklisterPage";
+import { isChecklistOnly } from "../../modules";
 import { apiFetch } from "../../api";
 
 const PAGES = {
@@ -23,11 +25,13 @@ const PAGES = {
   inviter: InviterBrukerePage,
   rapporter: RapporterPage,
   timer: TimerPage,
+  sjekklister: SjekklisterPage,
   profil: MinProfilPage,
 };
 
 export default function AdminLayout({ token, user, onLogout }) {
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  // A checklist-only company has no dashboard of cleaning visits to land on.
+  const [currentPage, setCurrentPage] = useState(() => (isChecklistOnly(user) ? "sjekklister" : "dashboard"));
   const [summary, setSummary] = useState(null);
 
   function refreshSummary() {
@@ -38,7 +42,7 @@ export default function AdminLayout({ token, user, onLogout }) {
     refreshSummary();
   }, [token]);
 
-  const PageComponent = PAGES[currentPage] || DashboardPage;
+  const PageComponent = PAGES[currentPage] || (isChecklistOnly(user) ? SjekklisterPage : DashboardPage);
 
   return (
     <div className="admin-shell">

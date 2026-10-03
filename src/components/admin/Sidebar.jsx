@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { LayoutGrid, MapPin, Users, Building2, UserCog, AlertTriangle, UserPlus, FileText, CircleUser, Clock, LogOut, Menu, X } from "lucide-react";
+import { LayoutGrid, MapPin, Users, Building2, UserCog, AlertTriangle, UserPlus, FileText, CircleUser, Clock, ListChecks, LogOut, Menu, X } from "lucide-react";
 import { BrandMark, RoleBadge } from "../shared";
-import { hasModule, MODULE_TIMECLOCK } from "../../modules";
+import { hasModule, isChecklistOnly, MODULE_CHECKLIST, MODULE_TIMECLOCK } from "../../modules";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -13,8 +13,19 @@ const NAV_ITEMS = [
   // `module` marks an entry as belonging to an add-on: it is only listed for a company that has
   // that module turned on (see src/modules.js). Every other entry is core and always shown.
   { id: "timer", label: "Timer", icon: Clock, module: MODULE_TIMECLOCK },
+  { id: "sjekklister", label: "Sjekk det", icon: ListChecks, module: MODULE_CHECKLIST },
   { id: "inviter", label: "Inviter brukere", icon: UserPlus },
   { id: "rapporter", label: "Rapporter", icon: FileText },
+  { id: "profil", label: "Min profil", icon: CircleUser },
+];
+
+// A checklist-only company (no cleaning at all) sees the checklist module and the staff pages —
+// none of Lokasjoner/Kunder/Avdelinger/Avvik/Rapporter, which all describe cleaning visits.
+export const CHECKLIST_NAV_ITEMS = [
+  { id: "sjekklister", label: "Sjekk det", icon: ListChecks },
+  { id: "ansatte", label: "Ansatte", icon: UserCog },
+  { id: "timer", label: "Timer", icon: Clock, module: MODULE_TIMECLOCK },
+  { id: "inviter", label: "Inviter brukere", icon: UserPlus },
   { id: "profil", label: "Min profil", icon: CircleUser },
 ];
 
@@ -23,9 +34,10 @@ const NAV_ITEMS = [
 // Below 768px (see .admin-sidebar in index.css) this becomes a slide-in drawer opened by its own
 // hamburger button, rather than the fixed 260px column it always was — that column previously had
 // no responsive fallback at all, so every admin page just overflowed sideways on a phone.
-export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, navItems = NAV_ITEMS }) {
+export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, navItems }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const visibleItems = navItems.filter((item) => !item.module || hasModule(user, item.module));
+  const items = navItems || (isChecklistOnly(user) ? CHECKLIST_NAV_ITEMS : NAV_ITEMS);
+  const visibleItems = items.filter((item) => !item.module || hasModule(user, item.module));
 
   function selectPage(id) {
     setCurrentPage(id);
@@ -95,7 +107,7 @@ export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, n
         }}>
           <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Innlogget som</div>
           <div style={{ fontSize: 14, fontWeight: 600, margin: "2px 0 6px" }}>{user.name}</div>
-          <RoleBadge role={user.role} />
+          <RoleBadge role={user.role} checklistOnly={isChecklistOnly(user)} />
           <button
             onClick={onLogout}
             style={{
