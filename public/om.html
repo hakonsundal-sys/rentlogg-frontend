@@ -133,28 +133,116 @@
 
       <h2>Personvern</h2>
       <div class="card">
-        <p>Rentlogg lagrer opplysningene som trengs for å dokumentere utført renhold:</p>
+        <p>
+          Rentlogg lagrer det som trengs for å dokumentere utført renhold, og ikke mer. Dette er
+          opplysningene, ordnet etter hva de brukes til:
+        </p>
         <dl>
-          <dt>Om ansatte</dt>
-          <dd>Navn, e-postadresse, telefonnummer, rolle og hvilken avdeling de tilhører.</dd>
+          <dt>Om ansatte og kunder</dt>
+          <dd>
+            Navn, e-postadresse, telefonnummer, rolle, avdeling og valgt språk. Passord lagres
+            kun i kryptert form, så ikke engang vi kan lese dem.
+          </dd>
 
           <dt>Om utført arbeid</dt>
-          <dd>Tidspunkt for innsjekk, hvilke oppgaver som er kvittert ut, og når.</dd>
+          <dd>
+            Når en lokasjon ble sjekket inn, hvilke oppgaver som ble kvittert ut og når, hvem
+            som kvitterte (navn eller initialer), notater og målinger som temperatur. Avvik
+            lagres med beskrivelse, kategori, frist og svar.
+          </dd>
+
+          <dt>Posisjon</dt>
+          <dd>
+            Hvis telefonen gir tillatelse, lagres GPS-posisjonen din i det du sjekker inn på en
+            lokasjon, og når arbeidstid stemples inn og ut. Den brukes til å vise om du var på
+            stedet. Rentlogg følger ikke med på hvor du er ellers, og du kan si nei til
+            posisjon i telefonen. Registreringen fungerer da fortsatt, men uten bekreftet
+            posisjon.
+          </dd>
+
+          <dt>Arbeidstid</dt>
+          <dd>
+            Hos bedrifter som bruker timeregistrering: tidspunkt for inn- og utstempling, antall
+            timer, godkjenninger og hvem som godkjente.
+          </dd>
+
+          <dt>Opplæring og sjekklister</dt>
+          <dd>
+            Kvittering for gjennomført opplæring, med navn og dato og der kurset krever det en
+            tegnet signatur. Utfylte sjekklister lagres med svar, bilder og navn på den som
+            fylte dem ut.
+          </dd>
 
           <dt>Bilder</dt>
           <dd>
             Bilder tatt som dokumentasjon av rom og av meldte avvik. Bildene er kun tilgjengelige
             for innloggede brukere hos den bedriften de tilhører, og for bedriftens egen kunde.
           </dd>
+
+          <dt>På telefonen din</dt>
+          <dd>
+            Uten dekning lagres det du fyller ut midlertidig på telefonen og sendes automatisk
+            når du får nett igjen. Innloggingen varer bare så lenge nettleserfanen er åpen. Valg
+            som språk huskes i nettleseren. Rentlogg bruker ingen sporings- eller
+            reklamecookies og ingen analyseverktøy.
+          </dd>
         </dl>
+      </div>
+
+      <h2>Hvor lenge opplysningene lagres</h2>
+      <div class="card">
         <p>
-          Opplysningene deles ikke med andre enn renholdsbedriften og dens kunde. Tjenesten kjører
-          hos Vercel (nettside) og Render (database og API), og e-post sendes via Resend. Disse er
-          databehandlere for tjenesten.
+          Dokumentasjon av utført renhold oppbevares i utgangspunktet i inntil tre år, fordi
+          kunder og tilsyn kan be om å se den så lenge. Tjenesten sletter ikke automatisk. En
+          bedrift eller en enkeltperson kan be om sletting, og vi gjør det da for hånd.
         </p>
         <p>
-          Har du spørsmål om opplysninger som er lagret om deg, eller vil du ha dem slettet, ta
-          kontakt på adressen under.
+          Hver natt tas en sikkerhetskopi av hele tjenesten, og kopiene beholdes i 90 dager før de
+          slettes automatisk. Noe som slettes i tjenesten kan derfor ligge igjen i
+          sikkerhetskopiene i opptil 90 dager.
+        </p>
+      </div>
+
+      <h2>Hvem som behandler opplysningene</h2>
+      <div class="card">
+        <p>
+          Opplysningene deles ikke med andre enn renholdsbedriften og dens kunde, og de brukes
+          aldri til reklame. Disse leverandørene behandler opplysninger på vegne av tjenesten:
+        </p>
+        <dl>
+          <dt>Vercel</dt>
+          <dd>Viser nettsiden og appen.</dd>
+
+          <dt>Render</dt>
+          <dd>Kjører API og database.</dd>
+
+          <dt>Cloudflare (lagring i EU)</dt>
+          <dd>Oppbevarer de nattlige sikkerhetskopiene og en kopi av bildene.</dd>
+
+          <dt>Resend</dt>
+          <dd>Sender e-post, som dagsrapporter og invitasjoner.</dd>
+
+          <dt>Anthropic</dt>
+          <dd>
+            Oversetter tekst fra renholdsplanen (rom- og oppgavenavn) til andre språk når en
+            renholder ber om det. Det sendes ingen personopplysninger, og oversettelsene lagres
+            ikke.
+          </dd>
+
+          <dt>YouTube (Google)</dt>
+          <dd>
+            Bare når en opplæring består av en YouTube-video: Google ser da at avspilleren
+            lastes fra din IP-adresse.
+          </dd>
+        </dl>
+      </div>
+
+      <h2>Dine rettigheter</h2>
+      <div class="card">
+        <p>
+          Du kan be om innsyn i opplysningene som er lagret om deg, be om å få dem rettet eller
+          slettet, og klage til Datatilsynet hvis du mener de behandles feil. Ta kontakt på
+          adressen under, eller med renholdsbedriften du jobber for eller får tjenester fra.
         </p>
       </div>
 
