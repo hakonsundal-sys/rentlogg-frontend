@@ -39,7 +39,6 @@ function canResetPassword(role) {
 // The Opplæring tab exists only for a company that has the add-on module (see src/modules.js);
 // super_admin has no company of its own and therefore never sees it.
 export default function AnsattePage({ token, user }) {
-  const roleLabels = isChecklistOnly(user) ? CHECKLIST_ROLE_LABEL : ROLE_LABEL;
   const [activeTab, setActiveTab] = useState("ansatte");
   // Who the Opplæring tab should open when you jump there from a row in the staff list. Without
   // this the only way into one person's training was clicking their name in the matrix, which does
@@ -68,6 +67,7 @@ export default function AnsattePage({ token, user }) {
 }
 
 function StaffList({ token, user, onOpenTraining }) {
+  const roleLabels = isChecklistOnly(user) ? CHECKLIST_ROLE_LABEL : ROLE_LABEL;
   // super_admin has no company of its own and manages staff across every company from here —
   // the backend already returns every company's users/departments for it (see auth.js's
   // GET /users and departments.js's GET /), this just adds a "Firma" column and makes sure each
