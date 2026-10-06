@@ -18,15 +18,32 @@ const PRIORITY = {
 const STATUS_LABEL = { open: "ÅPEN", in_progress: "PÅGÅR", resolved: "LØST" };
 const ASSIGNED_LABEL = { manager: "Sendt til driftsleder", customer: "Sendt til kunde" };
 
+// Speiler DEVIATION_CATEGORIES i backendens routes/deviations.js. Endres den ene, må den andre
+// følge etter — backend er porten som faktisk avviser en ukjent verdi, dette er bare etikettene.
+const CATEGORY_LABEL = {
+  hms: "HMS-avvik",
+  kvalitet: "Kvalitetsavvik",
+  kundeklage: "Kundeklage",
+  naestenulykke: "Nestenulykke",
+  forbedring: "Forbedringsforslag",
+};
+
+// Dagens dato i Oslo, til å avgjøre om en frist er passert. Samme grunn som ellers i systemet:
+// serveren kan stå i UTC, og et avvik skal ikke bli rødt en time for tidlig.
+function osloToday() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
+}
+
 export default function AvvikPage({ token, refreshSummary }) {
   const [deviations, setDeviations] = useState([]);
   const [sites, setSites] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ title: "", description: "", priority: "medium" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", priority: "medium", category: "", due_date: "" });
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   function loadAll() {
@@ -43,13 +60,13 @@ export default function AvvikPage({ token, refreshSummary }) {
   useEffect(loadAll, [token]);
 
   const siteName = (id) => sites.find((s) => s.id === id)?.name || "—";
-  const visibleDeviations = departmentFilter
-    ? deviations.filter((d) => sites.find((s) => s.id === d.site_id)?.department_id === Number(departmentFilter))
-    : deviations;
+  const visibleDeviations = deviations
+    .filter((d) => !departmentFilter || sites.find((s) => s.id === d.site_id)?.department_id === Number(departmentFilter))
+    .filter((d) => !categoryFilter || (categoryFilter === "none" ? !d.category : d.category === categoryFilter));
 
   function startEdit(dev) {
     setEditingId(dev.id);
-    setEditForm({ title: dev.title || "", description: dev.description, priority: dev.priority });
+    setEditForm({ title: dev.title || "", description: dev.description, priority: dev.priority, category: dev.category || "", due_date: dev.due_date || "" });
   }
 
   async function saveEdit(id) {
@@ -91,12 +108,21 @@ export default function AvvikPage({ token, refreshSummary }) {
           <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Avvik</h1>
           <div style={{ color: "var(--text-secondary)" }}>{visibleDeviations.length} registrerte avvik</div>
         </div>
-        {departments.length > 0 && (
-          <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} style={{ ...inputStyle, width: 180 }}>
-            <option value="">Alle avdelinger</option>
-            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        <div style={{ display: "flex", gap: 8 }}>
+          {departments.length > 0 && (
+            <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} style={{ ...inputStyle, width: 180 }}>
+              <option value="">Alle avdelinger</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          )}
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ ...inputStyle, width: 190 }}>
+            <option value="">Alle kategorier</option>
+            {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+            <option value="none">Ikke kategorisert</option>
           </select>
-        )}
+        </div>
       </div>
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
@@ -118,17 +144,42 @@ export default function AvvikPage({ token, refreshSummary }) {
                     style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
                   />
                 </Field>
-                <Field label="Prioritet" style={{ marginBottom: 8, width: 160 }}>
-                  <select
-                    value={editForm.priority}
-                    onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
-                    style={inputStyle}
-                  >
-                    <option value="low">Lav</option>
-                    <option value="medium">Middels</option>
-                    <option value="high">Høy</option>
-                  </select>
-                </Field>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Field label="Prioritet" style={{ marginBottom: 8, width: 160 }}>
+                    <select
+                      value={editForm.priority}
+                      onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="low">Lav</option>
+                      <option value="medium">Middels</option>
+                      <option value="high">Høy</option>
+                    </select>
+                  </Field>
+                  {/* Kategorien er det trendanalysen hviler på. «Ikke satt» er et gyldig valg og
+                      ikke en feil: et avvik meldt før kategoriene fantes skal kunne stå
+                      ukategorisert heller enn å bli gjettet inn i en bøtte. */}
+                  <Field label="Kategori" style={{ marginBottom: 8, width: 190 }}>
+                    <select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="">Ikke satt</option>
+                      {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Frist" style={{ marginBottom: 8, width: 160 }}>
+                    <input
+                      type="date"
+                      value={editForm.due_date}
+                      onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </Field>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => saveEdit(dev.id)} style={primaryBtnStyle}>Lagre</button>
                   <button onClick={() => setEditingId(null)} style={linkBtnStyle}>Avbryt</button>
@@ -145,6 +196,27 @@ export default function AvvikPage({ token, refreshSummary }) {
                       <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPin size={12} /> {siteName(dev.site_id)}</span>
                       <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Clock size={12} /> {(dev.run_started_at || dev.created_at).slice(0, 16)}</span>
                       <span style={{ fontWeight: 600, color: p.color }}>{p.label}</span>
+                      {/* Kategori og frist i samme linje som resten av metadataene. Et avvik uten
+                          kategori viser det åpent — blindsonen i statistikken skal være synlig,
+                          ikke bortforklart. */}
+                      <span style={{
+                        padding: "1px 7px", borderRadius: "var(--radius-pill)", fontWeight: 600,
+                        background: dev.category ? "var(--brand-bg)" : "transparent",
+                        color: dev.category ? "var(--brand-dark)" : "var(--text-muted)",
+                        border: dev.category ? "none" : "1px dashed var(--border)",
+                      }}>
+                        {dev.category ? CATEGORY_LABEL[dev.category] : "Ikke kategorisert"}
+                      </span>
+                      {dev.due_date && (
+                        <span style={{
+                          fontWeight: 600,
+                          color: dev.status !== "resolved" && dev.due_date < osloToday()
+                            ? "var(--text-danger)" : "var(--text-secondary)",
+                        }}>
+                          Frist {dev.due_date}
+                          {dev.status !== "resolved" && dev.due_date < osloToday() ? " · forfalt" : ""}
+                        </span>
+                      )}
                     </div>
                     {(dev.room_name || dev.room_task_label) && (
                       <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
