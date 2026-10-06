@@ -55,6 +55,24 @@ export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export const LOCALE_BY_LANGUAGE = { no: "nb-NO", en: "en-GB", lt: "lt-LT", lv: "lv-LV", ru: "ru-RU" };
 
+// Norwegian decimal comma, for values and limits shown to people. The backend stores numbers.
+export function fmtNumber(n) {
+  return n === null || n === undefined || n === "" ? "" : String(n).replace(".", ",");
+}
+
+// The limit as a person reads it, in their language: "4–8 °C", "maks 4 °C", "minst 60 °C". Empty when
+// the item has no limit (a measurement can be pure record-keeping). Built here rather than taken from
+// the backend's range_label, which is Norwegian.
+export function fmtRange(answer, t) {
+  const has = (v) => v !== null && v !== undefined;
+  const { measure_min: min, measure_max: max, measure_unit: unit } = answer || {};
+  if (!unit) return "";
+  if (has(min) && has(max)) return `${fmtNumber(min)}–${fmtNumber(max)} ${unit}`;
+  if (has(max)) return t("sc.measure.max", { value: fmtNumber(max), unit });
+  if (has(min)) return t("sc.measure.min", { value: fmtNumber(min), unit });
+  return "";
+}
+
 export const STATUS_STYLE = {
   ok: { color: "var(--text-success)", bg: "var(--c-teal)" },
   deviation: { color: "var(--text-danger)", bg: "var(--c-red)" },

@@ -29,7 +29,6 @@ function LoadingScreen() {
   );
 }
 
-
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
 }
@@ -39,6 +38,11 @@ function inviteTokenFromUrl() {
 // itself never used a URL, it just read the token straight out of the QR image).
 function checkinTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("checkin");
+}
+
+// A Sjekk det list's printed QR code (${frontend}/app/?sjekk=<token>) — opens that list straight away.
+function sjekkTokenFromUrl() {
+  return new URLSearchParams(window.location.search).get("sjekk");
 }
 
 // sessionStorage, not localStorage: survives the specific problem this exists for (a mobile OS
@@ -67,6 +71,12 @@ function AppInner() {
   const [auth, setAuthState] = useState(authFromStorage);
   const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
   const [checkinToken, setCheckinToken] = useState(checkinTokenFromUrl);
+  const [sjekkToken, setSjekkToken] = useState(sjekkTokenFromUrl);
+
+  function clearSjekkParam() {
+    window.history.replaceState(null, "", window.location.pathname);
+    setSjekkToken(null);
+  }
 
   function setAuth(value) {
     setAuthState(value);
@@ -171,8 +181,10 @@ function AppInner() {
   // sitting in the address bar, so drop it once we know who actually logged in.
   useEffect(() => {
     if (auth && checkinToken && auth.user.role !== "cleaner" && auth.user.role !== "customer") clearCheckinParam();
+    // Only someone who fills in lists has a use for a list QR; an admin who scans one just logs in.
+    if (auth && sjekkToken && auth.user.role !== "cleaner") clearSjekkParam();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, checkinToken]);
+  }, [auth, checkinToken, sjekkToken]);
 
   const body = renderBody();
 
@@ -204,11 +216,17 @@ function AppInner() {
       return <AdminLayout token={token} user={user} onLogout={logout} />;
     }
 
-    return <UserShell auth={auth} onLogout={logout} checkinToken={checkinToken} onCheckinHandled={clearCheckinParam} />;
+    return (
+      <UserShell
+        auth={auth} onLogout={logout}
+        checkinToken={checkinToken} onCheckinHandled={clearCheckinParam}
+        sjekkToken={sjekkToken} onSjekkHandled={clearSjekkParam}
+      />
+    );
   }
 }
 
-function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
+function UserShell({ auth, onLogout, checkinToken, onCheckinHandled, sjekkToken, onSjekkHandled }) {
   const { token, user } = auth;
   const t = useT();
   const checklistOnly = isChecklistOnly(user);
@@ -216,7 +234,8 @@ function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
   // Its cleaners then get a switch between the two — kept up here in the shell so the cleaning view
   // itself, which the whole workforce uses every day, is not touched by it.
   const canSwitch = user.role === "cleaner" && !checklistOnly && hasModule(user, MODULE_CHECKLIST);
-  const [view, setView] = useState("cleaning");
+  // A scanned list QR means checklists, whichever side the cleaner was on.
+  const [view, setView] = useState(() => (sjekkToken ? "checklists" : "cleaning"));
   const showChecklists = user.role === "cleaner" && (checklistOnly || (canSwitch && view === "checklists"));
 
   // A QR check-in link means nothing to a checklist-only company — drop it rather than leaving it.
@@ -258,7 +277,9 @@ function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
           ))}
         </div>
       )}
-      {showChecklists && <ChecklistEmployeeView token={token} user={user} />}
+      {showChecklists && (
+        <ChecklistEmployeeView token={token} user={user} pendingQrToken={sjekkToken} onQrHandled={onSjekkHandled} />
+      )}
       <Suspense fallback={<LoadingScreen />}>
         {user.role === "cleaner" && !showChecklists && (
           <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
