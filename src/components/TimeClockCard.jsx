@@ -52,7 +52,7 @@ function getPosition() {
   });
 }
 
-export default function TimeClockCard({ token, refreshKey }) {
+export default function TimeClockCard({ token, refreshKey, onStampedOut }) {
   const { t, tn } = useI18n();
   const formatMinutes = useDuration();
   const formatPause = usePauseDuration();
@@ -93,6 +93,9 @@ export default function TimeClockCard({ token, refreshKey }) {
         token, method: "POST", body: JSON.stringify({ ...(position || {}), pause_minutes: pauseMinutes || 0 }),
       });
       setAskingPause(false);
+      // The visit she was in is over as far as the clock goes. The caller forgets it, so a phone that
+      // later restores this tab does not "resume" it by checking in again and starting a new shift.
+      onStampedOut?.();
       // Say back what was recorded. The pause answer is one tap and it moves her pay, so the
       // screen has to show what that tap did — a mistap otherwise leaves no trace she would ever
       // notice. It also carries the one surprise worth explaining: on a site paid by a fixed

@@ -894,6 +894,9 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     }
     try {
       await queueableFetch(`/checklists/runs/${run.id}/complete`, { token, method: "POST", body: JSON.stringify({ initials: initials.trim() }) });
+      // A finished visit must not be "resumed": the saved context is replayed as a check-in when the
+      // tab is restored, and that check-in starts a time entry.
+      saveContext(null);
       setRun(null);
       setRooms(null);
       setShowVaskeplan(false);
@@ -1006,7 +1009,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       <div>
         {viewTabs}
         {offlineBanner}
-        {showTimeClock && <TimeClockCard token={token} refreshKey={timeClockKey} />}
+        {showTimeClock && <TimeClockCard token={token} refreshKey={timeClockKey} onStampedOut={() => saveContext(null)} />}
         {showOnboarding && (
           <Card style={{ marginBottom: 12, fontSize: 13 }}>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("cleaner.onboarding.title")}</div>
@@ -1250,7 +1253,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     <div>
       {viewTabs}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <button onClick={() => { setRun(null); setRooms(null); setShowVaskeplan(false); setOpenDate(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
+        <button onClick={() => { saveContext(null); setRun(null); setRooms(null); setShowVaskeplan(false); setOpenDate(null); clearTimeout(undoTimeoutRef.current); setUndoAction(null); }} style={{
           display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
           color: "var(--text-secondary)", fontSize: 13, cursor: "pointer",
         }}>
@@ -1261,7 +1264,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
 
       {offlineBanner}
 
-      {showTimeClock && <TimeClockCard token={token} refreshKey={timeClockKey} />}
+      {showTimeClock && <TimeClockCard token={token} refreshKey={timeClockKey} onStampedOut={() => saveContext(null)} />}
 
       {error && <div style={{ color: "var(--text-danger)", fontSize: 13, marginBottom: 12 }}>{error}</div>}
 

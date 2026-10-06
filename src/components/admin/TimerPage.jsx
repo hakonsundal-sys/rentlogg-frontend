@@ -776,8 +776,11 @@ function EntryTable({
   // band per group. Sorting is applied inside each group so the two can be used together.
   const sorted = [...entries];
   const sortCol = columns.find((c) => c.key === sortBy?.key);
-  if (sortCol) {
-    const get = sortCol.sort || sortCol.sum || sortCol.value;
+  // "Godkjenning" and "Status" are drawn by the table itself and have no value to sort on. The menu
+  // offered them anyway, and choosing one made sort() call null on the next render — a blank screen
+  // for the whole admin app; saved in localStorage, it blanked the page on every later visit too.
+  const get = sortCol && (sortCol.sort || sortCol.sum || sortCol.value);
+  if (get) {
     sorted.sort((a, b) => {
       const av = get(a) ?? "";
       const bv = get(b) ?? "";
@@ -957,7 +960,7 @@ function ColumnMenu({ usedTypes, hidden, setHidden, groupBy, setGroupBy, sortBy,
                 style={{ ...inputStyle, fontSize: 13, padding: "6px 8px", flex: 1 }}
               >
                 <option value="">Standard</option>
-                {all.filter((c) => c.key !== "actions").map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                {all.filter((c) => c.key !== "actions" && (c.sort || c.sum || c.value)).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
               <button
                 onClick={() => setSortBy(sortBy ? { ...sortBy, desc: !sortBy.desc } : null)}
