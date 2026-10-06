@@ -264,6 +264,10 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   }
 
   async function deleteRoom(siteId, roomId) {
+    // The trash can sits right next to the rename pencil, and the delete removes every visit, photo and
+    // task of the room for good. Only "Slett alle rom" used to ask first.
+    const roomName = (rooms[siteId] || []).find((r) => r.id === roomId)?.name || "dette rommet";
+    if (!window.confirm(`Slette rommet «${roomName}»? Dette fjerner også oppgaver, planer og all historikk for rommet.`)) return;
     try {
       await apiFetch(`/rooms/${roomId}`, { token, method: "DELETE" });
       if (expandedRoomId === roomId) setExpandedRoomId(null);
@@ -309,6 +313,8 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   }
 
   async function deleteRoomItem(roomId, itemId) {
+    const label = (roomItems[roomId] || []).find((i) => i.id === itemId)?.label || "denne oppgaven";
+    if (!window.confirm(`Slette oppgaven «${label}»? Tidligere besøk beholder sin egen kopi av den.`)) return;
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}`, { token, method: "DELETE" });
       refreshRoomItems(roomId);
@@ -368,7 +374,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   // nullstilles med den. Kontorbygg skal ikke ha hygienetrinn liggende.
   async function saveStep(roomId, itemId) {
     const draft = stepDrafts[itemId] || {};
-    const mins = Number(draft.contactMinutes);
+    // The field has a decimal keypad, which types a comma: Number("1,5") is NaN, so the contact time was
+    // saved as empty without a word.
+    const mins = Number(String(draft.contactMinutes ?? "").replace(",", "."));
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
         token,
@@ -499,12 +507,35 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   // Toggles one day on/off within an item's current weekly day set. Refuses to remove the last
   // remaining day — a weekly-mode item always needs at least one day; to clear it entirely, switch
   // the mode dropdown to "Hver gang" instead.
+  // The day (or month) set is replaced as a whole on every click, so two clicks in quick succession
+  // both started from the set as it stood BEFORE the first one had come back, and the later request
+  // overwrote the earlier: click Man, Tir, Ons fast and only the last survived. The screen now changes
+  // at once, so the next click builds on it, and the requests for one task go out one at a time.
+  const itemSetChain = useRef({});
+  function saveItemSet(roomId, itemId, field, next) {
+    setRoomItems((prev) => ({
+      ...prev,
+      [roomId]: (prev[roomId] || []).map((i) => (i.id === itemId ? { ...i, [field]: next } : i)),
+    }));
+    const send = async () => {
+      try {
+        await apiFetch(`/rooms/${roomId}/items/${itemId}`, { token, method: "PATCH", body: JSON.stringify({ [field]: next }) });
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    const chain = (itemSetChain.current[itemId] || Promise.resolve()).then(send);
+    itemSetChain.current[itemId] = chain;
+    // Reload from the server once the LAST of them has landed, so the screen shows what was saved.
+    chain.then(() => { if (itemSetChain.current[itemId] === chain) refreshRoomItems(roomId); });
+  }
+
   async function toggleItemWeekday(roomId, itemId, weekday) {
     const item = (roomItems[roomId] || []).find((i) => i.id === itemId);
     const current = item?.weekly_days || [];
     const next = current.includes(weekday) ? current.filter((d) => d !== weekday) : [...current, weekday];
     if (next.length === 0) return;
-    setItemWeeklyMode(roomId, itemId, next);
+    saveItemSet(roomId, itemId, "weekly_days", next);
   }
 
   // "Periodisk" — due in one or more specific calendar months (e.g. an annual belt clean due in
@@ -529,7 +560,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     const current = item?.months || [];
     const next = current.includes(month) ? current.filter((m) => m !== month) : [...current, month];
     if (next.length === 0) return;
-    setItemPeriodicMode(roomId, itemId, next);
+    saveItemSet(roomId, itemId, "months", next);
   }
 
   // "Annenhver uke" — due if it's been at least 14 days since this item was last checked off

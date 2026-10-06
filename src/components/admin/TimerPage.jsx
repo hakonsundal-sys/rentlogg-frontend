@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check, ChevronDown, ChevronRight, Clock, Columns3, Download, FileSpreadsheet, FileText,
   Lock, LockOpen, Pencil, Plus, Trash2, X, XCircle,
@@ -114,10 +114,21 @@ function lineMinutesOf(startTime, endTime) {
 // throws outright in a private window.
 const LAYOUT_KEY = "rentlogg_timer_layout";
 
+// What each saved field must look like to be used at all. Anything else — an old build's shape, a
+// hand-edited value — is ignored in favour of the default: a value of the wrong type here crashed the
+// whole page on every visit, because it is read during the first render and the browser kept it.
+const LAYOUT_SHAPES = {
+  hidden: (v) => Array.isArray(v) && v.every((k) => typeof k === "string"),
+  groupBy: (v) => v === null || typeof v === "string",
+  sortBy: (v) => v === null || (v && typeof v === "object" && typeof v.key === "string"),
+};
+
 function readLayout(field, fallback) {
   try {
     const raw = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "{}");
-    return field in raw ? raw[field] : fallback;
+    if (!raw || typeof raw !== "object" || !(field in raw)) return fallback;
+    const valid = LAYOUT_SHAPES[field];
+    return !valid || valid(raw[field]) ? raw[field] : fallback;
   } catch {
     return fallback;
   }
@@ -277,16 +288,21 @@ export default function TimerPage({ token, user }) {
   // turned up, not whether the hours have been signed off.
   const plannedQuery = new URLSearchParams({ from, to, ...filters }).toString();
 
+  // Only the newest request may write its answer. A date input fires onChange on every intermediate
+  // year while it is being typed (0002, 0020, 0202, 2026), and an older, slower response arriving last
+  // replaced the right period with a wrong one — or put a stale error over good data.
+  const loadSeq = useRef(0);
   const load = useCallback(() => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     setError("");
     Promise.all([
       apiFetch(`/time/entries?${query}`, { token }),
       apiFetch(`/time/planned?${plannedQuery}`, { token }),
     ])
-      .then(([e, p]) => { setData(e); setPlanned(p); })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .then(([e, p]) => { if (seq === loadSeq.current) { setData(e); setPlanned(p); } })
+      .catch((err) => { if (seq === loadSeq.current) setError(err.message); })
+      .finally(() => { if (seq === loadSeq.current) setLoading(false); });
   }, [query, plannedQuery, token]);
 
   useEffect(load, [load]);
@@ -351,6 +367,8 @@ export default function TimerPage({ token, user }) {
       const skipped = [];
       if (result.skipped_open) skipped.push(`${result.skipped_open} pågår fortsatt`);
       if (result.skipped_locked) skipped.push(`${result.skipped_locked} er låst`);
+      if (result.skipped_rejected) skipped.push(`${result.skipped_rejected} er avvist`);
+      if (result.skipped_signed) skipped.push(`${result.skipped_signed} har du allerede signert`);
       setNotice(
         `${result.changed} ${approved ? `signert som ${result.level}` : "satt tilbake til venter"}.` +
         (skipped.length ? ` Hoppet over: ${skipped.join(", ")}.` : "")
@@ -610,10 +628,10 @@ export default function TimerPage({ token, user }) {
           onToggleApproval={toggleApproval} onReject={setRejectEntry} onEdit={setEditEntry}
         />
       )}
-      {tab === "logg" && <LogTab token={token} from={from} to={to} filters={filters} />}
+      {tab === "logg" && <LogTab token={token} from={from} to={to} filters={filters} refreshKey={data} />}
       {!loading && tab === "plan" && <PlannedTable rows={planned?.rows || []} />}
       {tab === "ugyldige" && (
-        <AttentionTab token={token} from={from} to={to} filters={filters} onEdit={setEditEntry} />
+        <AttentionTab token={token} from={from} to={to} filters={filters} onEdit={setEditEntry} refreshKey={data} />
       )}
 
       </>
@@ -1129,15 +1147,23 @@ const ACTION_LABEL = {
   approval_cleared: "Godkjenning fjernet", locked: "Låst", unlocked: "Låst opp",
 };
 
-function LogTab({ token, from, to, filters }) {
+// refreshKey changes every time the page reloads its entries, so an approval, a rejection or a correction
+// made on another tab shows up here: the log used to be fetched only when the period changed, and
+// stayed as it was until you left the tab and came back. An older answer arriving after a newer one
+// is ignored, and one failed fetch no longer leaves the error showing for ever.
+function LogTab({ token, from, to, filters, refreshKey }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
   const query = new URLSearchParams({ from, to, ...filters }).toString();
 
   useEffect(() => {
-    setRows(null);
-    apiFetch(`/time/log?${query}`, { token }).then(setRows).catch((err) => setError(err.message));
-  }, [query, token]);
+    let cancelled = false;
+    setError("");
+    apiFetch(`/time/log?${query}`, { token })
+      .then((r) => { if (!cancelled) setRows(r); })
+      .catch((err) => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
+  }, [query, token, refreshKey]);
 
   if (error) return <div style={{ color: "var(--text-danger)", fontSize: 13 }}>{error}</div>;
   if (!rows) return <Loading />;
@@ -2045,15 +2071,21 @@ const REASON_COLOR = {
 // Mobile Worker keeps a screen for registrations that cannot go anywhere. This answers the same
 // question in Rentlogg's terms: what in this period would silently break or distort a payroll
 // export? Every reason listed is something a person has to fix — none of it can be guessed.
-function AttentionTab({ token, from, to, filters, onEdit }) {
+function AttentionTab({ token, from, to, filters, onEdit, refreshKey }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const query = new URLSearchParams({ from, to, ...filters }).toString();
 
+  // Re-fetched whenever the page reloads its entries (refreshKey): fixing a flagged shift through
+  // "Rediger" used to leave it sitting in this list.
   useEffect(() => {
-    setData(null);
-    apiFetch(`/time/attention?${query}`, { token }).then(setData).catch((err) => setError(err.message));
-  }, [query, token]);
+    let cancelled = false;
+    setError("");
+    apiFetch(`/time/attention?${query}`, { token })
+      .then((r) => { if (!cancelled) setData(r); })
+      .catch((err) => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
+  }, [query, token, refreshKey]);
 
   if (error) return <div style={{ color: "var(--text-danger)", fontSize: 13 }}>{error}</div>;
   if (!data) return <Loading />;

@@ -19,6 +19,12 @@ export default function InviterBrukerePage({ token, user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  // The invitation that was just made, link and all. A super_admin's own list is always empty (the
+  // list is scoped to the company of the person asking, and a super_admin has none), and the answer to
+  // the POST — the only place the link was — used to be thrown away, so the very first admin invite
+  // of a new company, which SelskaperPage tells you to make here, produced a link nobody could see.
+  const [createdInvite, setCreatedInvite] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   function loadAll() {
     Promise.all([
@@ -39,9 +45,11 @@ export default function InviterBrukerePage({ token, user }) {
 
   async function createInvite(e) {
     e.preventDefault();
+    if (creating) return; // a double click made two invitations, the second revoking the first
     setError("");
+    setCreating(true);
     try {
-      await apiFetch("/invitations", {
+      const created = await apiFetch("/invitations", {
         token, method: "POST",
         body: JSON.stringify({
           email, role,
@@ -49,12 +57,15 @@ export default function InviterBrukerePage({ token, user }) {
           company_id: isSuperAdmin ? Number(companyId) : undefined,
         }),
       });
+      setCreatedInvite(created);
       setEmail("");
       setClientId("");
       setCompanyId("");
       loadAll();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -124,7 +135,7 @@ export default function InviterBrukerePage({ token, user }) {
               </select>
             </Field>
           )}
-          <button type="submit" style={primaryBtnStyle}>+ Opprett</button>
+          <button type="submit" disabled={creating} style={{ ...primaryBtnStyle, opacity: creating ? 0.6 : 1 }}>+ Opprett</button>
         </form>
         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>
           {isSuperAdmin
@@ -132,6 +143,19 @@ export default function InviterBrukerePage({ token, user }) {
             : "Lenken er gyldig i 14 dager. Brukeren får rollen og tilknyttes ditt firma automatisk."}
         </div>
       </Card>
+
+      {createdInvite?.token && (
+        <Card style={{ marginBottom: 20, borderLeft: "3px solid var(--brand)" }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>Invitasjon opprettet for {createdInvite.email}</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input readOnly value={inviteLink(createdInvite.token)} onFocus={(e) => e.target.select()} style={{ ...inputStyle, flex: 1, minWidth: 240, fontSize: 12 }} />
+            <button type="button" onClick={() => copyLink(createdInvite)} style={linkBtnStyle}>
+              <Link2 size={13} style={{ verticalAlign: -2, marginRight: 3 }} />
+              {copiedId === createdInvite.id ? "Kopiert!" : "Kopier lenke"}
+            </button>
+          </div>
+        </Card>
+      )}
 
       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8, letterSpacing: 0.5 }}>
         AKTIVE INVITASJONER ({invitations.active.length})

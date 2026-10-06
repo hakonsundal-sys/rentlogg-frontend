@@ -89,6 +89,10 @@ export default function RapporterPage({ token, user }) {
       setError("Velg minst én mottaker, eller fjern lokasjonsvalget for å sende til alle.");
       return;
     }
+    // This sends real e-mail, with photos, to the customer's own addresses — for every site when none is
+    // chosen. It used to go on the first click.
+    const scope = digestSiteId ? "denne lokasjonen" : "alle lokasjoner";
+    if (!window.confirm(`Sende dagsrapporten for ${digestDate} til kundene på e-post (${scope})?`)) return;
     setError("");
     setDigestResult(null);
     setDigestSending(true);

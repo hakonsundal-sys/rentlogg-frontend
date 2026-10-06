@@ -12,6 +12,7 @@ import RapporterPage from "./RapporterPage";
 import MinProfilPage from "./MinProfilPage";
 import TimerPage from "./TimerPage";
 import SjekklisterPage from "./SjekklisterPage";
+import ErrorBoundary from "../ErrorBoundary";
 import { isChecklistOnly } from "../../modules";
 import { apiFetch } from "../../api";
 
@@ -33,9 +34,14 @@ export default function AdminLayout({ token, user, onLogout }) {
   // A checklist-only company has no dashboard of cleaning visits to land on.
   const [currentPage, setCurrentPage] = useState(() => (isChecklistOnly(user) ? "sjekklister" : "dashboard"));
   const [summary, setSummary] = useState(null);
+  const [summaryFailed, setSummaryFailed] = useState(false);
 
   function refreshSummary() {
-    apiFetch("/dashboard/summary", { token }).then(setSummary).catch(() => {});
+    apiFetch("/dashboard/summary", { token })
+      .then((data) => { setSummary(data); setSummaryFailed(false); })
+      // Remembered, so the dashboard can say so: it used to wait on "Laster..." for ever when this
+      // one request failed, with no message and nothing to press.
+      .catch(() => setSummaryFailed(true));
   }
 
   useEffect(() => {
@@ -50,7 +56,11 @@ export default function AdminLayout({ token, user, onLogout }) {
       <div className="admin-content">
         {/* Trial/pricing banner hidden until a working payment flow exists — re-enable by restoring this line. */}
         {/* <TopBanner trial={summary?.trial} /> */}
-        <PageComponent token={token} user={user} summary={summary} refreshSummary={refreshSummary} />
+        {/* One page that cannot render must not take the sidebar with it, and switching page starts
+            the boundary afresh (key), so leaving the broken page is always possible. */}
+        <ErrorBoundary key={currentPage}>
+          <PageComponent token={token} user={user} summary={summary} summaryFailed={summaryFailed} refreshSummary={refreshSummary} />
+        </ErrorBoundary>
       </div>
     </div>
   );

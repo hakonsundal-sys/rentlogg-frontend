@@ -21,7 +21,7 @@ function photoUrl(filePath, token) {
   return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
 }
 
-export default function DashboardPage({ token, user, summary }) {
+export default function DashboardPage({ token, user, summary, summaryFailed, refreshSummary }) {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [runs, setRuns] = useState([]);
   const [deviations, setDeviations] = useState([]);
@@ -69,6 +69,16 @@ export default function DashboardPage({ token, user, summary }) {
     }
   }
 
+  if (!summary && summaryFailed) {
+    return (
+      <div style={{ color: "var(--text-danger)" }}>
+        Kunne ikke laste oversikten.{" "}
+        <button onClick={refreshSummary} style={{ background: "none", border: "none", color: "var(--brand-dark)", cursor: "pointer", textDecoration: "underline", fontSize: "inherit" }}>
+          Prøv igjen
+        </button>
+      </div>
+    );
+  }
   if (!summary) return <div style={{ color: "var(--text-secondary)" }}>Laster...</div>;
 
   const filteredRuns = runs.filter((r) => {

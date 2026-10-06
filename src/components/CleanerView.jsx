@@ -167,6 +167,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [showDeviationForm, setShowDeviationForm] = useState(false);
+  const [submittingDeviation, setSubmittingDeviation] = useState(false);
   const [deviationText, setDeviationText] = useState("");
   const [deviationPhoto, setDeviationPhoto] = useState(null);
   const [deviationRoomId, setDeviationRoomId] = useState("");
@@ -298,6 +299,14 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       .catch((err) => setError(err.message));
   }, [showVaskeplan, run?.site, vaskeplanMonth, token]);
 
+  // Applies a change to the open room's run — but only if that run is still the one on screen.
+  // These run after an `await`, and in that time she may have tapped "Lagre", pressed back, or opened
+  // another room. The old `setRoomRun((r) => ({ ...r, ... }))` then either threw on a null `r` —
+  // unmounting the whole app — or wrote one room's photo into the next room's list.
+  function updateRoomRun(runId, change) {
+    setRoomRun((r) => (r && r.id === runId ? change(r) : r));
+  }
+
   function showUndo(label, onUndo) {
     clearTimeout(undoTimeoutRef.current);
     setUndoAction({ label, onUndo });
@@ -332,8 +341,16 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       const checkin = await apiFetch(`/sites/checkin/${qrToken}`, {
         token, method: "POST", body: JSON.stringify(position || {}),
       });
-      const fullRun = await apiFetch(`/checklists/runs/${checkin.runId}`, { token });
+      // Both before anything is shown, and at the same time: the run and the room list depend only on
+      // the check-in answer, so waiting for one after the other made the weakest-signal step slower,
+      // and a failure of the second left a half-opened visit on screen — an empty flat "0/0"
+      // checklist with a finish button, on a site that is all rooms.
+      const [fullRun, siteRooms] = await Promise.all([
+        apiFetch(`/checklists/runs/${checkin.runId}`, { token }),
+        apiFetch(`/sites/${checkin.site.id}/rooms`, { token }),
+      ]);
       setRun({ ...fullRun, site: checkin.site, gps_verified: checkin.gps_verified });
+      setRooms(siteRooms);
       setPhotoCount(0);
       setShowDeviationForm(false);
       setExpandedRoomId(null);
@@ -341,9 +358,6 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       clearTimeout(undoTimeoutRef.current);
       setUndoAction(null);
       saveContext({ qrToken, roomId: null });
-
-      const siteRooms = await apiFetch(`/sites/${checkin.site.id}/rooms`, { token });
-      setRooms(siteRooms);
 
       setShowDocuments(false);
       setTimeClockKey((n) => n + 1);
@@ -509,29 +523,42 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     }
     setMeasureHintItemId(null);
     // Kontakttiden er serverens avgjørelse; dette er bare for å slippe et trykk som uansett
-    // ville blitt avvist.
+    // ville blitt avvist. `contact_remaining` is brought down to 0 when the row's own countdown
+    // reaches it (markContactElapsed) — before that it stayed at the value from when the room was
+    // opened, so a task whose time was up still refused to be ticked.
     if (done && item.contact_seconds && (item.contact_remaining === null || item.contact_remaining > 0)) {
       setMeasureHintItemId(item.id);
       return;
     }
     setOptionHintItemId(null);
-    setRoomRun((r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
+    const runId = roomRun.id;
+    updateRoomRun(runId, (r) => ({ ...r, items: r.items.map((i) => (i.id === item.id ? { ...i, done } : i)) }));
     try {
-      await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
+      await queueableFetch(`/rooms/runs/${runId}/items/${item.id}`, { token, method: "PATCH", body: JSON.stringify({ done }) });
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // The countdown on a task row reached zero. Records it on the item, so that ticking the task — and
+  // "Huk av alle" — treat the contact time as served.
+  function markContactElapsed(item) {
+    updateRoomRun(roomRun?.id, (r) => ({
+      ...r,
+      items: r.items.map((i) => (i.id === item.id ? { ...i, contact_remaining: 0 } : i)),
+    }));
   }
 
   // Starter kontakttiden. Tidspunktet settes av serveren, så dette er ikke kø-bart offline —
   // en kontakttid som «startet» da telefonen fikk nett igjen ville vært en usannhet i loggen.
   // Derfor vanlig apiFetch og ikke queueableFetch.
   async function startContactTime(item) {
+    const runId = roomRun.id;
     try {
-      const res = await apiFetch(`/rooms/runs/${roomRun.id}/items/${item.id}/contact-start`, {
+      const res = await apiFetch(`/rooms/runs/${runId}/items/${item.id}/contact-start`, {
         token, method: "POST", body: JSON.stringify({}),
       });
-      setRoomRun((r) => ({
+      updateRoomRun(runId, (r) => ({
         ...r,
         items: r.items.map((i) =>
           i.id === item.id
@@ -561,18 +588,19 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     const value = cleared ? null : parsed;
     const nextDone = !cleared;
     setMeasureHintItemId(null);
-    setRoomRun((r) => ({
+    const runId = roomRun.id;
+    updateRoomRun(runId, (r) => ({
       ...r,
       items: r.items.map((i) =>
         i.id === item.id ? { ...i, measured_value: value, done: nextDone, verdict: verdictFor(i, value) } : i
       ),
     }));
     try {
-      await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}/measurement`, {
+      await queueableFetch(`/rooms/runs/${runId}/items/${item.id}/measurement`, {
         token, method: "PATCH", body: JSON.stringify({ value: cleared ? "" : value }),
       });
       if (nextDone !== item.done) {
-        await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, {
+        await queueableFetch(`/rooms/runs/${runId}/items/${item.id}`, {
           token, method: "PATCH", body: JSON.stringify({ done: nextDone }),
         });
       }
@@ -589,18 +617,19 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     const nextOptions = item.options.map((o) => (o.id === option.id ? { ...o, selected } : o));
     const nextDone = nextOptions.some((o) => o.selected);
     setOptionHintItemId(null);
-    setRoomRun((r) => ({
+    const runId = roomRun.id;
+    updateRoomRun(runId, (r) => ({
       ...r,
       items: r.items.map((i) => (i.id === item.id ? { ...i, options: nextOptions, done: nextDone } : i)),
     }));
     try {
       // Order matters offline as well as online: the queue replays in the order things were
       // queued, and the backend rejects done=true before a choice exists.
-      await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}/options/${option.id}`, {
+      await queueableFetch(`/rooms/runs/${runId}/items/${item.id}/options/${option.id}`, {
         token, method: "PATCH", body: JSON.stringify({ selected }),
       });
       if (nextDone !== item.done) {
-        await queueableFetch(`/rooms/runs/${roomRun.id}/items/${item.id}`, {
+        await queueableFetch(`/rooms/runs/${runId}/items/${item.id}`, {
           token, method: "PATCH", body: JSON.stringify({ done: nextDone }),
         });
       }
@@ -613,14 +642,15 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     // Mirrors the backend's own rule: a bulk tick can't answer a flervalg task for the cleaner,
     // so those stay open (and visibly so) until someone says which alternative was used. Det
     // samme gjelder en måleoppgave — «Huk av alle» kan ikke gjette en ATP-verdi.
-    setRoomRun((r) => ({
+    const runId = roomRun.id;
+    updateRoomRun(runId, (r) => ({
       ...r,
       items: r.items.map((i) =>
         itemNeedsChoice(i) || itemNeedsMeasurement(i) || itemContactPending(i) ? i : { ...i, done: true }
       ),
     }));
     try {
-      await queueableFetch(`/rooms/runs/${roomRun.id}/items/complete-all`, { token, method: "POST" });
+      await queueableFetch(`/rooms/runs/${runId}/items/complete-all`, { token, method: "POST" });
     } catch (err) {
       setError(err.message);
     }
@@ -633,13 +663,14 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
     form.append("photo", file);
     form.append("kind", "general");
     const previewUrl = URL.createObjectURL(file);
+    const runId = roomRun.id;
     setUploadingRoomPhoto(true);
     try {
-      const result = await queueableFetch(`/rooms/runs/${roomRun.id}/photos`, { token, method: "POST", body: form });
+      const result = await queueableFetch(`/rooms/runs/${runId}/photos`, { token, method: "POST", body: form });
       if (result.queued) {
         setPendingRoomPhotos((p) => [...p, { tempId: result.tempId, previewUrl }]);
       } else {
-        setRoomRun((r) => ({ ...r, photos: [...(r.photos || []), result] }));
+        updateRoomRun(runId, (r) => ({ ...r, photos: [...(r.photos || []), result] }));
         URL.revokeObjectURL(previewUrl);
       }
     } catch (err) {
@@ -653,16 +684,17 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
 
   async function deleteRoomPhoto(photoId) {
     if (!window.confirm(t("cleaner.confirmRemovePhoto"))) return;
+    const runId = roomRun.id;
     try {
-      await queueableFetch(`/rooms/runs/${roomRun.id}/photos/${photoId}`, { token, method: "DELETE" });
-      setRoomRun((r) => ({ ...r, photos: r.photos.filter((p) => p.id !== photoId) }));
+      await queueableFetch(`/rooms/runs/${runId}/photos/${photoId}`, { token, method: "DELETE" });
+      updateRoomRun(runId, (r) => ({ ...r, photos: (r.photos || []).filter((p) => p.id !== photoId) }));
     } catch (err) {
       setError(err.message);
     }
   }
 
   function updateRoomNoteLocal(note) {
-    setRoomRun((r) => ({ ...r, note }));
+    setRoomRun((r) => (r ? { ...r, note } : r));
   }
 
   async function saveRoomNote() {
@@ -799,12 +831,16 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   }
 
   async function submitDeviation() {
+    // A second tap while the first is still on its way (a slow signal makes that likely) filed the
+    // same avvik twice.
+    if (submittingDeviation) return;
     if (!deviationText.trim()) return;
     if (!initials.trim()) {
       setError(t("cleaner.nameRequiredDeviation"));
       focusInitials();
       return;
     }
+    setSubmittingDeviation(true);
     try {
       const deviation = await queueableFetch("/deviations", {
         token, method: "POST",
@@ -822,7 +858,13 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       } else if (deviationPhoto) {
         const form = new FormData();
         form.append("photo", deviationPhoto);
-        await queueableFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
+        // The avvik exists by now. If only the photo is refused the form must still close: leaving
+        // it filled in invited a retry, and a retry filed a second avvik.
+        try {
+          await queueableFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
+        } catch (photoErr) {
+          setError(photoErr.message);
+        }
       }
       setDeviationText("");
       setDeviationPhoto(null);
@@ -831,9 +873,11 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       setDeviationTaskLabel("");
       setDeviationPriority("medium");
       setShowDeviationForm(false);
-      setRun((r) => ({ ...r, site: { ...r.site, status: "deviation" } }));
+      setRun((r) => (r ? { ...r, site: { ...r.site, status: "deviation" } } : r));
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSubmittingDeviation(false);
     }
   }
 
@@ -1148,6 +1192,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             onToggleOption={(option) => toggleRoomItemOption(item, option)}
             onMeasure={(raw) => saveRoomItemMeasurement(item, raw)}
             onStartContact={() => startContactTime(item)}
+            onContactElapsed={() => markContactElapsed(item)}
             translate={planTranslation}
           />
         ))}
@@ -1582,7 +1627,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
                 }}>
                   <Camera size={13} /> {deviationPhoto ? deviationPhoto.name : t("cleaner.attachPhoto")}
                 </button>
-                <button onClick={submitDeviation} style={{
+                <button onClick={submitDeviation} disabled={submittingDeviation} style={{ opacity: submittingDeviation ? 0.6 : 1,
                   background: "var(--brand)", color: "white",
                   border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
                 }}>
@@ -1661,7 +1706,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             }}>
               <Camera size={13} /> {deviationPhoto ? deviationPhoto.name : t("cleaner.attachPhoto")}
             </button>
-            <button onClick={submitDeviation} style={{
+            <button onClick={submitDeviation} disabled={submittingDeviation} style={{ opacity: submittingDeviation ? 0.6 : 1,
               background: "var(--brand)", color: "white",
               border: "none", padding: "8px 16px", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer",
             }}>
@@ -1764,7 +1809,7 @@ function OptionChip({ option, translated, onClick }) {
 // a flervalg task (one carrying options — e.g. which soap was used, see room_run_item_options on
 // the backend) puts its alternatives underneath and is ticked by choosing one, since the choice
 // IS the documentation the task exists for.
-function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption, onMeasure, onStartContact, translate }) {
+function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption, onMeasure, onStartContact, onContactElapsed, translate }) {
   const { t } = useI18n();
   const hasOptions = item.options?.length > 0;
   const isMeasurement = !!item.measure_unit;
@@ -1782,6 +1827,13 @@ function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption,
     if (remaining === null || remaining <= 0) return undefined;
     const id = setInterval(() => setRemaining((s) => (s === null ? null : Math.max(0, s - 1))), 1000);
     return () => clearInterval(id);
+  }, [remaining]);
+  // The countdown is local to this row, but whether the task may be ticked is decided in the parent
+  // from the item's own `contact_remaining`, which stayed at its starting value: a task whose time
+  // was up still refused to be ticked, and "Huk av alle" skipped it while the server ticked it.
+  useEffect(() => {
+    if (remaining === 0 && item.contact_seconds && item.contact_remaining !== 0) onContactElapsed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining]);
   // Lokal tekst mens det tastes; verdien sendes først ved blur/Enter. Feltet er tekst og ikke
   // number: en number-input på Android spiser komma, og en renholder taster «7,2», ikke «7.2».
@@ -1937,7 +1989,12 @@ function RoomTaskRow({ item, hintVisible, measureHint, onToggle, onToggleOption,
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              onBlur={() => onMeasure(draft)}
+              onBlur={() => {
+                // Tapping into the field and out again must not send anything: it rewrote the time
+                // the reading was taken to "now", on a reading that had not changed.
+                const saved = item.measured_value === null || item.measured_value === undefined ? "" : String(item.measured_value);
+                if (draft.trim() !== saved) onMeasure(draft);
+              }}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
               inputMode="decimal"
               placeholder={t("cleaner.measureValue")}

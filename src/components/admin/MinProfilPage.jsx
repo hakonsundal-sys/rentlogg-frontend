@@ -94,7 +94,11 @@ export default function MinProfilPage({ token }) {
     }
   }
 
-  if (!profile) return <div style={{ color: "var(--text-secondary)" }}>Laster...</div>;
+  if (!profile) {
+    return error
+      ? <div style={{ color: "var(--text-danger)" }}>{error}</div>
+      : <div style={{ color: "var(--text-secondary)" }}>Laster...</div>;
+  }
 
   return (
     <div>

@@ -22,6 +22,9 @@ export default function KunderPage({ token, user, refreshSummary }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editingClientId, setEditingClientId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
+  // Creating, editing and deleting a customer are administrator actions on the backend; a driftsleder
+  // sees the list and was shown buttons that answered "not allowed".
+  const canEdit = user?.role === "admin";
 
   function loadAll() {
     Promise.all([apiFetch("/clients", { token }), apiFetch("/sites", { token })])
@@ -104,7 +107,7 @@ export default function KunderPage({ token, user, refreshSummary }) {
           <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Kunder</h1>
           <div style={{ color: "var(--text-secondary)" }}>{clients.length} kunder</div>
         </div>
-        <button onClick={() => setShowForm((v) => !v)} style={primaryBtnStyle}>+ Ny kunde</button>
+        {canEdit && <button onClick={() => setShowForm((v) => !v)} style={primaryBtnStyle}>+ Ny kunde</button>}
       </div>
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
@@ -166,10 +169,12 @@ export default function KunderPage({ token, user, refreshSummary }) {
                   }}>
                     <Users size={20} />
                   </div>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button onClick={() => startEditClient(client)} style={iconBtnStyle}><Pencil size={15} /></button>
-                    <button onClick={() => setConfirmDelete(client.id)} style={iconBtnStyle}><Trash2 size={15} /></button>
-                  </div>
+                  {canEdit && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={() => startEditClient(client)} style={iconBtnStyle}><Pencil size={15} /></button>
+                      <button onClick={() => setConfirmDelete(client.id)} style={iconBtnStyle}><Trash2 size={15} /></button>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ fontWeight: 600, marginTop: 12 }}>{client.name}</div>

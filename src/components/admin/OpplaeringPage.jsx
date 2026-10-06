@@ -161,6 +161,9 @@ function Oversikt({
   }
 
   async function deleteRecord(recordId) {
+    // Deleting a record also deletes the signed evidence file and signature behind it — the only proof
+    // the training was given.
+    if (!window.confirm("Slette denne opplæringsregistreringen? Signaturen og dokumentasjonen som hører til slettes også.")) return;
     setError("");
     try {
       await apiFetch(`/training/records/${recordId}`, { token, method: "DELETE" });
@@ -413,6 +416,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
   }
 
   async function removeCourse(course) {
+    if (!window.confirm(`Slette kurset «${course.title || ""}»? Lysbilder, lyd og vedlagte filer slettes også.`)) return;
     setError("");
     try {
       await apiFetch(`/training/courses/${course.id}`, { token, method: "DELETE" });
@@ -436,6 +440,7 @@ function Kurs({ courses, staff, departments, token, isAdmin, onChanged, setError
   }
 
   async function removeFile(course, fileId) {
+    if (!window.confirm("Fjerne denne filen fra kurset?")) return;
     setError("");
     try {
       await apiFetch(`/training/courses/${course.id}/files/${fileId}`, { token, method: "DELETE" });

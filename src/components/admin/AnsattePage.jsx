@@ -112,9 +112,17 @@ function StaffList({ token, user, onOpenTraining }) {
 
   useEffect(loadAll, [token]);
 
+  // Merged into the row, not swapped for it: the role/active/department endpoints answer with only
+  // the staff fields, so replacing the row dropped employee_number (the column turned red "mangler"
+  // for someone who has one) and, for a super_admin, the company the department select depends on.
   function replaceUser(updated) {
-    setUsers((list) => list.map((u) => (u.id === updated.id ? updated : u)));
+    setUsers((list) => list.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
   }
+
+  // What a driftsleder may do here. The backend allows editing a person (name, phone, department) but
+  // keeps creating, deactivating, deleting, changing role and resetting passwords for administrators
+  // — the buttons used to be shown to everyone and answered "not allowed".
+  const canAdminister = user?.role === "admin" || isSuperAdmin;
 
   function departmentsForUser(u) {
     return isSuperAdmin ? departments.filter((d) => d.company_id === u.company_id) : departments;
@@ -278,12 +286,14 @@ function StaffList({ token, user, onOpenTraining }) {
             {users.length} ansatte &middot; endre rolle, avdeling, aktiv status eller passord
           </div>
         </div>
-        <button
-          onClick={() => { setShowNewUser((open) => !open); setCreatedName(""); setError(""); }}
-          style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <UserPlus size={15} /> Ny ansatt
-        </button>
+        {canAdminister && (
+          <button
+            onClick={() => { setShowNewUser((open) => !open); setCreatedName(""); setError(""); }}
+            style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <UserPlus size={15} /> Ny ansatt
+          </button>
+        )}
       </div>
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
@@ -379,7 +389,7 @@ function StaffList({ token, user, onOpenTraining }) {
                     {isSuperAdmin && <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.company_name || "—"}</td>}
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.email}</td>
                     <td style={{ padding: "10px 14px" }}>
-                      {isSelf ? (
+                      {isSelf || !canAdminister ? (
                         roleLabels[u.role] || u.role
                       ) : (
                         <select
@@ -410,8 +420,8 @@ function StaffList({ token, user, onOpenTraining }) {
                       </select>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
-                      {isSelf ? (
-                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Aktiv</span>
+                      {isSelf || !canAdminister ? (
+                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{u.active ? "Aktiv" : "Inaktiv"}</span>
                       ) : (
                         <button
                           onClick={() => toggleActive(u)}
@@ -432,7 +442,7 @@ function StaffList({ token, user, onOpenTraining }) {
                             <GraduationCap size={13} /> Opplæring
                           </button>
                         )}
-                        {canResetPassword(u.role) && (
+                        {canAdminister && canResetPassword(u.role) && (
                           <button onClick={() => startReset(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                             <KeyRound size={13} /> {resetSuccessId === u.id ? "Passord satt ✓" : "Sett nytt passord"}
                           </button>
@@ -440,7 +450,7 @@ function StaffList({ token, user, onOpenTraining }) {
                       </div>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
-                      {!isSelf && (
+                      {canAdminister && !isSelf && (
                         <button onClick={() => setConfirmDeleteId(u.id)} style={{ ...linkBtnStyle, color: "var(--text-danger)", display: "flex", alignItems: "center", gap: 4 }}>
                           <Trash2 size={13} />
                         </button>

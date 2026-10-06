@@ -77,7 +77,9 @@ export default function KjemikalierPage({ token }) {
     }
   }
 
-  if (chemicals === null) return <Loading />;
+  // The first load failing left this on the spinner for ever: the error was set, but the loading guard
+  // ran first and never showed it.
+  if (chemicals === null) return error ? <div style={{ color: "var(--text-danger)" }}>{error}</div> : <Loading />;
 
   return (
     <div>

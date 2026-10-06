@@ -37,7 +37,11 @@ export const CHECKLIST_NAV_ITEMS = [
 export default function Sidebar({ currentPage, setCurrentPage, user, onLogout, navItems }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const items = navItems || (isChecklistOnly(user) ? CHECKLIST_NAV_ITEMS : NAV_ITEMS);
-  const visibleItems = items.filter((item) => !item.module || hasModule(user, item.module));
+  // Inviting people is an administrator action (the invitation list itself is refused to a
+  // driftsleder), so the entry is not listed for one.
+  const visibleItems = items.filter(
+    (item) => (!item.module || hasModule(user, item.module)) && !(item.id === "inviter" && user?.role === "manager")
+  );
 
   function selectPage(id) {
     setCurrentPage(id);

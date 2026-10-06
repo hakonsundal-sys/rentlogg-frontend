@@ -10,6 +10,9 @@ const EMPTY_NEW_USER = { name: "", email: "", password: "", client_id: "" };
 
 export default function KundebrukerePage({ token, user }) {
   const isSuperAdmin = user?.role === "super_admin";
+  // Creating, deactivating, deleting and resetting the password of an account are administrator
+  // actions on the backend; a driftsleder may only edit the details of one.
+  const canAdminister = user?.role === "admin" || isSuperAdmin;
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -182,12 +185,14 @@ export default function KundebrukerePage({ token, user }) {
             {users.length} kundebrukere &middot; endre aktiv status eller passord
           </div>
         </div>
-        <button
-          onClick={() => { setShowNewUser((open) => !open); setCreatedName(""); setError(""); }}
-          style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}
-        >
-          <UserPlus size={15} /> Ny kundebruker
-        </button>
+        {canAdminister && (
+          <button
+            onClick={() => { setShowNewUser((open) => !open); setCreatedName(""); setError(""); }}
+            style={{ ...primaryBtnStyle, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <UserPlus size={15} /> Ny kundebruker
+          </button>
+        )}
         {clients.length > 1 && (
           <Field label="Kunde" style={{ margin: 0, minWidth: 200 }}>
             <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} style={inputStyle}>
@@ -263,28 +268,36 @@ export default function KundebrukerePage({ token, user }) {
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.email}</td>
                     <td style={{ padding: "10px 14px", color: "var(--text-secondary)" }}>{u.phone || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
-                      <button
-                        onClick={() => toggleActive(u)}
-                        disabled={savingUserId === u.id}
-                        style={{ ...linkBtnStyle, color: u.active ? "var(--text-secondary)" : "var(--text-success)" }}
-                      >
-                        {u.active ? "Deaktiver" : "Aktiver"}
-                      </button>
+                      {canAdminister ? (
+                        <button
+                          onClick={() => toggleActive(u)}
+                          disabled={savingUserId === u.id}
+                          style={{ ...linkBtnStyle, color: u.active ? "var(--text-secondary)" : "var(--text-success)" }}
+                        >
+                          {u.active ? "Deaktiver" : "Aktiver"}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{u.active ? "Aktiv" : "Inaktiv"}</span>
+                      )}
                     </td>
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                         <button onClick={() => startEdit(u)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                           <Pencil size={13} /> Rediger
                         </button>
-                        <button onClick={() => startReset(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
-                          <KeyRound size={13} /> {resetSuccessId === u.id ? "Passord satt ✓" : "Sett nytt passord"}
-                        </button>
+                        {canAdminister && (
+                          <button onClick={() => startReset(u.id)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                            <KeyRound size={13} /> {resetSuccessId === u.id ? "Passord satt ✓" : "Sett nytt passord"}
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
-                      <button onClick={() => setConfirmDeleteId(u.id)} style={{ ...linkBtnStyle, color: "var(--text-danger)", display: "flex", alignItems: "center", gap: 4 }}>
-                        <Trash2 size={13} />
-                      </button>
+                      {canAdminister && (
+                        <button onClick={() => setConfirmDeleteId(u.id)} style={{ ...linkBtnStyle, color: "var(--text-danger)", display: "flex", alignItems: "center", gap: 4 }}>
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                   {editUserId === u.id && (

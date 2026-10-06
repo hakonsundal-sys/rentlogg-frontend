@@ -129,6 +129,13 @@ export default function LessonPlayer({ slides, record, token, user, requiresDraw
         requiresSignature
         requiresDrawnSignature={requiresDrawnSignature}
         onSigned={onSigned}
+        // The progress saves above are fire-and-forget on purpose, but the server refuses the signature
+        // unless it has counted every slide. If the last of them was lost on a weak signal the button
+        // unlocked here and was then refused with "lesson not finished", and nothing ever resent the
+        // number. It is sent again, and waited for, right before signing.
+        beforeSign={() => apiFetch(`/training/me/records/${record.id}/progress`, {
+          token, method: "PATCH", body: JSON.stringify({ last_slide_index: index, slides_seen: seen.size }),
+        })}
         disabled={!allSeen}
         disabledReason={t("training.seenCount", { seen: seen.size, total: slides.length })}
       />
@@ -142,7 +149,7 @@ export default function LessonPlayer({ slides, record, token, user, requiresDraw
 // account, exactly like the initials field a cleaner signs a room off with — it's a confirmation
 // that she is the one doing this, not a password.
 export function SignCard({
-  record, token, user, requiresSignature, requiresDrawnSignature, onSigned, disabled, disabledReason,
+  record, token, user, requiresSignature, requiresDrawnSignature, onSigned, disabled, disabledReason, beforeSign,
 }) {
   const t = useT();
   const [name, setName] = useState(user?.name || "");
@@ -167,6 +174,7 @@ export function SignCard({
     try {
       // multipart rather than JSON: the signature is a file like every other upload in this app,
       // and goes through the same type check and size limit.
+      if (beforeSign) await beforeSign();
       const body = new FormData();
       body.append("signed_initials", name.trim());
       if (drawn) body.append("signature", drawn, "signatur.png");

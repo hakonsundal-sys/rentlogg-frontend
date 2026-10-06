@@ -90,6 +90,11 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
   const [approvingAll, setApprovingAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Only the first load failing leaves nothing to show. Every other error — an empty name on a
+  // report, a PDF that would not download, an approval that was refused — used to replace the whole
+  // page with the message and no way back but a reload that threw away a half-written report.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   const [historySite, setHistorySite] = useState(null);
   const [vaskeplanSite, setVaskeplanSite] = useState(null);
@@ -172,7 +177,7 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
         setDeviations(deviations);
         await refreshRoomsAwaitingApproval(sites);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => { setError(err.message); setLoadFailed(true); })
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -218,11 +223,13 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
   }
 
   async function submitReport(site) {
+    if (submittingReport) return; // a second tap on a slow signal filed the same avvik twice
     if (!formDescription.trim()) return;
     if (!formInitials.trim()) {
       setError("Skriv inn navnet ditt for å melde avvik.");
       return;
     }
+    setSubmittingReport(true);
     try {
       const created = await apiFetch("/deviations", {
         token, method: "POST",
@@ -251,14 +258,24 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
       setDeviations(await apiFetch("/deviations", { token }));
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSubmittingReport(false);
     }
   }
 
-  if (error) return <Card style={{ color: "var(--text-danger)" }}>{error}</Card>;
+  if (loadFailed) return <Card style={{ color: "var(--text-danger)" }}>{error}</Card>;
   if (loading) return <Loading />;
 
   return (
     <div>
+      {error && (
+        <Card style={{ marginBottom: 12, color: "var(--text-danger)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <span role="alert">{error}</span>
+          <button onClick={() => setError("")} aria-label="Lukk" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
+            <X size={16} />
+          </button>
+        </Card>
+      )}
       {roomsAwaitingApproval.length > 0 && (
         <Card style={{ marginBottom: 12, borderLeft: "3px solid var(--accent-blue)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
@@ -391,7 +408,7 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
                     <Camera size={13} /> {formPhoto ? formPhoto.name : "Legg ved bilde"}
                   </button>
                   <button onClick={() => setOpenFormSiteId(null)} style={{ ...secondaryBtnStyle }}>Avbryt</button>
-                  <button onClick={() => submitReport(s)} style={primaryBtnStyle}>Send avvik</button>
+                  <button onClick={() => submitReport(s)} disabled={submittingReport} style={{ ...primaryBtnStyle, opacity: submittingReport ? 0.6 : 1 }}>Send avvik</button>
                 </div>
               </div>
             ) : (
