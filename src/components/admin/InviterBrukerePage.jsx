@@ -19,10 +19,9 @@ export default function InviterBrukerePage({ token, user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
-  // The invitation that was just made, link and all. A super_admin's own list is always empty (the
-  // list is scoped to the company of the person asking, and a super_admin has none), and the answer to
-  // the POST — the only place the link was — used to be thrown away, so the very first admin invite
-  // of a new company, which SelskaperPage tells you to make here, produced a link nobody could see.
+  // The invitation that was just made, link and all. Worth keeping even though a super_admin can
+  // now see the list too: the link is the point of making one, and having it right there beats
+  // hunting for the row you just created.
   const [createdInvite, setCreatedInvite] = useState(null);
   const [creating, setCreating] = useState(false);
 
@@ -172,7 +171,9 @@ export default function InviterBrukerePage({ token, user }) {
           }}>
             <div>
               <div style={{ fontSize: 14 }}>{inv.email}</div>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Utløper {inv.expires_at}</div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                {isSuperAdmin && inv.company_name ? `${inv.company_name} · ` : ""}Utløper {inv.expires_at}
+              </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <RoleBadge role={inv.role} checklistOnly={checklistOnly} />
@@ -198,7 +199,12 @@ export default function InviterBrukerePage({ token, user }) {
             display: "flex", justifyContent: "space-between", alignItems: "center",
             padding: "8px 0", borderTop: i === 0 ? "none" : "1px solid var(--border)", fontSize: 14,
           }}>
-            <span>{inv.email}</span>
+            <span>
+              {inv.email}
+              {isSuperAdmin && inv.company_name && (
+                <span style={{ fontSize: 12, color: "var(--text-secondary)" }}> · {inv.company_name}</span>
+              )}
+            </span>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <RoleBadge role={inv.role} checklistOnly={checklistOnly} />
               <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{STATUS_LABEL[inv.status] || inv.status}</span>
