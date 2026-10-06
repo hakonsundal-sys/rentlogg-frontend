@@ -6,7 +6,8 @@ import { apiFetch, API_URL } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
 import { Card, StatusBadge, DocumentsList } from "./shared";
 import { useI18n } from "../i18n";
-import QrScanner from "./QrScanner";
+import QrScanner, { preloadQrDecoder } from "./QrScanner";
+import { prepareImage } from "../imageResize";
 import CleanerHistoryView from "./CleanerHistoryView";
 import TrainingView, { isSettled as isTrainingSettled } from "./TrainingView";
 import TimeClockCard from "./TimeClockCard";
@@ -15,69 +16,12 @@ import PreviousVisitCard from "./PreviousVisitCard";
 import { hasModule, MODULE_TRAINING, MODULE_TIMECLOCK } from "../modules";
 import RoomGrid from "./RoomGrid";
 import RunDetailModal from "./RunDetailModal";
+// Which site/room a cleaner is mid-checklist on, and whether the plan is shown translated, survive a
+// forced reload — see cleanerContext.js, which also holds what App.jsx clears at logout.
+import { contextFromStorage, saveContext, translationPreferenceFromStorage, saveTranslationPreference } from "../cleanerContext";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
-}
-
-// Which site/room a cleaner is mid-checklist on — sessionStorage, not React state alone, because
-// a phone's OS routinely discards this tab's whole JS state while the native camera is open (or
-// the screen locks mid-upload) and reloads it fresh once control returns. Before this existed,
-// that dropped a cleaner straight back to "Skann QR-kode" with no memory of which room they were
-// in, mid-round — the actual photo usually survived fine (the offline queue is IndexedDB-backed),
-// it was purely the navigation that got lost. Kept separate from App.jsx's auth persistence since
-// this is CleanerView-specific state, not something every role needs. Cleared once a room/visit
-// is genuinely finished so a stale entry doesn't reopen an old room next time.
-const CONTEXT_STORAGE_KEY = "rentlogg_cleaner_context";
-
-// Whether the plan is currently shown translated. Deliberately only the boolean — the translated
-// text itself is never written anywhere, so a reload re-fetches it rather than resurrecting a
-// stale copy. sessionStorage for the same reason the room context above uses it: a phone that
-// discards this tab while the camera is open shouldn't quietly flip the plan back to Norwegian
-// for a cleaner who can't read it.
-const TRANSLATION_PREF_KEY = "rentlogg_cleaner_translate_plan";
-
-function translationPreferenceFromStorage() {
-  try {
-    return sessionStorage.getItem(TRANSLATION_PREF_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function saveTranslationPreference(on) {
-  try {
-    if (on) sessionStorage.setItem(TRANSLATION_PREF_KEY, "1");
-    else sessionStorage.removeItem(TRANSLATION_PREF_KEY);
-  } catch {
-    // sessionStorage unavailable — the toggle still works, it just won't survive a reload.
-  }
-}
-
-function contextFromStorage() {
-  try {
-    const raw = sessionStorage.getItem(CONTEXT_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveContext(value) {
-  try {
-    if (value) sessionStorage.setItem(CONTEXT_STORAGE_KEY, JSON.stringify(value));
-    else sessionStorage.removeItem(CONTEXT_STORAGE_KEY);
-  } catch {
-    // sessionStorage unavailable — restoration just won't work after a forced reload
-  }
-}
-
-// Called from App.jsx on logout — a device shared between cleaners (common; it's usually one
-// work phone, not one per person) shouldn't have the next person who logs in silently auto-check
-// themselves into whichever site the previous cleaner had open.
-export function clearCleanerContext() {
-  saveContext(null);
-  saveTranslationPreference(false);
 }
 
 function tabBtnStyle(active) {
@@ -214,6 +158,13 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   const undoTimeoutRef = useRef(null);
   const initialsInputRef = useRef(null);
   const { pendingCount, flushNow } = useQueueStatus();
+
+  // Fetch the QR decoder while the first screen is being used, so scanning works later without
+  // signal too (the browser keeps it). Best effort: the scanner asks again if this missed.
+  useEffect(() => {
+    const id = setTimeout(() => { preloadQrDecoder().catch(() => {}); }, 2000);
+    return () => clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     if (showTraining) countTrainingDue();
@@ -657,14 +608,15 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   }
 
   async function uploadRoomPhoto(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const picked = e.target.files[0];
+    if (!picked) return;
+    const runId = roomRun.id;
+    setUploadingRoomPhoto(true);
+    const file = await prepareImage(picked);
     const form = new FormData();
     form.append("photo", file);
     form.append("kind", "general");
     const previewUrl = URL.createObjectURL(file);
-    const runId = roomRun.id;
-    setUploadingRoomPhoto(true);
     try {
       const result = await queueableFetch(`/rooms/runs/${runId}/photos`, { token, method: "POST", body: form });
       if (result.queued) {
@@ -857,7 +809,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
         }
       } else if (deviationPhoto) {
         const form = new FormData();
-        form.append("photo", deviationPhoto);
+        form.append("photo", await prepareImage(deviationPhoto));
         // The avvik exists by now. If only the photo is refused the form must still close: leaving
         // it filled in invited a retry, and a retry filed a second avvik.
         try {
@@ -904,13 +856,13 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
   }
 
   async function uploadPhoto(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const form = new FormData();
-    form.append("photo", file);
-    form.append("kind", "general");
+    const picked = e.target.files[0];
+    if (!picked) return;
     setPhotoCount((c) => c + 1);
     setUploadingPhoto(true);
+    const form = new FormData();
+    form.append("photo", await prepareImage(picked));
+    form.append("kind", "general");
     try {
       await queueableFetch(`/checklists/runs/${run.id}/photos`, { token, method: "POST", body: form });
     } catch (err) {
@@ -1201,7 +1153,7 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
             {roomRun.photos.map((p) => (
               <div key={p.id} style={{ position: "relative" }}>
                 <a href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                  <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                  <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                 </a>
                 <button
                   onClick={() => deleteRoomPhoto(p.id)}

@@ -360,7 +360,7 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                       {runDetail.photos.map((p) => (
                         <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                          <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                          <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                         </a>
                       ))}
                     </div>
@@ -378,7 +378,7 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                             {d.photos.map((ph) => (
                               <a key={ph.id} href={photoUrl(ph.file_path, token)} target="_blank" rel="noreferrer">
-                                <img src={photoUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                                <img loading="lazy" decoding="async" src={photoUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                               </a>
                             ))}
                           </div>

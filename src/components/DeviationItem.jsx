@@ -59,7 +59,7 @@ export function DeviationItem({ token, user, deviation: d, onApproved, setError 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: 20, marginTop: 6 }}>
           {d.photos.map((p) => (
             <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-              <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+              <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
             </a>
           ))}
         </div>

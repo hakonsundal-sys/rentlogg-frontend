@@ -245,7 +245,7 @@ export default function AvvikPage({ token, refreshSummary }) {
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                         {dev.photos.map((ph) => (
                           <a key={ph.id} href={photoUrl(ph.file_path, token)} target="_blank" rel="noreferrer">
-                            <img src={photoUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                            <img loading="lazy" decoding="async" src={photoUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                           </a>
                         ))}
                       </div>

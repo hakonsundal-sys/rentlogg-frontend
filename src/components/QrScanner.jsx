@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import jsQR from "jsqr";
 import { X } from "lucide-react";
 import { useT } from "../i18n";
+
+// The decoder is its own download, fetched when the scanner opens (and ahead of time by CleanerView,
+// so it is usually already cached by then) — most visits never scan.
+export function preloadQrDecoder() {
+  return import("jsqr").then((m) => m.default);
+}
 
 // Decodes camera frames client-side via jsQR — no round-trip to the server needed to read
 // the code. onScan receives the raw decoded text (a full check-in URL in normal use).
@@ -23,6 +28,7 @@ export default function QrScanner({ onScan, onCancel }) {
 
     let cancelled = false;
     let stopped = false;
+    let jsQR = null;
 
     function tick() {
       if (stopped) return;
@@ -46,12 +52,23 @@ export default function QrScanner({ onScan, onCancel }) {
 
     (async () => {
       try {
+        // Started together with the camera permission prompt, which is the slow part anyway.
+        const decoder = preloadQrDecoder();
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
         streamRef.current = stream;
+        try {
+          jsQR = await decoder;
+        } catch {
+          // Offline and never cached: the camera is fine, the decoder is not. Say so instead of
+          // showing a picture that never reads anything — the manual code field still works.
+          if (!cancelled) setErrorKey("cleaner.noConnection");
+          return;
+        }
+        if (cancelled) return;
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
         tick();

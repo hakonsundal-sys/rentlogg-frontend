@@ -5,6 +5,7 @@ import { isNetworkError } from "../offlineQueue";
 import { Card, ResponsibleBadge } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 import { useI18n, useT } from "../i18n";
+import { prepareImage } from "../imageResize";
 
 // /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
 // Authorization header, so the token rides along as a query param instead.
@@ -226,7 +227,7 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
       // whole reply failed.
       if (replyPhoto) {
         const form = new FormData();
-        form.append("photo", replyPhoto);
+        form.append("photo", await prepareImage(replyPhoto));
         try {
           const photo = await apiFetch(`/deviations/${deviation.id}/photos`, { token, method: "POST", body: form });
           onReplied({ id: deviation.id, photos: [...(deviation.photos || []), photo] });
@@ -268,7 +269,7 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
               {deviation.photos.map((p) => (
                 <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                  <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                  <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                 </a>
               ))}
             </div>

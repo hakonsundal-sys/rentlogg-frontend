@@ -4,6 +4,7 @@ import { API_URL } from "../api";
 import { queueableFetch } from "../offlineQueue";
 import { ResponsibleBadge } from "./shared";
 import { useI18n, useT } from "../i18n";
+import { prepareImage } from "../imageResize";
 
 // See RunDetailModal.jsx's photoUrl for why the token rides in the query string here.
 function photoUrl(filePath, token) {
@@ -122,7 +123,7 @@ function PhotosRow({ photos, onDelete, token }) {
       {photos.map((p) => (
         <div key={p.id} style={{ position: "relative" }}>
           <a href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-            <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+            <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
           </a>
           {onDelete && (
             <button
@@ -325,10 +326,10 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
   }
 
   async function uploadPhoto(roomRunId, e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const picked = e.target.files[0];
+    if (!picked) return;
     const form = new FormData();
-    form.append("photo", file);
+    form.append("photo", await prepareImage(picked));
     form.append("kind", "general");
     form.append("initials", editInitials || "");
     try {

@@ -270,7 +270,7 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   {runDetail.photos.map((p) => (
                     <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                      <img src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                      <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                     </a>
                   ))}
                 </div>

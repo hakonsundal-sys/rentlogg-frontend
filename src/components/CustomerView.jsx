@@ -6,6 +6,7 @@ import { DeviationItem } from "./DeviationItem";
 import SiteHistoryView from "./SiteHistoryView";
 import RoomGrid from "./RoomGrid";
 import RunDetailModal from "./RunDetailModal";
+import { prepareImage } from "../imageResize";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
@@ -247,7 +248,7 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
       // point, so a photo failure shouldn't look like the whole report failed.
       if (formPhoto) {
         const form = new FormData();
-        form.append("photo", formPhoto);
+        form.append("photo", await prepareImage(formPhoto));
         try {
           await apiFetch(`/deviations/${created.id}/photos`, { token, method: "POST", body: form });
         } catch (err) {

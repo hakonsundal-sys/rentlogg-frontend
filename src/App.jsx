@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import LoginView from "./components/LoginView";
 import AcceptInvitePage from "./components/AcceptInvitePage";
-import AdminLayout from "./components/admin/AdminLayout";
-import SuperAdminLayout from "./components/admin/SuperAdminLayout";
-import CleanerView, { clearCleanerContext } from "./components/CleanerView";
-import CustomerView from "./components/CustomerView";
+import { clearCleanerContext } from "./cleanerContext";
+import { lazyRetry } from "./lazyRetry";
 import ChecklistEmployeeView, { clearChecklistContext } from "./components/checklist/ChecklistEmployeeView";
 import { hasModule, isChecklistOnly, MODULE_CHECKLIST } from "./modules";
 import { BrandMark, RoleBadge } from "./components/shared";
@@ -13,6 +11,24 @@ import LanguagePicker from "./components/LanguagePicker";
 import { I18nProvider, useT, translateNow } from "./i18n";
 import { apiFetch } from "./api";
 import { pendingCount, clearQueue } from "./offlineQueue";
+
+// One download per kind of user instead of everyone's code in the first one: a cleaner's phone no
+// longer fetches the administration pages, and the login screen no longer waits for any of them.
+const AdminLayout = lazyRetry(() => import("./components/admin/AdminLayout"));
+const SuperAdminLayout = lazyRetry(() => import("./components/admin/SuperAdminLayout"));
+const CleanerView = lazyRetry(() => import("./components/CleanerView"));
+const CustomerView = lazyRetry(() => import("./components/CustomerView"));
+
+// Shown while one of the above is on its way — the brand mark rather than words, so it needs no
+// language (the person's language is not necessarily loaded yet) and nothing here can fail.
+function LoadingScreen() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "80px 16px" }}>
+      <BrandMark size={36} />
+    </div>
+  );
+}
+
 
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
@@ -162,7 +178,7 @@ function AppInner() {
 
   return (
     <I18nProvider user={auth?.user} onLanguageChange={persistLanguage}>
-      {body}
+      <Suspense fallback={<LoadingScreen />}>{body}</Suspense>
     </I18nProvider>
   );
 
@@ -243,12 +259,14 @@ function UserShell({ auth, onLogout, checkinToken, onCheckinHandled }) {
         </div>
       )}
       {showChecklists && <ChecklistEmployeeView token={token} user={user} />}
-      {user.role === "cleaner" && !showChecklists && (
-        <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
-      )}
-      {user.role === "customer" && (
-        <CustomerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
-      )}
+      <Suspense fallback={<LoadingScreen />}>
+        {user.role === "cleaner" && !showChecklists && (
+          <CleanerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
+        )}
+        {user.role === "customer" && (
+          <CustomerView token={token} user={user} pendingCheckinToken={checkinToken} onCheckinHandled={onCheckinHandled} />
+        )}
+      </Suspense>
     </Shell>
   );
 }
