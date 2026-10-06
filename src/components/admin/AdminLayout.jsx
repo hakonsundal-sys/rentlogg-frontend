@@ -7,6 +7,7 @@ import KunderPage from "./KunderPage";
 import AvdelingerPage from "./AvdelingerPage";
 import AnsattePage from "./AnsattePage";
 import AvvikPage from "./AvvikPage";
+import EtterkontrollPage from "./EtterkontrollPage";
 import InviterBrukerePage from "./InviterBrukerePage";
 import RapporterPage from "./RapporterPage";
 import MinProfilPage from "./MinProfilPage";
@@ -23,6 +24,7 @@ const PAGES = {
   avdelinger: AvdelingerPage,
   ansatte: AnsattePage,
   avvik: AvvikPage,
+  etterkontroll: EtterkontrollPage,
   inviter: InviterBrukerePage,
   rapporter: RapporterPage,
   timer: TimerPage,
