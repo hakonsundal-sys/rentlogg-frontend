@@ -6,6 +6,7 @@ import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
 import KjemikalierPage from "./KjemikalierPage";
 import { hasModule, MODULE_TIMECLOCK, MODULE_HYGIENE } from "../../modules";
+import { LANGUAGES } from "../../i18n";
 
 // Hygienetrinnene, i utførelsesrekkefølge. Speiler STEP_TYPES i backendens routes/rooms.js —
 // nye verdier må inn begge steder, og backend er porten som faktisk avviser ukjente.
@@ -119,15 +120,8 @@ const sectionLabelStyle = {
 // Flip back to true to re-enable; nothing else needs to change.
 const SHOW_FLAT_CHECKLIST = false;
 
-// Mirrors POSTER_TEXT in the backend's utils/printSheets.js. Three is the most the
-// instruction box fits before the text starts shrinking, which the backend also enforces.
-const PLAKATSPRAK = [
-  { kode: "no", navn: "Norsk" },
-  { kode: "en", navn: "English" },
-  { kode: "lt", navn: "Lietuvių" },
-  { kode: "lv", navn: "Latviešu" },
-  { kode: "ru", navn: "Русский" },
-];
+// Three is the most the poster's instruction box fits before the text starts shrinking; the
+// backend enforces the same cap, this only keeps the UI from offering what it would ignore.
 const MAKS_PLAKATSPRAK = 3;
 
 export default function LokasjonerPage({ token, user, refreshSummary }) {
@@ -905,6 +899,13 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     try {
       const data = await apiFetch(`/sites/${site.id}/qr`, { token });
       setQrPreview({ siteId: site.id, siteName: site.name, ...data });
+      // Re-read the company's choice rather than trusting the copy taken at login: this is a
+      // company-wide setting, so a co-admin may have changed it since, and the chips must not
+      // show — or save back — a stale list. Deliberately not awaited before the dialog opens;
+      // the QR is what you came for, the chips can settle a moment later.
+      apiFetch("/auth/me", { token })
+        .then((me) => { if (me.poster_languages) setPosterLangs(me.poster_languages); })
+        .catch(() => {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -2044,12 +2045,12 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                 Språk på plakaten &mdash; gjelder alle lokasjoner i firmaet
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {PLAKATSPRAK.map((s) => {
-                  const valgt = posterLangs.includes(s.kode);
+                {LANGUAGES.map((s) => {
+                  const valgt = posterLangs.includes(s.code);
                   return (
                     <button
-                      key={s.kode}
-                      onClick={() => togglePosterLang(s.kode)}
+                      key={s.code}
+                      onClick={() => togglePosterLang(s.code)}
                       disabled={savingLangs}
                       style={{
                         border: `1px solid ${valgt ? "var(--brand)" : "var(--border)"}`,
@@ -2059,7 +2060,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                         borderRadius: 999, padding: "3px 9px", fontSize: 12, cursor: "pointer",
                       }}
                     >
-                      {s.navn}
+                      {s.label}
                     </button>
                   );
                 })}
