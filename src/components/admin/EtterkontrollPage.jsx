@@ -8,8 +8,13 @@ import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from 
 // room_run_items.control_status for hvorfor dette er et eget spor og ikke kundegodkjenningen.
 //
 // Hele siden er bygget rundt én antakelse: en kontroll som må letes fram rom for rom blir ikke
-// gjort. Derfor er arbeidslista det første man ser, og den sier hvor mange rom som venter — ikke
-// en meny man må navigere.
+// gjort. Derfor er arbeidslista det første man ser, og den sier antallet uten at man må navigere.
+//
+// ETTERKONTROLL ER VALGFRI, og språket her skal si det. Teamlederen tar kontrollen de dagene
+// hun er innom, ikke på hvert eneste besøk. Et rom som aldri blir kontrollert blokkerer
+// ingenting — verken fullføring, kundegodkjenning eller rapport (bekreftet: controlled_at leses
+// ingen steder utenfor kontrollen selv). Derfor «klar for kontroll» og ikke «venter på
+// kontroll»: lista er et tilbud om hva som kan kontrolleres, ikke en gjeld som vokser.
 
 const STATUSES = [
   { key: "ok", label: "Godkjent", icon: CheckCircle2, color: "var(--text-success)" },
@@ -46,8 +51,8 @@ export default function EtterkontrollPage({ token }) {
         <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Etterkontroll</h1>
         <div style={{ color: "var(--text-secondary)" }}>
           {venter.length === 0
-            ? "Ingenting venter på kontroll."
-            : `${venter.length} ${venter.length === 1 ? "rom venter" : "rom venter"} på kontroll`}
+            ? "Ingen utførte rom å kontrollere akkurat nå."
+            : `${venter.length} ${venter.length === 1 ? "rom" : "rom"} klar for kontroll · ta dem du rekker`}
         </div>
       </div>
 
@@ -190,6 +195,7 @@ function ControlForm({ runId, token, onDone, onCancel, onError }) {
   // gikk gjennom. Disse skylles før signaturen, så en kommentar man nettopp skrev ikke går tapt
   // fordi feltet aldri mistet fokus.
   const ulagrede = items.filter((i) => i.control_status && !i.control_by_name);
+  const kritiske = items.filter((i) => i.control_status === "kritisk").length;
 
   return (
     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
@@ -246,6 +252,14 @@ function ControlForm({ runId, token, onDone, onCancel, onError }) {
           Signer kontrollen
         </button>
         <button onClick={onCancel} style={linkBtnStyle}>Lukk</button>
+        {/* Sagt før signaturen, ikke etter: at et kritisk funn blir en sak med firetrinns-
+            behandling er en konsekvens teamlederen skal kjenne mens hun fortsatt kan ombestemme
+            seg om alvorlighetsgraden. */}
+        {kritiske > 0 && uvurdert === 0 && (
+          <span style={{ fontSize: 12.5, color: "var(--text-danger)" }}>
+            {kritiske === 1 ? "1 kritisk funn blir et avvik" : `${kritiske} kritiske funn blir avvik`} når du signerer
+          </span>
+        )}
         {uvurdert > 0 && (
           <span style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>
             {uvurdert} punkt mangler vurdering
