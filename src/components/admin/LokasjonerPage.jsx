@@ -119,6 +119,17 @@ const sectionLabelStyle = {
 // Flip back to true to re-enable; nothing else needs to change.
 const SHOW_FLAT_CHECKLIST = false;
 
+// Mirrors POSTER_TEXT in the backend's utils/printSheets.js. Three is the most the
+// instruction box fits before the text starts shrinking, which the backend also enforces.
+const PLAKATSPRAK = [
+  { kode: "no", navn: "Norsk" },
+  { kode: "en", navn: "English" },
+  { kode: "lt", navn: "Lietuvių" },
+  { kode: "lv", navn: "Latviešu" },
+  { kode: "ru", navn: "Русский" },
+];
+const MAKS_PLAKATSPRAK = 3;
+
 export default function LokasjonerPage({ token, user, refreshSummary }) {
   const showTimeSettings = hasModule(user, MODULE_TIMECLOCK);
   // Måleoppgaver og hygienetrinn er hygiene-modulen. Uten den skal de ikke stå som valg i
@@ -173,6 +184,11 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   const [monthlyItemsSite, setMonthlyItemsSite] = useState(null);
   const [historyDeviations, setHistoryDeviations] = useState([]);
   const [loadingQrSiteId, setLoadingQrSiteId] = useState(null);
+  // A company-wide setting, edited here because this dialog is where anyone ever thinks about
+  // what the printed poster says. Seeded from the logged-in user, whose payload carries the
+  // company's choice next to its modules.
+  const [posterLangs, setPosterLangs] = useState(user?.poster_languages || ["no", "en"]);
+  const [savingLangs, setSavingLangs] = useState(false);
   const [importingPdf, setImportingPdf] = useState(false);
   const [importPreview, setImportPreview] = useState(null); // { siteId, rooms: [{name, tasks: [string]}] }
   const [creatingChecklistSiteId, setCreatingChecklistSiteId] = useState(null);
@@ -859,6 +875,28 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   // Authorization header, hence ?token= — the same query-token route /uploads already uses.
   function openPrintSheet(siteId, sheet) {
     window.open(`${API_URL}/sites/${siteId}/${sheet}?token=${encodeURIComponent(token)}`, "_blank", "noopener");
+  }
+
+  async function togglePosterLang(kode) {
+    const neste = posterLangs.includes(kode)
+      ? posterLangs.filter((k) => k !== kode)
+      : [...posterLangs, kode].slice(-MAKS_PLAKATSPRAK);
+    // Deselecting the last one means "use the default", which the backend decides — so the list
+    // can never end up empty and print a poster with no instructions on it.
+    const forrige = posterLangs;
+    setPosterLangs(neste);
+    setSavingLangs(true);
+    try {
+      const svar = await apiFetch("/companies/mine/poster-languages", {
+        token, method: "PATCH", body: JSON.stringify({ languages: neste }),
+      });
+      setPosterLangs(svar.poster_languages);
+    } catch (err) {
+      setPosterLangs(forrige);
+      setError(err.message);
+    } finally {
+      setSavingLangs(false);
+    }
   }
 
   async function showQrCode(site) {
@@ -1998,7 +2036,37 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
               <Printer size={14} /> Skriv ut plakat
             </button>
             <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6 }}>
-              A4 med navn, manuell kode og bruksanvisning på norsk og litauisk.
+              A4 med navn, manuell kode og bruksanvisning.
+            </div>
+
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)", textAlign: "left" }}>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6 }}>
+                Språk på plakaten &mdash; gjelder alle lokasjoner i firmaet
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {PLAKATSPRAK.map((s) => {
+                  const valgt = posterLangs.includes(s.kode);
+                  return (
+                    <button
+                      key={s.kode}
+                      onClick={() => togglePosterLang(s.kode)}
+                      disabled={savingLangs}
+                      style={{
+                        border: `1px solid ${valgt ? "var(--brand)" : "var(--border)"}`,
+                        background: valgt ? "var(--brand-bg)" : "transparent",
+                        color: valgt ? "var(--brand-dark)" : "var(--text-secondary)",
+                        fontWeight: valgt ? 600 : 400,
+                        borderRadius: 999, padding: "3px 9px", fontSize: 12, cursor: "pointer",
+                      }}
+                    >
+                      {s.navn}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 5 }}>
+                Maks {MAKS_PLAKATSPRAK}. Velger du ingen, brukes norsk og engelsk.
+              </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <a
