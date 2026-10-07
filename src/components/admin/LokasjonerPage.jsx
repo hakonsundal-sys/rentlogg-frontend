@@ -1465,18 +1465,22 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     padding: "8px 10px", marginBottom: 8,
                   }}>
                     {editingRoomId === room.id ? (
-                      <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        {/* Each field gets a real basis and a floor: with `flex: 1` and no floor the name field was
+                            squeezed to a few characters next to the fixed-width area field and the buttons, and on
+                            a narrow screen the row now wraps instead of shrinking them further. */}
                         <input
                           value={editRoomName} onChange={(e) => setEditRoomName(e.target.value)}
-                          autoFocus style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0, flex: 1 }}
+                          aria-label="Romnavn" autoFocus
+                          style={{ ...inputStyle, padding: "6px 10px", fontSize: 13, width: "auto", flex: "2 1 220px", minWidth: 180 }}
                         />
                         <input
                           value={editRoomArea} onChange={(e) => setEditRoomArea(e.target.value)}
-                          placeholder="Område (valgfritt)" title="Rom med samme område samles i et kapittel i renholderens dagsplan"
-                          style={{ ...inputStyle, padding: "3px 6px", fontSize: 12, minWidth: 0, width: 150 }}
+                          aria-label="Område" placeholder="Område (valgfritt)" title="Rom med samme område samles i et kapittel i renholderens dagsplan"
+                          style={{ ...inputStyle, padding: "6px 10px", fontSize: 13, width: "auto", flex: "1 1 180px", minWidth: 140 }}
                         />
-                        <button onClick={() => saveRoomName(site.id, room.id)} style={linkBtnStyle}>Lagre</button>
-                        <button onClick={() => setEditingRoomId(null)} style={linkBtnStyle}>Avbryt</button>
+                        <button onClick={() => saveRoomName(site.id, room.id)} style={{ ...linkBtnStyle, flexShrink: 0 }}>Lagre</button>
+                        <button onClick={() => setEditingRoomId(null)} style={{ ...linkBtnStyle, flexShrink: 0 }}>Avbryt</button>
                       </div>
                     ) : (
                       <>
