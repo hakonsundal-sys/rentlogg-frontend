@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText, CalendarCheck, ChevronDown, ChevronRight, X } from "lucide-react";
-import { apiFetch } from "../../api";
+import { Building2, Trash2, QrCode, Pencil, FileUp, ClipboardList, History, FileText, CalendarCheck, ChevronDown, ChevronRight, Printer, X } from "lucide-react";
+import { apiFetch, API_URL } from "../../api";
 import { Card, AddressAutocomplete, DocumentsList, Field, Loading, ResponsibleBadge, TabButton, primaryBtnStyle, linkBtnStyle, iconBtnStyle, inputStyle } from "../shared";
 import SiteHistoryView from "../SiteHistoryView";
 import MonthlyItemsView from "./MonthlyItemsView";
@@ -854,6 +854,13 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  // The printable sheets are whole HTML documents served by the backend, so they open in a tab
+  // and print from there rather than coming back as JSON. window.open cannot set an
+  // Authorization header, hence ?token= — the same query-token route /uploads already uses.
+  function openPrintSheet(siteId, sheet) {
+    window.open(`${API_URL}/sites/${siteId}/${sheet}?token=${encodeURIComponent(token)}`, "_blank", "noopener");
+  }
+
   async function showQrCode(site) {
     setError("");
     setLoadingQrSiteId(site.id);
@@ -1246,6 +1253,9 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                     </button>
                     <button onClick={() => showQrCode(site)} disabled={loadingQrSiteId === site.id} style={linkBtnStyle}>
                       {loadingQrSiteId === site.id ? "Laster..." : "QR-kode"}
+                    </button>
+                    <button onClick={() => openPrintSheet(site.id, "romliste")} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Printer size={12} /> Romliste
                     </button>
                     <button onClick={() => openHistory(site)} style={{ ...linkBtnStyle, display: "flex", alignItems: "center", gap: 4 }}>
                       <History size={12} /> Historikk
@@ -1977,12 +1987,21 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
               Skriv ut og heng opp ved lokasjonen — renholdere skanner denne for å sjekke inn.
             </div>
             <img src={qrPreview.qrImage} alt="QR-kode" style={{ width: "100%", borderRadius: "var(--radius)" }} />
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <button
+              onClick={() => openPrintSheet(qrPreview.siteId, "qr-poster")}
+              style={{ ...primaryBtnStyle, width: "100%", marginTop: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              <Printer size={14} /> Skriv ut plakat
+            </button>
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6 }}>
+              A4 med navn, manuell kode og bruksanvisning på norsk og litauisk.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <a
                 href={qrPreview.qrImage} download={`qr-${qrPreview.siteName.replace(/\s+/g, "-").toLowerCase()}.svg`}
-                style={{ ...primaryBtnStyle, flex: 1, textAlign: "center", textDecoration: "none", display: "inline-block" }}
+                style={{ ...linkBtnStyle, flex: 1, textAlign: "center", textDecoration: "none", display: "inline-block" }}
               >
-                Last ned
+                Bare bildet
               </a>
               <button onClick={() => setQrPreview(null)} style={{ ...linkBtnStyle, flex: 1 }}>Lukk</button>
             </div>
