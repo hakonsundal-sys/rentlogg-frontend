@@ -34,7 +34,7 @@
     <title>Rentlogg — dokumentasjon av renhold</title>
     <meta
       name="description"
-      content="Rentlogg er et norsk fagsystem for dokumentasjon av renhold. Renholderen sjekker inn på lokasjonen med QR-kode, kvitterer ut oppgavene rom for rom, og kunden får dagsrapport på e-post."
+      content="Rentlogg er et norsk fagsystem for dokumentasjon av renhold. Renholderen skanner QR-koden ved inngangen, kvitterer ut rom for rom, og kunden får dagsrapport på e-post."
     />
     <link rel="canonical" href="https://www.rentlogg.no/" />
     <meta name="robots" content="index, follow" />
@@ -46,12 +46,14 @@
     <meta property="og:title" content="Rentlogg — dokumentasjon av renhold" />
     <meta
       property="og:description"
-      content="Fagsystem for renholdsbedrifter: QR-innsjekk, sjekklister med bildedokumentasjon, avviksmeldinger og dagsrapport til kunden."
+      content="Fagsystem for renholdsbedrifter: QR-innsjekk, sjekklister med bilde, avvik, egen etterkontroll og dagsrapport til kunden."
     />
 
     <link rel="preload" href="/fonts/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
 
     <style>
+      /* Schibsted Grotesk, selvhostet. Ingen kyrillisk i fila — russisk faller bevisst tilbake
+         på system-ui, så fallback-stacken er funksjonell og ikke en sikkerhetsmargin. */
       @font-face {
         font-family: "Schibsted Grotesk";
         font-style: normal;
@@ -73,24 +75,36 @@
           U+FEFF, U+FFFD;
       }
 
+      /* Samme semantikk som i appen: violett bærer merkevare og handling, og de fire
+         statusfargene bærer status. Ikke lån en statusfarge til en knapp. */
       :root {
-        --ink: #18181b;
-        --ink-2: #27272a;
-        --slate: #71717a;
+        --ink: #17151f;
+        --ink-2: #2a2635;
+        --slate: #5f5a6e;
         --muted: #6e6a7a;
-        --line: #e4e4e7;
-        --line-soft: #f0ebff;
-        --ground: #f9f9fc;
+        --line: #e7e3f2;
+        --line-2: #f1edfb;
+        --ground: #faf9fe;
         --surface: #ffffff;
-        --solid: #6d28d9;
+        --brand: #6d28d9;
+        --brand-dark: #5b21b6;
+        --brand-bg: #f5f3ff;
         --ok: #16a34a;
         --ok-bg: #dcf5e4;
         --progress: #ea580c;
         --progress-bg: #fff1e6;
+        /* Statusfargene over er flatefarger. Som liten tekst er de målt til 3,3:1 (grønn) og
+           3,6:1 (oransje) mot hvitt — under WCAG AA. Disse to er de samme statusene gjort
+           lesbare: 6,5:1 og 5,2:1. Bruk dem når en status blir TEKST, ikke flate. */
+        --ok-text: #146c35;
+        --progress-text: #c2410c;
         --danger: #dc2626;
+        --danger-bg: #fef2f2;
         --kunde: #2563eb;
         --kunde-bg: #eff6ff;
         --sans: "Schibsted Grotesk", system-ui, "Segoe UI", Roboto, sans-serif;
+        --shadow: 0 1px 2px rgba(23, 21, 31, 0.04), 0 12px 32px -18px rgba(45, 28, 92, 0.22);
+        --shadow-lift: 0 2px 4px rgba(23, 21, 31, 0.05), 0 30px 60px -30px rgba(45, 28, 92, 0.34);
       }
 
       * { box-sizing: border-box; }
@@ -104,54 +118,102 @@
         margin: 0;
         background: var(--ground);
         color: var(--ink);
-        font: 16px/1.55 var(--sans);
+        font: 16px/1.6 var(--sans);
         -webkit-font-smoothing: antialiased;
       }
 
-      .wrap {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding-inline: 20px;
-      }
+      .wrap { max-width: 1060px; margin: 0 auto; padding-inline: 16px; }
+      @media (min-width: 560px) { .wrap { padding-inline: 28px; } }
 
       a { color: inherit; }
-      :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+      :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 4px; }
+      img, svg { display: block; }
 
       h1, h2, h3 { margin: 0; text-wrap: balance; }
       h1 {
-        font-size: clamp(42px, 8.2vw, 92px);
+        font-size: clamp(40px, 7.6vw, 84px);
         font-weight: 700;
-        letter-spacing: -0.045em;
-        line-height: 0.98;
+        letter-spacing: -0.042em;
+        line-height: 0.99;
       }
       h2 {
-        font-size: clamp(29px, 5.2vw, 57px);
-        font-weight: 600;
-        letter-spacing: -0.035em;
-        line-height: 1.04;
+        font-size: clamp(28px, 4.8vw, 50px);
+        font-weight: 650;
+        letter-spacing: -0.034em;
+        line-height: 1.06;
       }
-      h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
-
-      /* Bevisst ikke versaler og ikke utsperret — en liten fet linje i vanlig tekstfarge.
-         Det er den detaljen som skiller profilen fra standard SaaS-maler. */
-      .eyebrow { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
+      h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.017em; }
 
       .lede {
-        font-size: clamp(17px, 2.1vw, 20px);
+        font-size: clamp(17px, 1.9vw, 20px);
         color: var(--slate);
-        max-width: 46ch;
+        max-width: 48ch;
         margin: 18px 0 0;
       }
+      .lede b { color: var(--ink); font-weight: 600; }
 
-      section { padding-block: clamp(56px, 9vw, 130px); }
-      section + section { border-top: 1px solid var(--line-soft); }
+      /* ============================================================
+         LOGGSTREKEN
 
-      /* Sidens egne flater: firkantet, hårstrek, ingen skygge. Produkt-UI-en inne i
-         mockupene beholder runde hjørner — den skal se ut som appen, ikke som siden. */
+         Sidens eget grep, og grunnen til at den ikke ser ut som en mal: en hårtynn violett
+         strek løper ned gjennom innholdet, og hver seksjon henger på en liten firkantet
+         knute på den. Merket vårt er tre loggføringer og en hake — siden er den samme
+         figuren i stort. Streken forsvinner under 900px, der det ikke er marg til den.
+         ============================================================ */
+      main { position: relative; }
+      @media (min-width: 900px) {
+        main::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          /* max(), ikke bare regnestykket: under 1060px er wrap bredere enn innholdsrammen,
+             og `50% - 530px` blir negativt — streken havnet utenfor skjermen mens knutene
+             ble stående igjen uten noe å henge på. */
+          left: max(28px, calc(50% - 530px + 28px));
+          width: 1px;
+          background: linear-gradient(
+            180deg,
+            transparent,
+            var(--line) 5%,
+            var(--line) 94%,
+            transparent
+          );
+          pointer-events: none;
+        }
+        .wrap { padding-inline: 76px 28px; }
+        .eyebrow::before {
+          content: "";
+          position: absolute;
+          /* 76px venstremarg − 51.5 = 24.5, pluss halve knuten = 28 — samme x som streken. */
+          left: -51.5px;
+          top: 7px;
+          width: 7px;
+          height: 7px;
+          background: var(--brand);
+          border-radius: 2px;
+          box-shadow: 0 0 0 4px var(--ground);
+        }
+      }
+      .eyebrow {
+        position: relative;
+        font-size: 13px;
+        font-weight: 650;
+        color: var(--brand);
+        margin-bottom: 14px;
+        letter-spacing: -0.005em;
+      }
+
+      section { padding-block: clamp(54px, 8vw, 112px); }
+      section + section { border-top: 1px solid var(--line-2); }
+
+      /* ---------- flater ---------- */
       .panel {
         background: var(--surface);
         border: 1px solid var(--line);
-        padding: clamp(20px, 3vw, 32px);
+        border-radius: 16px;
+        padding: clamp(22px, 3vw, 32px);
+        box-shadow: var(--shadow);
       }
 
       .btn {
@@ -159,473 +221,542 @@
         align-items: center;
         justify-content: center;
         gap: 9px;
-        background: var(--solid);
+        background: var(--brand);
         color: #fff;
-        border: 1px solid var(--solid);
+        border: 1px solid var(--brand);
+        border-radius: 11px;
         text-decoration: none;
         font-size: 17px;
         font-weight: 600;
-        padding: 15px 34px;
+        padding: 14px 30px;
         cursor: pointer;
+        transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
       }
-      .btn:hover { background: var(--ink); border-color: var(--ink); }
-      .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
-      .btn.ghost:hover { background: var(--surface); border-color: var(--ink); }
+      .btn:hover { background: var(--brand-dark); border-color: var(--brand-dark); transform: translateY(-1px); }
+      .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); box-shadow: var(--shadow); }
+      .btn.ghost:hover { background: var(--surface); border-color: var(--brand); color: var(--brand); }
+      @media (prefers-reduced-motion: reduce) {
+        .btn, .btn:hover { transition: none; transform: none; }
+      }
 
       /* ---------- topplinje ---------- */
       .top {
         position: sticky;
         top: 0;
         z-index: 30;
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(8px);
+        background: rgba(250, 249, 254, 0.86);
+        backdrop-filter: blur(10px);
         border-bottom: 1px solid var(--line);
       }
+      .top .wrap { padding-inline: 16px; }
+      @media (min-width: 560px) { .top .wrap { padding-inline: 28px; } }
       .top-in {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding-block: 14px;
+        padding-block: 13px;
       }
       .lockup { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-      .lockup svg { color: var(--ink); flex-shrink: 0; }
-      .lockup b { font-size: 20px; font-weight: 700; letter-spacing: -0.021em; }
-      .top nav { display: flex; align-items: center; gap: 26px; }
+      .lockup svg { color: var(--brand); flex-shrink: 0; }
+      .lockup b { font-size: 20px; font-weight: 700; letter-spacing: -0.022em; }
+      .top nav { display: flex; align-items: center; gap: 24px; }
       .top nav a { font-size: 14px; font-weight: 500; color: var(--slate); text-decoration: none; }
-      .top nav a:hover { color: var(--ink); }
-      .top .login {
+      .top nav a:hover { color: var(--brand); }
+      .login {
         font-size: 14px;
         font-weight: 600;
         color: var(--ink);
         text-decoration: none;
         border: 1px solid var(--line);
-        padding: 9px 18px;
+        border-radius: 9px;
+        background: var(--surface);
+        padding: 9px 17px;
         white-space: nowrap;
       }
-      .top .login:hover { border-color: var(--ink); }
-      @media (max-width: 760px) { .top nav { display: none; } }
+      .login:hover { border-color: var(--brand); color: var(--brand); }
+      @media (max-width: 860px) { .top nav { display: none; } }
 
       /* ---------- hero ---------- */
-      .hero { padding-block: clamp(48px, 7vw, 96px) clamp(40px, 6vw, 80px); }
-      .hero-grid { display: grid; grid-template-columns: 1fr 400px; gap: clamp(28px, 5vw, 56px); align-items: center; }
-      @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
-      .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
-      /* Brytes de til hver sin linje, skal de være like brede — to knapper i ulik bredde
-         under hverandre ser ut som en feil, og et bredere treffområde for tommelen skader ikke. */
-      @media (max-width: 520px) {
-        .hero-cta { flex-direction: column; align-items: stretch; }
-      }
-
-      /* ---------- telefon ---------- */
-      .phone {
-        width: 100%;
-        max-width: 330px;
-        margin-inline: auto;
-        border: 10px solid var(--ink);
-        border-radius: 34px;
-        background: var(--ground);
-        padding: 14px 12px;
-        overflow: hidden;
-      }
-      .phone-notch {
-        width: 92px; height: 20px; border-radius: 999px; background: var(--ink);
-        margin: 0 auto 14px;
-      }
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 12px;
-      }
-      .room {
-        display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        background: var(--surface); border: 1px solid var(--line);
-        border-left: 4px solid var(--line); border-radius: 10px;
-        padding: 10px 12px; margin-bottom: 7px;
-      }
-      .room.done { border-left-color: var(--ok); }
-      .room.doing { border-left-color: var(--progress); border-color: var(--ink); }
-      .room-n { font-size: 14px; }
-      .room-s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-      .tick {
-        width: 22px; height: 22px; border-radius: 999px; flex-shrink: 0;
-        display: inline-flex; align-items: center; justify-content: center;
-      }
-      .tick.done { background: var(--ok); color: #fff; }
-      .tick.open { border: 2px solid var(--line); }
-      .pill {
-        font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
-        padding: 3px 9px; border-radius: 999px; white-space: nowrap;
-      }
-      .pill.ok { background: var(--ok-bg); color: var(--ok); }
-      .pill.doing { background: var(--progress-bg); color: var(--progress); }
-      .pill.kunde { background: var(--kunde-bg); color: var(--kunde); }
-      .pill.flat { background: var(--line-soft); color: var(--slate); }
-      .track { height: 7px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
-      .fill { height: 100%; border-radius: 999px; background: var(--progress); }
-      .chap {
-        display: flex; align-items: center; justify-content: space-between; gap: 8px;
-        margin: 14px 0 7px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
-        text-transform: uppercase; color: var(--slate);
-      }
-      .chap em { font-style: normal; color: var(--muted); font-weight: 500; letter-spacing: 0; }
-      .linkish { font-size: 12.5px; font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; }
-
-      /* ---------- nettleserramme ---------- */
-      .browser { border: 1px solid var(--line); background: var(--surface); }
-      .browser-bar {
-        display: flex; align-items: center; gap: 7px;
-        padding: 11px 14px; border-bottom: 1px solid var(--line-soft); background: var(--ground);
-      }
-      .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--line); }
-      .browser-url {
-        margin-left: 10px; font-size: 11.5px; color: var(--muted);
-      }
-      .browser-body { padding: clamp(16px, 2.4vw, 24px); }
-
-      .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); }
-      .stat { background: var(--surface); padding: 14px 16px; }
-      .stat-l { font-size: 12px; color: var(--slate); }
-      .stat-v { font-size: 27px; font-weight: 700; letter-spacing: -0.03em; margin-top: 4px; font-variant-numeric: tabular-nums; }
-      @media (max-width: 620px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-
-      .row {
-        display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        padding: 13px 0; border-top: 1px solid var(--line-soft);
-      }
-      .row:first-of-type { border-top: none; }
-      .row-t { font-weight: 600; font-size: 14.5px; }
-      .row-s { font-size: 12.5px; color: var(--slate); margin-top: 2px; }
-
-      .sample {
-        display: inline-block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em;
-        text-transform: uppercase; color: var(--muted);
-        border: 1px solid var(--line); padding: 3px 8px; margin-bottom: 14px;
-      }
-
-      /* ---------- steg ---------- */
-      .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
-      .step { background: var(--surface); padding: 26px 22px 30px; }
-      .step-n { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-      .step h3 { margin: 14px 0 7px; }
-      .step p { margin: 0; font-size: 14px; color: var(--slate); }
-      @media (max-width: 820px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-      @media (max-width: 460px) { .steps { grid-template-columns: 1fr; } }
-
-      .two { display: grid; grid-template-columns: 1fr 340px; gap: clamp(28px, 5vw, 56px); align-items: center; margin-top: 44px; }
-      .two.flip { grid-template-columns: 340px 1fr; }
-      @media (max-width: 880px) {
-        .two, .two.flip { grid-template-columns: 1fr; }
-        .two.flip > *:first-child { order: 2; }
-      }
-
-      .feats { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 13px; }
-      .feats li { display: flex; gap: 11px; font-size: 15px; color: var(--slate); }
-      .feats svg { flex-shrink: 0; margin-top: 3px; color: var(--ink); }
-      .feats b { color: var(--ink); font-weight: 600; }
-
-      /* ---------- språk ---------- */
-      .langs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
-      .lang { background: var(--surface); padding: 18px 20px; }
-      .lang-n { font-size: 12px; color: var(--muted); }
-      .lang-t { font-size: 16px; font-weight: 600; margin-top: 5px; letter-spacing: -0.015em; }
-
-      /* ---------- logg ---------- */
-      .log-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
-      .log-row:first-of-type { border-top: none; }
-      .avatar {
-        width: 30px; height: 30px; border-radius: 999px; background: var(--line-soft);
-        color: var(--ink); display: inline-flex; align-items: center; justify-content: center;
-        font-size: 11px; font-weight: 700; flex-shrink: 0;
-      }
-
-      /* ---------- faq ---------- */
-      .faq { margin-top: 38px; border-top: 1px solid var(--line); }
-      details { border-bottom: 1px solid var(--line); }
-      summary {
-        cursor: pointer; list-style: none; padding: 20px 0;
-        font-size: clamp(16px, 2vw, 19px); font-weight: 600; letter-spacing: -0.015em;
-        display: flex; justify-content: space-between; align-items: center; gap: 16px;
-      }
-      summary::-webkit-details-marker { display: none; }
-      summary::after { content: "+"; font-size: 22px; font-weight: 400; color: var(--muted); }
-      details[open] summary::after { content: "−"; }
-      details p { margin: 0 0 22px; color: var(--slate); max-width: 64ch; }
-
-      /* ---------- kontakt + bunn ---------- */
-      .contact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 48px); margin-top: 36px; }
-      @media (max-width: 760px) { .contact { grid-template-columns: 1fr; } }
-      .kv { font-size: 15px; color: var(--slate); margin: 0 0 10px; }
-      .kv b { color: var(--ink); font-weight: 600; }
-
-      footer { border-top: 1px solid var(--line); padding-block: 40px 56px; }
-      .foot {
-        display: flex; flex-wrap: wrap; gap: 16px 28px;
-        align-items: center; justify-content: space-between;
-      }
-      .foot p { margin: 0; font-size: 13.5px; color: var(--slate); max-width: 58ch; }
-      .foot nav { display: flex; gap: 20px; font-size: 13.5px; }
-
-      /* ---------- innfading ---------- */
-      .fade { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
-      .fade.in { opacity: 1; transform: none; }
-      /* Uten JS, og for dem som har slått av bevegelse, skal alt stå ferdig synlig. */
-      .no-js .fade { opacity: 1; transform: none; }
-      /* Båndet og planrutenettet bygges av JS. Uten JS ville de stått igjen som en tom,
-         innrammet stripe og en forklaring til et rutenett som ikke finnes — verre enn
-         ingenting. Teksten rundt dem er uavhengig og blir stående. */
-      .no-js .strip,
-      .no-js .plan-legend { display: none; }
-      @media (prefers-reduced-motion: reduce) {
-        .fade { opacity: 1; transform: none; transition: none; }
-      }
-
-      /* ---------- to oppsett side om side ---------- */
-      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
-      @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
-      .pair > div { background: var(--surface); padding: clamp(20px, 3vw, 30px); }
-      .pair h3 { font-size: 20px; letter-spacing: -0.025em; }
-      .pair .when { font-size: 13px; color: var(--muted); margin: 6px 0 16px; }
-
-      /* Miniatyr av en sjekkliste/romliste inne i panelene — lettere enn en full telefonramme,
-         fordi disse seksjonene forklarer en struktur, ikke en skjerm. */
-      .mini { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-      .mini-row {
-        display: flex; align-items: center; gap: 9px;
-        padding: 9px 12px; font-size: 13px; border-top: 1px solid var(--line-soft);
-      }
-      .mini-row:first-child { border-top: none; }
-      .mini-row .box { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--line); flex-shrink: 0; }
-      .mini-row .box.on { background: var(--ok); border-color: var(--ok); }
-      .mini-head {
-        padding: 8px 12px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
-        text-transform: uppercase; color: var(--slate); background: var(--ground);
-        border-top: 1px solid var(--line-soft);
-      }
-      .mini-head:first-child { border-top: none; }
-
-      /* ---------- sjekk det ---------- */
-      .sjekk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
-      @media (max-width: 820px) { .sjekk { grid-template-columns: 1fr; } }
-      .sjekk > div { background: var(--surface); padding: clamp(22px, 3vw, 32px); }
-      .sjekk h3 { font-size: 23px; letter-spacing: -0.03em; }
-      .sjekk > div > p { color: var(--slate); font-size: 15px; margin: 8px 0 0; }
-
-      /* ============================================================
-         BEVEGELSE OG TEKSTUR
-
-         Alt under her er dekor. Tre regler det ikke rokkes ved:
-         1. Siden skal være ferdig lesbar uten at noe har animert — animasjonene starter fra en
-            synlig tilstand, ikke fra opacity 0. (Unntaket er .fade, som JS slår på og som har
-            .no-js-fallback.)
-         2. prefers-reduced-motion slår ALT av. Ikke «kortere», av.
-         3. Ingenting animerer layout. Kun transform, opacity, background-position og
-            clip-path/scale — egenskaper som ikke tvinger reflow, slik at en gammel Android-telefon
-            i et kjølerom ikke hakker.
-         ============================================================ */
-
-      /* Rutenettet. Samme grep som referansen: to 1px-gradienter som tegner et kvadratisk
-         nett, lagt bak innholdet og maskert bort mot kantene så det ikke får en hard slutt. */
-      .grid-bg { position: relative; isolation: isolate; }
-      .grid-bg::before {
+      .hero { padding-block: clamp(44px, 6vw, 86px) clamp(36px, 5vw, 70px); position: relative; }
+      /* Lysvask. Venstre/høyre inset må stå på 0 — negative verdier øker scrollWidth og gir
+         hele siden horisontal scroll. Gradienten faller av til null før kanten uansett. */
+      .hero::after {
         content: "";
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        background-image:
-          linear-gradient(var(--line) 1px, transparent 1px),
-          linear-gradient(90deg, var(--line) 1px, transparent 1px);
-        background-size: 120px 120px, 120px 120px;
-        -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 35%, transparent 78%);
-        mask-image: radial-gradient(120% 90% at 50% 0%, #000 35%, transparent 78%);
-        opacity: 0.75;
-        pointer-events: none;
-      }
-      /* Et mykt lysvask øverst, så heroen ikke ligger flatt på grunnfargen. */
-      .wash { position: relative; }
-      .wash::after {
-        content: "";
-        /* Venstre og høyre inset må stå på 0. Negative verdier (for å la vasken blø ut over
-           kanten) øker dokumentets scrollWidth tilsvarende, og hele siden får horisontal
-           scroll — 20 % per side ble 192px på en 980px skjerm. Gradienten faller uansett av
-           til null før kanten, så det ser likt ut. */
         position: absolute;
         inset: 0 0 auto 0;
-        height: 420px;
-        z-index: -2;
-        background: radial-gradient(70% 100% at 50% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 72%);
+        height: 520px;
+        z-index: -1;
+        background:
+          radial-gradient(62% 86% at 22% 0%, rgba(109, 40, 217, 0.1) 0%, rgba(109, 40, 217, 0) 70%),
+          radial-gradient(52% 70% at 88% 6%, rgba(37, 99, 235, 0.07) 0%, rgba(37, 99, 235, 0) 72%);
         pointer-events: none;
       }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1fr 430px;
+        gap: clamp(34px, 5vw, 60px);
+        align-items: center;
+      }
+      @media (max-width: 980px) { .hero-grid { grid-template-columns: 1fr; } }
+      .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+      @media (max-width: 520px) { .hero-cta { flex-direction: column; align-items: stretch; } }
+      .hero-note {
+        margin: 26px 0 0;
+        font-size: 13.5px;
+        color: var(--muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+      }
+      .hero-note span { display: inline-flex; align-items: center; gap: 7px; }
+      .hero-note svg { color: var(--ok); flex-shrink: 0; }
 
-      @keyframes floatY { from { transform: translateY(-7px); } to { transform: translateY(7px); } }
+      /* ============================================================
+         BYGGET
 
-      /* Svever. Bare på store skjermer — på en telefon er det bare uro. */
-      @media (min-width: 900px) {
-        .float { animation: floatY 7s ease-in-out infinite alternate; }
-        .float.slow { animation-duration: 9s; animation-delay: -3s; }
+         Heroens bilde. Et oppriss av et bygg der rommene fylles ut etasje for etasje mens
+         skiftet går: grønt ferdig, oransje pågår, blått kundens eget. Dette er produktet i
+         én figur, og det er vårt eget — ikke en telefon- og nettlesermockup som alle andre
+         har. Hele figuren er aria-hidden; teksten ved siden sier det samme.
+         ============================================================ */
+      .bygg {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: var(--shadow-lift);
+        padding: 18px;
+        max-width: 430px;
+        margin-inline: auto;
+        width: 100%;
+      }
+      .bygg-top {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 2px 4px 14px;
+      }
+      .bygg-name { font-size: 14.5px; font-weight: 650; letter-spacing: -0.015em; }
+      .bygg-count { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .bygg-count b { color: var(--ok-text); font-weight: 700; }
+
+      /* Taket. Et trapes, ikke en avrundet stripe — uten de skrå sidene leses det som en tom
+         boks over etasjene i stedet for som et hus. */
+      .roof {
+        height: 22px;
+        /* Ikke --brand-bg: den er for nær både hvitt og etasjeflaten, og taket forsvant helt. */
+        background: rgba(109, 40, 217, 0.14);
+        clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%);
       }
 
-      /* Animasjonene under starter først når .fade får .in, altså når seksjonen er rullet inn.
-         Kjører de på sidelast, er de over lenge før noen ser dem. */
+      .floors { display: grid; gap: 7px; background: var(--line-2); border: 1px solid var(--line); border-radius: 0 0 12px 12px; padding: 7px; }
+      .floor { display: grid; grid-template-columns: 42px 1fr; gap: 9px; align-items: center; }
+      .floor-l { font-size: 10.5px; color: var(--muted); text-align: right; white-space: nowrap; }
+      .cells { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+      .cell {
+        position: relative;
+        aspect-ratio: 1 / 0.78;
+        border-radius: 6px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+      }
+      /* Fyllet er et eget lag med opacity, ikke en background-color-animasjon: opacity er
+         gratis å animere, og under reduced-motion står laget bare ferdig synlig. */
+      .cell i {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        display: grid;
+        place-items: center;
+      }
+      .cell.ok i { background: var(--ok-bg); color: var(--ok); }
+      .cell.doing i { background: var(--progress-bg); color: var(--progress); }
+      .cell.kunde i { background: var(--kunde-bg); color: var(--kunde); }
+      .cell svg { width: 13px; height: 13px; }
+      .fade.in .cell i { animation: popIn 0.45s cubic-bezier(0.22, 1.1, 0.36, 1) forwards; animation-delay: calc(var(--i) * 150ms + 300ms); }
+      @keyframes popIn { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
 
-
-      /* Skannelinja i QR-ruta. Dette er produktets egen mekanikk gjort synlig, ikke et ornament. */
-      .scanbox { position: relative; overflow: hidden; }
+      /* Inngangen med QR-koden. Skannelinja er produktets egen mekanikk gjort synlig. */
+      .door {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--brand-bg);
+      }
+      .qr {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        border-radius: 8px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+      }
+      .qr svg { color: var(--brand); }
       .scanline {
-        position: absolute; left: 8%; right: 8%; height: 2px; top: 4%;
-        background: linear-gradient(90deg, transparent, var(--ink), transparent);
+        position: absolute;
+        left: 6%;
+        right: 6%;
+        height: 2px;
+        top: 6%;
+        background: linear-gradient(90deg, transparent, var(--brand), transparent);
         opacity: 0;
       }
+      .fade.in .scanline { animation: scan 2.6s ease-in-out 0.5s infinite; }
+      @keyframes scan {
+        0% { transform: translateY(0); opacity: 0; }
+        12% { opacity: 1; }
+        50% { transform: translateY(34px); opacity: 1; }
+        88% { opacity: 0; }
+        100% { transform: translateY(0); opacity: 0; }
+      }
+      .door-t { font-size: 13.5px; font-weight: 600; }
+      .door-s { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
 
-      .ring {
-        position: absolute; inset: 0; margin: auto; width: 56px; height: 56px;
-        border: 2px solid var(--ink); border-radius: 999px; opacity: 0;
-      }
-      .fade.in .ring.d2 { animation-delay: 1.2s; }
+      /* ============================================================
+         LOGGBÅNDET
 
-      /* ---------- to-lags heroebilde ---------- */
-      /* Begge lagene holdes innenfor kolonnens egen bredde. Frister man med negative offsets
-         for å få dem til å «stikke ut», får man horisontal scroll på mellomstore skjermer. */
-      .stack-shot { position: relative; min-height: 470px; }
-      .shot-desk {
-        position: absolute; z-index: 1; top: 0; left: 0; width: min(278px, 72%);
-        background: var(--surface); border: 1px solid var(--line);
-        box-shadow: 0 22px 44px -26px rgba(30, 42, 56, 0.4);
-      }
-      .stack-shot .phone {
-        position: relative; z-index: 2;
-        max-width: 254px; margin: 104px 0 0 auto;
-      }
-      @media (max-width: 880px) {
-        .stack-shot { min-height: 0; }
-        .shot-desk { display: none; }
-        .stack-shot .phone { margin: 0 auto; max-width: 320px; }
-      }
-
-      /* ---------- marquee ---------- */
-      .strip {
+         Et bånd som ruller sakte forbi. Innholdet er ikke funksjonsnavn, det er
+         loggføringer med klokkeslett — samme form som systemet faktisk skriver.
+         Stopper når man peker på det, og står helt stille under reduced-motion.
+         ============================================================ */
+      .ribbon {
         border-block: 1px solid var(--line);
         background: var(--surface);
         overflow: hidden;
-        -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-        mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
       }
-      .strip-track { display: flex; width: max-content; animation: drift 42s linear infinite; }
+      .ribbon-track { display: flex; width: max-content; animation: drift 54s linear infinite; }
       @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-      .strip-track:hover { animation-play-state: paused; }
-      .strip-item {
-        display: inline-flex; align-items: center; gap: 9px;
-        padding: 15px 26px; font-size: 14px; font-weight: 500; color: var(--slate);
+      .ribbon-track:hover { animation-play-state: paused; }
+      .entry {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 14px 22px;
+        font-size: 13.5px;
+        color: var(--slate);
         white-space: nowrap;
+        border-right: 1px solid var(--line-2);
       }
-      .strip-item svg { color: var(--ink); flex-shrink: 0; }
+      .entry time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12.5px; }
+      .entry b { font-weight: 600; color: var(--ink); }
+      .entry .dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; background: var(--ok); }
+      .entry .dot.p { background: var(--progress); }
+      .entry .dot.a { background: var(--danger); }
+      .entry .dot.k { background: var(--kunde); }
 
-      /* ---------- vaskeplan-rutenett ---------- */
-      /* Egen horisontal scroll, som appens egen Rapporter-side gjør det. Uten den blir 30
-         dagskolonner 4,5px brede paa en telefon, altsaa uleselig stoy i stedet for et rutenett.
-         Romnavnet laases fast saa man ser hvilken rad man ruller i. */
-      .plan-scroll { overflow-x: auto; }
-      .plan { display: grid; gap: 3px; min-width: 540px; }
-      .plan-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; }
-      .plan-name {
-        font-size: 12px; color: var(--slate); text-align: right;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        position: sticky; left: 0; background: var(--surface); z-index: 1;
+      /* ---------- steg ---------- */
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 42px;
       }
-      .plan-days { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
-      .cell { aspect-ratio: 1; border-radius: 3px; background: var(--line-soft); opacity: 0; }
-      .cell.ok { background: #bfe6cd; }
-      .cell.doing { background: #ffd9bd; }
-      .cell.miss { background: #f9c9c9; }
-      .plan-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; font-size: 12.5px; color: var(--slate); }
-      .plan-legend span { display: inline-flex; align-items: center; gap: 7px; }
-      .plan-legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-      @media (max-width: 620px) {
-        .plan-row { grid-template-columns: 64px 1fr; gap: 7px; }
-        .plan-name { font-size: 10.5px; }
+      @media (max-width: 880px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
+      .step {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 22px 20px 24px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+      .step-ic {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        background: var(--brand-bg);
+        color: var(--brand);
+        display: grid;
+        place-items: center;
+        margin-bottom: 16px;
+      }
+      .step-n {
+        position: absolute;
+        top: 16px;
+        right: 18px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--line);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+      .step h3 { margin-bottom: 6px; }
+      .step p { margin: 0; font-size: 14px; color: var(--slate); }
+
+      /* ---------- to kolonner ---------- */
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 40px; }
+      @media (max-width: 820px) { .pair { grid-template-columns: 1fr; } }
+      .pair h3 { font-size: 20px; letter-spacing: -0.026em; }
+
+      .feats { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 12px; }
+      .feats li { display: flex; gap: 11px; font-size: 14.5px; color: var(--slate); }
+      .feats svg { flex-shrink: 0; margin-top: 4px; color: var(--brand); }
+      .feats b { color: var(--ink); font-weight: 600; }
+
+      .split { display: grid; grid-template-columns: 1fr 360px; gap: clamp(28px, 4vw, 56px); align-items: center; margin-top: 44px; }
+      .split.flip { grid-template-columns: 360px 1fr; }
+      @media (max-width: 900px) {
+        .split, .split.flip { grid-template-columns: 1fr; }
+        .split.flip > *:first-child { order: 2; }
       }
 
-      /* ---------- stolpediagram ---------- */
-      /* stretch, ikke flex-end: hver .bar må arve den faste høyden fra .bars, ellers har en
-         prosenthøyde på .bar-col ingenting å regne mot og stolpen blir null høy. */
-      .bars { display: flex; align-items: stretch; gap: 10px; height: 130px; margin-top: 8px; }
-      .bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; text-align: center; }
-      .bar-col { background: var(--ink); border-radius: 3px 3px 0 0; transform-origin: bottom; }
-      .bar-lab { font-size: 10.5px; color: var(--muted); }
+      /* ============================================================
+         DAGSRAPPORTEN
 
-      /* Regel 2. Ingen unntak. */
+         Utdata, ikke inndata. Et stilisert e-postkort: emnefelt, tre tall, bildemerker og
+         avviket. Bildemerkene er gradienter, ikke filer — siden laster ingen bilder.
+         ============================================================ */
+      .mail {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: var(--shadow-lift);
+        overflow: hidden;
+        max-width: 360px;
+        margin-inline: auto;
+        width: 100%;
+      }
+      .mail-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--line-2);
+        background: var(--ground);
+      }
+      .mail-mark {
+        width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+        background: var(--brand); color: #fff; display: grid; place-items: center;
+      }
+      .mail-mark svg { width: 13px; height: 13px; }
+      .mail-from { font-size: 13px; font-weight: 650; }
+      .mail-time { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .mail-body { padding: 16px; }
+      .mail-subj { font-size: 15px; font-weight: 600; letter-spacing: -0.015em; }
+      .mail-nums { display: flex; gap: 20px; margin-top: 14px; }
+      .mail-nums div span { display: block; font-size: 10.5px; color: var(--muted); }
+      .mail-nums div b { display: block; font-size: 21px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+      .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 15px; }
+      .shots i {
+        aspect-ratio: 4 / 3;
+        border-radius: 7px;
+        border: 1px solid var(--line);
+        background: linear-gradient(135deg, #e9e6f5, #d8d3ea 55%, #efedf7);
+      }
+      .shots i:nth-child(2) { background: linear-gradient(135deg, #e4ecf6, #cfdcee 55%, #eef3f9); }
+      .shots i:nth-child(3) { background: linear-gradient(135deg, #e7f1e9, #d2e6d8 55%, #eff6f1); }
+      .mail-avvik {
+        display: flex;
+        gap: 9px;
+        margin-top: 15px;
+        padding: 10px 12px;
+        border-radius: 9px;
+        background: var(--danger-bg);
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+      .mail-avvik svg { color: var(--danger); flex-shrink: 0; margin-top: 2px; }
+
+      /* ============================================================
+         ETTERKONTROLL
+
+         Tre utfall på rad, og pilen videre til avviket. Rekkefølgen er informasjonen, så de
+         står på rad og brytes ikke vilkårlig i et rutenett.
+         ============================================================ */
+      .verdicts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+      @media (max-width: 560px) { .verdicts { grid-template-columns: 1fr; } }
+      .verdict {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+        padding: 14px;
+      }
+      .verdict-h { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 650; }
+      .verdict-h svg { flex-shrink: 0; }
+      .verdict p { margin: 7px 0 0; font-size: 12.5px; color: var(--slate); }
+      .verdict.g { border-color: #bfe6cd; } .verdict.g .verdict-h { color: var(--ok-text); }
+      .verdict.m { border-color: #ffd9bd; } .verdict.m .verdict-h { color: var(--progress-text); }
+      .verdict.k { border-color: #f6c9c9; } .verdict.k .verdict-h { color: var(--danger); }
+
+      .arrow-down { display: grid; place-items: center; padding: 14px 0 4px; color: var(--line); }
+      .case {
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--danger);
+        border-radius: 12px;
+        background: var(--surface);
+        padding: 14px 16px;
+        box-shadow: var(--shadow);
+      }
+      .case-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .case-h b { font-size: 14px; font-weight: 650; }
+      .tag {
+        font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+        padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+      }
+      .tag.r { background: var(--danger-bg); color: var(--danger); }
+      .tag.n { background: var(--line-2); color: var(--slate); }
+      .case-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+      .case-steps span {
+        font-size: 11.5px; color: var(--slate);
+        border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px;
+      }
+      .case-steps span.done { background: var(--ok-bg); border-color: #bfe6cd; color: var(--ok-text); }
+
+      /* ============================================================
+         SJEKK DET
+
+         Kort med vilje. Det er en sjekkliste for å fylle ut sjekklister, og mer er det ikke.
+         Ikke lov offline-støtte her: sjekklistene bruker ikke offline-køen.
+         De andre tilleggsmodulene holdes ute av offentlig tekst til de er ferdige.
+         ============================================================ */
+      .list-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: var(--shadow-lift);
+        overflow: hidden;
+        max-width: 360px;
+        margin-inline: auto;
+        width: 100%;
+      }
+      .list-head {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line-2);
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .list-head b { font-size: 14.5px; font-weight: 650; letter-spacing: -0.015em; }
+      .list-head span { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .list-row {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 12px 16px;
+        font-size: 14px;
+        border-top: 1px solid var(--line-2);
+      }
+      .list-row:first-of-type { border-top: none; }
+      .box {
+        width: 19px; height: 19px; border-radius: 5px; flex-shrink: 0;
+        border: 1.5px solid var(--line); background: var(--surface);
+        display: grid; place-items: center; color: #fff;
+      }
+      .box svg { width: 11px; height: 11px; }
+      .box.on { background: var(--ok); border-color: var(--ok); }
+      .box.no { background: var(--danger); border-color: var(--danger); }
+      .list-row .na { margin-left: auto; font-size: 11px; color: var(--muted); }
+      .list-note {
+        margin: 0 16px 14px;
+        padding: 9px 11px;
+        border-radius: 8px;
+        background: var(--danger-bg);
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .list-foot {
+        padding: 12px 16px;
+        border-top: 1px solid var(--line-2);
+        background: var(--ground);
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+      .inline-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+      .inline-facts span {
+        display: inline-flex; align-items: center; gap: 8px;
+        border: 1px solid var(--line); border-radius: 999px;
+        background: var(--surface); padding: 8px 14px;
+        font-size: 13.5px; color: var(--slate);
+      }
+      .inline-facts svg { color: var(--brand); flex-shrink: 0; }
+
+      /* ---------- språk ---------- */
+      .langs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+      .langs span {
+        border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
+        padding: 7px 15px; font-size: 13.5px; color: var(--slate);
+      }
+      .langs span b { color: var(--ink); font-weight: 600; }
+
+      /* ---------- faq ---------- */
+      .faq { margin-top: 36px; }
+      details {
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: var(--surface);
+        margin-bottom: 9px;
+        box-shadow: var(--shadow);
+      }
+      summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 17px 20px;
+        font-size: clamp(15.5px, 1.8vw, 18px);
+        font-weight: 600;
+        letter-spacing: -0.016em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+      summary::-webkit-details-marker { display: none; }
+      summary::after { content: "+"; font-size: 21px; font-weight: 400; color: var(--brand); line-height: 1; }
+      details[open] summary::after { content: "−"; }
+      details p { margin: 0 20px 19px; color: var(--slate); max-width: 66ch; font-size: 15px; }
+
+      /* ---------- kontakt + bunn ---------- */
+      .contact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(22px, 3vw, 44px); margin-top: 34px; align-items: start; }
+      @media (max-width: 760px) { .contact { grid-template-columns: 1fr; } }
+      .kv { font-size: 15px; color: var(--slate); margin: 0 0 12px; }
+      .kv b { color: var(--ink); font-weight: 600; }
+
+      footer { border-top: 1px solid var(--line); padding-block: 38px 54px; background: var(--surface); }
+      .foot { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; justify-content: space-between; }
+      .foot p { margin: 0; font-size: 13.5px; color: var(--slate); max-width: 60ch; }
+      .foot nav { display: flex; gap: 20px; font-size: 13.5px; }
+
+      /* ============================================================
+         BEVEGELSE
+
+         Tre regler som ikke rokkes:
+         1. Siden er ferdig lesbar uten at noe har animert. Dekoranimasjoner starter fra en
+            synlig tilstand. Unntaket er .fade, som JS slår på og som har .no-js-fallback.
+         2. prefers-reduced-motion slår ALT av. Ikke «kortere», av.
+         3. Ingenting animerer layout — kun transform og opacity, slik at en gammel
+            Android-telefon i et kjølerom ikke hakker.
+         ============================================================ */
+      .fade { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+      .fade.in { opacity: 1; transform: none; }
+      .no-js .fade { opacity: 1; transform: none; }
+      /* Båndet fylles av JS. Uten JS ville det stått igjen som en tom innrammet stripe —
+         verre enn ingenting. Teksten rundt er uavhengig og blir stående. */
+      .no-js .ribbon { display: none; }
+
       @media (prefers-reduced-motion: reduce) {
-        .float,
-        .strip-track,
-        .fade.in .bar-fill,
-        .fade.in .tick-pop,
-        .fade.in .scanline,
-        .fade.in .ring,
-        .fade.in .cell,
-        .fade.in .bar-col,
-        .fade.in .meter-fill,
-        .fade.in .dial .run {
-          animation: none !important;
-        }
-        .fade .bar-fill,
-        .fade .bar-col,
-        .fade .meter-fill { transform: none; }
-        .fade .tick-pop,
-        .scanline, .ring { display: none; }
-        /* Skiven står stille på full runde i stedet for å forsvinne — tallet i midten er
-           poenget, ringen rundt er bare innpakning. */
-        .dial .run { stroke-dashoffset: 0; }
+        .fade { opacity: 1; transform: none; transition: none; }
+        .ribbon-track,
+        .fade.in .cell i,
+        .fade.in .scanline { animation: none !important; }
+        .cell i { opacity: 1; }
+        .scanline { display: none; }
       }
-
-      /* ---------- hygienesekvens ---------- */
-      /* Trinnene som en kjede. Rekkefølgen ER informasjonen her — fra skitnest til reneste —
-         så de står på rad og ikke i et rutenett som kan brytes vilkårlig. */
-      .chain { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 34px; }
-      .link {
-        display: inline-flex; align-items: center; gap: 9px;
-        border: 1px solid var(--line); background: var(--surface);
-        padding: 11px 15px; font-size: 14px; font-weight: 500;
-      }
-      .link b {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 21px; height: 21px; border-radius: 999px; flex-shrink: 0;
-        background: var(--ink); color: #fff; font-size: 11px; font-weight: 700;
-      }
-      .link.hot b { background: var(--progress); }
-
-      /* ---------- måleverdi mot grense ---------- */
-      .meter-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
-      .meter-val { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-      .meter-bar { position: relative; height: 9px; border-radius: 999px; background: var(--line-soft); margin-top: 9px; }
-      .meter-fill { height: 100%; border-radius: 999px; background: var(--danger); transform-origin: left; }
-      .fade .meter-fill { transform: scaleX(0); }
-      /* Grensestreken ligger over fyllet, så det er tydelig hvor mye verdien bommer med. */
-      .meter-limit { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
-      .meter-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 8px; }
-
-      /* ---------- nedtelling ---------- */
-      .timer { display: flex; align-items: center; gap: 13px; }
-      .dial { position: relative; width: 62px; height: 62px; flex-shrink: 0; }
-      .dial svg { transform: rotate(-90deg); }
-      .dial circle { fill: none; stroke-width: 6; }
-      .dial .track { stroke: var(--line-soft); }
-      .dial .run { stroke: var(--progress); stroke-linecap: round; stroke-dasharray: 169; }
-      .dial-num {
-        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-        font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
-      }
-
-      /* ---------- sperret frigivelse ---------- */
-      .blocked { border: 1px solid var(--danger); background: #fef2f2; padding: 14px 16px; margin-top: 16px; }
-      .blocked-t { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--danger); }
-      .blocked p { margin: 7px 0 0; font-size: 13px; color: var(--slate); }
-
-      /* ---------- roller ---------- */
-      .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 40px; }
-      .role { background: var(--surface); padding: 18px 20px; }
-      .role b { display: block; font-size: 15px; letter-spacing: -0.015em; }
-      .role span { display: block; font-size: 13px; color: var(--slate); margin-top: 5px; }
     </style>
   </head>
 
@@ -643,6 +774,7 @@
         <nav>
           <a href="#slik">Slik fungerer det</a>
           <a href="#hva">Hva du får</a>
+          <a href="#etterkontroll">Etterkontroll</a>
           <a href="#sjekk-det">Sjekk det</a>
           <a href="#sporsmal">Spørsmål</a>
         </nav>
@@ -652,240 +784,420 @@
 
     <main>
       <!-- ============ HERO ============ -->
-      <section class="hero grid-bg wash">
+      <section class="hero">
         <div class="wrap hero-grid">
           <div>
             <h1>Rom for rom.<br />Kvittert ut.</h1>
             <p class="lede">
-              Renhold dokumentert mens det gjøres, og synlig for kunden samme dag.
+              Renholderen skanner QR-koden ved inngangen og huker av mens hun går.
+              Kunden ser det samme dag.
             </p>
             <div class="hero-cta">
               <a class="btn" href="#kontakt">Be om en demo</a>
               <a class="btn ghost" href="#slik">Se hvordan det fungerer</a>
             </div>
+            <p class="hero-note">
+              <span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                Ingen app å installere
+              </span>
+              <span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                Fem språk
+              </span>
+              <span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                Tåler dårlig dekning
+              </span>
+            </p>
           </div>
 
-          <!-- To lag: driftslederens skjerm bak, renholderens telefon foran. Det er hele
-               poenget med produktet i ett bilde — samme besøk, sett fra to sider. -->
-          <div class="stack-shot fade in">
-            <div class="shot-desk float slow" aria-hidden="true">
-              <div class="browser-bar">
-                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-              </div>
-              <div style="padding: 14px 16px">
-                <div style="font-size: 11px; color: var(--muted)">I dag</div>
-                <div style="display: flex; gap: 18px; margin-top: 8px">
-                  <div><div style="font-size: 10.5px; color: var(--slate)">Fullført</div><div style="font-size: 20px; font-weight: 700; color: var(--ok)">17</div></div>
-                  <div><div style="font-size: 10.5px; color: var(--slate)">Pågår</div><div style="font-size: 20px; font-weight: 700; color: var(--progress)">5</div></div>
-                  <div><div style="font-size: 10.5px; color: var(--slate)">Avvik</div><div style="font-size: 20px; font-weight: 700; color: var(--danger)">2</div></div>
+          <!-- Bygget: rommene fylles ut etasje for etasje. Figuren sier det samme som
+               teksten til venstre, så den er skjult for skjermlesere. -->
+          <div class="bygg fade in" aria-hidden="true">
+            <div class="bygg-top">
+              <span class="bygg-name">Nordvik Foods AS</span>
+              <span class="bygg-count"><b>12</b> av 15 rom</span>
+            </div>
+            <div class="roof"></div>
+            <div class="floors">
+              <div class="floor">
+                <span class="floor-l">3. etg</span>
+                <div class="cells">
+                  <span class="cell ok" style="--i: 0"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 1"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 2"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 3"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 4"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
                 </div>
-                <div class="bars" style="height: 58px; gap: 6px; margin-top: 12px">
-                  <div class="bar"><div class="bar-col" style="height: 22px; --i: 0"></div></div>
-                  <div class="bar"><div class="bar-col" style="height: 38px; --i: 1"></div></div>
-                  <div class="bar"><div class="bar-col" style="height: 30px; --i: 2"></div></div>
-                  <div class="bar"><div class="bar-col" style="height: 52px; --i: 3"></div></div>
-                  <div class="bar"><div class="bar-col" style="height: 44px; --i: 4"></div></div>
-                  <div class="bar"><div class="bar-col" style="height: 58px; --i: 5"></div></div>
+              </div>
+              <div class="floor">
+                <span class="floor-l">2. etg</span>
+                <div class="cells">
+                  <span class="cell ok" style="--i: 5"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 6"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 7"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell doing" style="--i: 8"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 7v5l3 2" /><circle cx="12" cy="12" r="8.5" /></svg></i></span>
+                  <span class="cell kunde" style="--i: 9"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0" /></svg></i></span>
+                </div>
+              </div>
+              <div class="floor">
+                <span class="floor-l">1. etg</span>
+                <div class="cells">
+                  <span class="cell ok" style="--i: 10"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 11"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 12"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell ok" style="--i: 13"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></i></span>
+                  <span class="cell" style="--i: 14"></span>
                 </div>
               </div>
             </div>
-
-            <div class="phone float" aria-hidden="true">
-              <div class="phone-notch"></div>
-              <div class="card" style="margin-bottom: 12px">
-                <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 8px">
-                  <span style="font-weight: 600">Nordvik Foods AS</span>
-                  <span style="color: var(--slate)">9 / 14 rom</span>
-                </div>
-                <div class="track"><div class="fill bar-fill" style="width: 64%"></div></div>
-              </div>
-
-              <div class="chap"><span>Produksjon <em>3/5</em></span><span class="linkish">Huk av alle (2)</span></div>
-              <div class="room done">
-                <div><div class="room-n">Skjærerom 1</div><div class="room-s">Ferdig 06:42 · 2 bilder</div></div>
-                <span class="tick done tick-pop" style="--i: 0">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                </span>
-              </div>
-              <div class="room done">
-                <div><div class="room-n">Skjærerom 2</div><div class="room-s">Ferdig 06:58</div></div>
-                <span class="tick done tick-pop" style="--i: 1">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                </span>
-              </div>
-              <div class="room doing">
-                <div><div class="room-n">Pakkeri</div><div class="room-s">4 av 7 oppgaver</div></div>
-                <span class="pill doing">PÅGÅR</span>
-              </div>
-              <div class="room">
-                <div>
-                  <div class="room-n">Kjølerom <span class="pill kunde">Kundens</span></div>
-                  <div class="room-s">Ikke startet</div>
-                </div>
-                <span class="tick open"></span>
-              </div>
+            <div class="door">
+              <span class="qr">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  <path d="M14 14h3v3h-3zM20 14v3M17 20h4" />
+                </svg>
+                <span class="scanline"></span>
+              </span>
+              <span>
+                <span class="door-t">Innsjekk 06:31</span>
+                <span class="door-s">Turid skannet koden ved inngangen</span>
+              </span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Bånd med det systemet faktisk gjør. Ruller sakte, stopper når man peker på det,
-           og står stille for den som har slått av bevegelse. -->
-      <div class="strip" aria-hidden="true">
-        <div class="strip-track" id="strip"></div>
+      <!-- Loggbåndet. Innholdet ligger i skriptet nederst fordi lista må dupliseres for at
+           -50%-loopen skal gå sømløst, og to like kopier i HTML er noe man glemmer å holde i synk. -->
+      <div class="ribbon" aria-hidden="true">
+        <div class="ribbon-track" id="ribbon"></div>
       </div>
 
       <!-- ============ SLIK FUNGERER DET ============ -->
       <section id="slik">
         <div class="wrap">
           <p class="eyebrow">Slik fungerer det</p>
-          <h2>Skann. Vask. Kvitter. Rapport.</h2>
-          <p class="lede">Fire steg, og ingenting å fylle ut i etterkant.</p>
+          <h2>Fire steg, og<br />ingen etterarbeid.</h2>
+          <p class="lede">
+            Ingenting skal føres inn på nytt når skiftet er over. Loggen blir til mens arbeidet gjøres.
+          </p>
 
           <div class="steps">
             <div class="step fade">
-              <div class="step-n">01</div>
+              <span class="step-n">01</span>
+              <span class="step-ic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><path d="M14 14h3v3h-3zM20 14v3M17 20h4" />
+                </svg>
+              </span>
               <h3>Skann</h3>
-              <p>QR-koden ved inngangen sjekker renholderen inn på riktig bygg. Systemet kan
-                kontrollere at telefonen faktisk er på stedet.</p>
+              <p>QR-koden ved inngangen åpner riktig bygg. Systemet kan kontrollere at telefonen
+                faktisk er på stedet.</p>
             </div>
             <div class="step fade">
-              <div class="step-n">02</div>
+              <span class="step-n">02</span>
+              <span class="step-ic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 6h5v5H3zM3 14h5v5H3zM11 8h10M11 16h10" />
+                </svg>
+              </span>
               <h3>Vask</h3>
-              <p>Dagens rom og oppgaver ligger klare, på renholderens eget språk.</p>
+              <p>Dagens rom og oppgaver ligger klare, gruppert etter område i bygget, på
+                renholderens eget språk.</p>
             </div>
             <div class="step fade">
-              <div class="step-n">03</div>
+              <span class="step-n">03</span>
+              <span class="step-ic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 12.5 8.5 17 20 5.5" /><path d="M4 19h16" />
+                </svg>
+              </span>
               <h3>Kvitter</h3>
-              <p>Ett trykk per rom, med bilde der det kreves. Avvik meldes underveis.</p>
+              <p>Ett trykk per rom, med bilde der det kreves. Ser hun noe galt, melder hun
+                avvik på stedet.</p>
             </div>
             <div class="step fade">
-              <div class="step-n">04</div>
+              <span class="step-n">04</span>
+              <span class="step-ic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m3.8 6.5 8.2 6 8.2-6" />
+                </svg>
+              </span>
               <h3>Rapport</h3>
-              <p>Dagsrapport på e-post til kunden, og full historikk i portalen.</p>
+              <p>Dagsrapport på e-post til kunden til det klokkeslettet dere velger, og full
+                historikk i portalen.</p>
             </div>
           </div>
         </div>
       </section>
 
-
       <!-- ============ HVA DU FÅR ============ -->
       <!--
-        Én seksjon i stedet for sju. Siden hadde tidligere en egen seksjon med telefonmockup for
-        hver funksjon — renholderen, avvik, kunden, rapporter, hygiene, oppsett, språk. Det var
-        1600 linjer markedsføring for et produkt med en håndfull kunder, skrevet for å matche en
-        konkurrent. Innholdet står her i stedet, uten mockupene og uten animasjonene: det som
-        faktisk er bygget, i klartekst.
+        Én seksjon, ikke sju. Siden hadde tidligere en egen seksjon med telefonmockup per
+        funksjon. Det var markedsføring i meterevis for et produkt med en håndfull kunder.
+
+        ÆRLIGHETSGRENSE: her står kun det som faktisk er bygget og verifisert. Ikke skriv noe
+        inn uten å ha sett det virke i appen først — en tidligere versjon av denne siden lovet
+        at renholderen hadde sikkerhetsdatabladet ett trykk unna, og det stemte ikke før
+        funksjonen ble bygget dagen etter.
       -->
       <section id="hva">
         <div class="wrap">
           <p class="eyebrow">Hva du får</p>
-          <h2>Dokumentasjonen,<br />uten merarbeidet.</h2>
+          <h2>Dokumentasjonen<br />faller ut av jobben.</h2>
           <p class="lede">
-            Renholderen skanner, huker av og signerer. Alt det andre — planen, rapporten,
-            avvikssporet, historikken — faller ut av det hun allerede gjorde.
+            Renholderen huker av og signerer. Planen, rapporten, avvikssaken og historikken
+            kommer av seg selv.
           </p>
 
-          <div class="pair" style="margin-top: 36px">
-            <div class="panel">
+          <div class="pair">
+            <div class="panel fade">
               <h3>For renholderen</h3>
               <ul class="feats">
-                <li><span><b>QR-innsjekk på vegg</b> — skann med telefonkameraet, ingen app å installere.</span></li>
-                <li><span><b>Rom for rom, oppgave for oppgave</b>, gruppert etter område i bygget.</span></li>
-                <li><span><b>Bilder der det trengs</b>, og avvik meldt på stedet.</span></li>
-                <li><span><b>Fem språk</b> — norsk, engelsk, litauisk, latvisk og russisk.</span></li>
-                <li><span><b>Tåler dårlig dekning</b> og at telefonen låser seg midt i et skift.</span></li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Skann med telefonkameraet.</b> Ingen app å installere.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Rom for rom</b>, i den rekkefølgen bygget er delt opp.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Bilde der det trengs</b>, og avvik meldt på stedet.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Tåler dårlig dekning</b> og at telefonen låser seg midt i et skift.</span>
+                </li>
               </ul>
+              <div class="langs">
+                <span><b>Norsk</b></span>
+                <span>English</span>
+                <span>Lietuvių</span>
+                <span>Latviešu</span>
+                <span>Русский</span>
+              </div>
             </div>
 
-            <div class="panel">
+            <div class="panel fade">
               <h3>For den som har ansvaret</h3>
               <ul class="feats">
-                <li><span><b>Renholdsplan per bygg</b> — daglig, ukentlig, månedlig, intervall eller bestemte måneder.</span></li>
-                <li><span><b>Avvik i fire trinn</b>: strakstiltak, årsak, korrigerende tiltak, signert lukking.</span></li>
-                <li><span><b>Rapport per besøk og per periode</b>, som PDF eller på e-post hver morgen.</span></li>
-                <li><span><b>Kvalitetslogg</b> som viser hvem som endret hva, og når.</span></li>
-                <li><span><b>Kundeportal</b> der kunden ser og eventuelt godkjenner arbeidet selv.</span></li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Renholdsplan per bygg</b> — daglig, ukentlig, månedlig, intervall eller bestemte måneder.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Avvik med kategori, frist og ansvarlig</b>, fra strakstiltak til signert lukking.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Nøkkeltall</b> på lukketid, gjentakende avvik og kompetanse som går ut.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Kvalitetslogg</b> som viser hvem som endret hva, og når.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Kundeportal</b> der kunden ser arbeidet, og kan godkjenne rom selv.</span>
+                </li>
               </ul>
             </div>
           </div>
 
-          <!--
-            Ærlighetsgrense: her står kun det som faktisk er bygget og verifisert. Ikke skriv noe
-            inn her uten å ha sett det virke i appen først — forrige versjon av denne siden lovet
-            at renholderen hadde sikkerhetsdatabladet ett trykk unna, og det stemte ikke før
-            funksjonen faktisk ble bygget dagen etter.
-          -->
-          <p class="lede" style="margin-top: 32px">
-            Dokumentasjonen er lagt opp etter kravene til internkontroll i
-            næringsmiddellovgivningen: hva som ble gjort, av hvem, når — og hva som ble gjort med
-            avviket for at det ikke skal gjenta seg.
+          <div class="split">
+            <div>
+              <h3 style="font-size: 23px; letter-spacing: -0.028em">Rapporten kunden faktisk leser</h3>
+              <p class="lede" style="font-size: 17px; margin-top: 12px">
+                En e-post hver morgen med det som ble gjort i går, bildene som ble tatt, og
+                avvikene som står åpne. Samme innhold som PDF for hvert besøk og hver periode.
+              </p>
+              <p class="lede" style="font-size: 15px; margin-top: 18px">
+                Dokumentasjonen er lagt opp etter kravene til internkontroll i
+                næringsmiddellovgivningen: hva som ble gjort, av hvem, når — og hva som ble
+                gjort med avviket for at det ikke skal gjenta seg.
+              </p>
+            </div>
+
+            <!-- Dagsrapporten. Bildemerkene er gradienter, ikke filer. -->
+            <div class="mail fade" aria-hidden="true">
+              <div class="mail-head">
+                <span class="mail-mark">
+                  <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5h12" /><path d="M5 15h9" /><path d="M5 22.5h7" /><path d="m17.5 19.6 3.6 3.6L29 15" /></svg>
+                </span>
+                <span class="mail-from">Rentlogg</span>
+                <span class="mail-time">05:30</span>
+              </div>
+              <div class="mail-body">
+                <div class="mail-subj">Nordvik Foods AS — 7. oktober</div>
+                <div class="mail-nums">
+                  <div><span>Rom</span><b>15</b></div>
+                  <div><span>Ferdig</span><b style="color: var(--ok-text)">14</b></div>
+                  <div><span>Avvik</span><b style="color: var(--danger)">1</b></div>
+                </div>
+                <div class="shots"><i></i><i></i><i></i></div>
+                <div class="mail-avvik">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" /><circle cx="12" cy="12" r="9" /></svg>
+                  <span>Kondens i Kjølerom 2. Meldt 07:12, frist 10. oktober.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ETTERKONTROLL ============ -->
+      <!--
+        Taglinjen er «Dokumentert etterkontroll», og dette er funksjonen den bygger på. Den er
+        VALGFRI med vilje — den blokkerer ingenting — og teksten her må si det, ellers lover
+        siden en portvakt produktet ikke har.
+      -->
+      <section id="etterkontroll">
+        <div class="wrap">
+          <p class="eyebrow">Etterkontroll</p>
+          <h2>Noen ser over<br />arbeidet etterpå.</h2>
+          <p class="lede">
+            Teamlederen går gjennom rommene de dagene hun er innom, og setter én av tre
+            vurderinger per punkt. <b>Ingen må vente på henne</b> — kontrollen stopper
+            ingenting, den legger seg ved siden av.
           </p>
+
+          <div class="split flip" style="margin-top: 40px">
+            <div class="fade" aria-hidden="true">
+              <div class="verdicts">
+                <div class="verdict g">
+                  <div class="verdict-h">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                    Godkjent
+                  </div>
+                  <p>Punktet er som det skal.</p>
+                </div>
+                <div class="verdict m">
+                  <div class="verdict-h">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.5v5M12 16v.5" /><circle cx="12" cy="12" r="8.6" /></svg>
+                    Mangler
+                  </div>
+                  <p>Må forklares med én linje.</p>
+                </div>
+                <div class="verdict k">
+                  <div class="verdict-h">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.5v.5" /><path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+                    Kritisk
+                  </div>
+                  <p>Blir en avvikssak.</p>
+                </div>
+              </div>
+
+              <div class="arrow-down">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M6 14l6 6 6-6" /></svg>
+              </div>
+
+              <div class="case">
+                <div class="case-h">
+                  <b>Kjølerom 2 — gulvsluk</b>
+                  <span class="tag r">Kritisk</span>
+                  <span class="tag n">Kvalitet</span>
+                </div>
+                <div class="case-steps">
+                  <span class="done">Strakstiltak</span>
+                  <span class="done">Årsak</span>
+                  <span>Korrigerende tiltak</span>
+                  <span>Lukking</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <ul class="feats" style="margin-top: 0">
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Egen kontroll, ikke kundens.</b> De to sporene holdes atskilt i rapporten.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Ingen kontrollerer seg selv.</b> Den som gjorde jobben, får ikke vurdere den.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Kritisk blir en sak.</b> Avviket opprettes med kategori og frist, ikke bare en merknad.</span>
+                </li>
+                <li>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  <span><b>Står i revisjonsrapporten</b> sammen med besøket det hører til.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
 
       <!-- ============ SJEKK DET ============ -->
-      <!--
-        Den eneste tilleggsmodulen som omtales her. De andre holdes bevisst ute av offentlig tekst,
-        også av kildekoden siden serveres med, til de er ferdig utviklet — Håkons beslutning
-        2026-10-03. Ikke lov offline-støtte her: sjekklistene bruker ikke offline-køen.
-      -->
-      <section id="sjekk-det" class="grid-bg" style="background: var(--surface)">
+      <section id="sjekk-det">
         <div class="wrap">
-          <p class="eyebrow">Sjekk det – det er kjekt det</p>
-          <h2>Bare sjekklister,<br />for alle som ikke vasker.</h2>
+          <p class="eyebrow">Sjekk det</p>
+          <h2>Bare sjekklister.</h2>
           <p class="lede">
-            Et bakeri, en butikk eller et verksted har rutiner som skal krysses av og dokumenteres —
-            åpning, stenging, brannvernrunde, kontroll av utstyr — uten kunder, rom eller renholdsplan.
-            Sjekk det er den delen av Rentlogg, alene.
+            For alle som ikke vasker. Lag lista én gang, de ansatte huker av på telefonen, og du
+            ser hvem som gjorde hva.
           </p>
 
-          <div class="sjekk fade">
+          <div class="split" style="margin-top: 38px">
             <div>
-              <h3>For den ansatte</h3>
-              <p>Dagens lister på telefonen, og ett trykk per punkt.</p>
-              <ul class="feats">
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Hvert punkt besvares som OK, avvik eller ikke relevant.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Et avvik må forklares, og kan dokumenteres med bilde.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Lista sendes inn med navn og tidspunkt, og kan ikke endres etterpå.</span>
-                </li>
-              </ul>
+              <p class="lede" style="margin-top: 0; font-size: 17px">
+                Åpning, stenging, brannvernrunde. Ingen rom og ingen renholdsplan.
+              </p>
+              <div class="inline-facts">
+                <span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  Egne lister eller ferdige maler
+                </span>
+                <span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  PDF av hver utfylling
+                </span>
+                <span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
+                  Ukeoversikt per liste
+                </span>
+              </div>
             </div>
-            <div>
-              <h3>For lederen</h3>
-              <p>Hva som er gjort, og hva som mangler.</p>
-              <ul class="feats">
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Ukeoversikt per liste: utført, avvik eller mangler.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Logg med filter på periode, liste, person og avvik.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>PDF av hver utfylling, og eksport av loggen til CSV.</span>
-                </li>
-                <li>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg>
-                  <span>Egne lister, med ukedager eller «ved behov», og ferdige maler å starte fra.</span>
-                </li>
-              </ul>
+
+            <div class="list-card fade" aria-hidden="true">
+              <div class="list-head">
+                <b>Stenging kjøkken</b>
+                <span>fredag 07.10</span>
+              </div>
+              <div class="list-row">
+                <span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></span>
+                Komfyr og stekeplate slått av
+              </div>
+              <div class="list-row">
+                <span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7" /></svg></span>
+                Kjøletemperatur lest av
+              </div>
+              <div class="list-row">
+                <span class="box no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10M17 7 7 17" /></svg></span>
+                Fettfilter rengjort
+              </div>
+              <p class="list-note">Filteret er tett, rekker ikke i kveld. Meldt til Ola.</p>
+              <div class="list-row">
+                <span class="box"></span>
+                Bakdør låst
+                <span class="na">Ikke relevant</span>
+              </div>
+              <div class="list-foot">Sendt inn 22:14 av Sofie H. — kan ikke endres etterpå</div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ============ FAQ ============ -->
+      <!-- ============ SPØRSMÅL ============ -->
       <section id="sporsmal">
         <div class="wrap">
           <p class="eyebrow">Spørsmål</p>
@@ -911,9 +1223,9 @@
             <details>
               <summary>Fungerer det uten mobildekning?</summary>
               <p>
-                Avkryssinger og registreringer legges i kø lokalt på telefonen når nettet
-                forsvinner, og sendes automatisk når dekningen er tilbake. Opplasting av bilder
-                krever nett.
+                Avkryssinger og registreringer i renholdsflaten legges i kø lokalt på telefonen
+                når nettet forsvinner, og sendes automatisk når dekningen er tilbake. Opplasting
+                av bilder krever nett.
               </p>
             </details>
             <details>
@@ -996,27 +1308,35 @@
       // Rekkefølgen er poenget: uten JavaScript beholder <body> klassen og alt står synlig.
       document.body.classList.remove("no-js");
 
-      // Båndet. Innholdet står her og ikke i markupen fordi listen må dupliseres for at
-      // -50%-loopen skal gå sømløst, og to like kopier i HTML er noe man glemmer å holde i synk.
+      // Loggbåndet. Lista må dupliseres for at -50%-loopen skal gå sømløst, og to like kopier
+      // i HTML er noe man glemmer å holde i synk — derfor bygges den her.
       (function () {
-        var track = document.getElementById("strip");
+        var track = document.getElementById("ribbon");
         if (!track) return;
-        var items = [
-          "QR-innsjekk", "Rom for rom", "Bildedokumentasjon", "Avvik begge veier",
-          "Kundegodkjenning", "Dagsrapport på e-post", "Fem språk", "Tåler dårlig dekning",
-          "Periodiske oppgaver", "Månedsrutenett", "Signatur ved besøk",
-          "Sjekk det",
+        var rows = [
+          ["06:31", "k", "Innsjekk", "Nordvik Foods AS"],
+          ["06:42", "", "Skjærerom 1", "ferdig, 2 bilder"],
+          ["06:58", "", "Skjærerom 2", "ferdig"],
+          ["07:12", "a", "Avvik meldt", "kondens i Kjølerom 2"],
+          ["07:30", "p", "Pakkeri", "4 av 7 oppgaver"],
+          ["08:04", "", "Garderobe", "ferdig"],
+          ["08:20", "k", "Kjølerom 1", "godkjent av kunden"],
+          ["09:15", "", "Etterkontroll", "11 punkter sett over"],
+          ["05:30", "", "Dagsrapport", "sendt til tre mottakere"],
         ];
-        var check =
-          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
-          ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
-        var half = items.map(function (t) {
-          return '<span class="strip-item">' + check + t + "</span>";
-        }).join("");
+        var half = rows
+          .map(function (r) {
+            return (
+              '<span class="entry"><i class="dot ' + r[1] + '"></i>' +
+              "<time>" + r[0] + "</time><b>" + r[2] + "</b>" + r[3] + "</span>"
+            );
+          })
+          .join("");
         track.innerHTML = half + half;
       })();
 
-
+      // Innfading seksjon for seksjon. Uten IntersectionObserver, og for dem som har slått av
+      // bevegelse, slås alt på med én gang.
       (function () {
         var items = document.querySelectorAll(".fade");
         var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
