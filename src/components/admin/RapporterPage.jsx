@@ -123,8 +123,24 @@ export default function RapporterPage({ token, user }) {
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
           <TabButton active={false} onClick={() => setTab("manedlig")}>Månedlig</TabButton>
           <TabButton active onClick={() => setTab("revisjon")}>Revisjon</TabButton>
+          <TabButton active={false} onClick={() => setTab("noekkeltall")}>Nøkkeltall</TabButton>
         </div>
         <RevisjonPanel token={token} sites={sites} />
+      </div>
+    );
+  }
+
+  if (tab === "noekkeltall") {
+    return (
+      <div>
+        <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Rapporter</h1>
+        <div style={{ color: "var(--text-secondary)", marginBottom: 16 }}>Nøkkeltall for drift, kvalitet og kompetanse</div>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
+          <TabButton active={false} onClick={() => setTab("manedlig")}>Månedlig</TabButton>
+          <TabButton active={false} onClick={() => setTab("revisjon")}>Revisjon</TabButton>
+          <TabButton active onClick={() => setTab("noekkeltall")}>Nøkkeltall</TabButton>
+        </div>
+        <NoekkeltallPanel token={token} />
       </div>
     );
   }
@@ -157,6 +173,7 @@ export default function RapporterPage({ token, user }) {
       <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
         <TabButton active onClick={() => setTab("manedlig")}>Månedlig</TabButton>
         <TabButton active={false} onClick={() => setTab("revisjon")}>Revisjon</TabButton>
+        <TabButton active={false} onClick={() => setTab("noekkeltall")}>Nøkkeltall</TabButton>
       </div>
       <Card style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -271,6 +288,131 @@ export default function RapporterPage({ token, user }) {
           onClose={() => setOpenDate(null)} setError={setError}
         />
       )}
+    </div>
+  );
+}
+
+// Nøkkeltall: styresakens dashbord for kvalitet, drift og kompetanse. Egen fane og ikke en
+// seksjon på månedsrapporten, av samme grunn som revisjonssporet — det leses i en annen
+// situasjon, og med sin egen periode.
+//
+// HMS-dashbordet mangler, og det står det om her i stedet for å utelate det stille: en side som
+// viser tre av fire og ikke sier fra, ser komplett ut og er det ikke.
+const KATEGORI_NAVN = {
+  hms: "HMS-avvik",
+  kvalitet: "Kvalitetsavvik",
+  kundeklage: "Kundeklage",
+  naestenulykke: "Nestenulykke",
+  forbedring: "Forbedringsforslag",
+  ukategorisert: "Ikke kategorisert",
+};
+
+function NoekkeltallPanel({ token }) {
+  const [dager, setDager] = useState(90);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setData(null);
+    apiFetch(`/dashboard/kpi?days=${dager}`, { token }).then(setData).catch((e) => setError(e.message));
+  }, [token, dager]);
+
+  if (error) return <div style={{ color: "var(--text-danger)" }}>{error}</div>;
+  if (!data) return <Loading />;
+
+  const k = data.kvalitet;
+  const d = data.drift;
+  const kom = data.kompetanse;
+  const totalt = k.per_kategori.reduce((n, r) => n + r.antall, 0);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
+        <Field label="Periode" style={{ width: 170 }}>
+          <select value={dager} onChange={(e) => setDager(Number(e.target.value))} style={inputStyle}>
+            <option value={30}>Siste 30 dager</option>
+            <option value={90}>Siste 90 dager</option>
+            <option value={365}>Siste år</option>
+          </select>
+        </Field>
+      </div>
+
+      {/* ── Drift ── */}
+      <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>Drift</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 24 }}>
+        <StatCard icon={CheckCircle2} label="Avvik lukket" value={d.lukkede} />
+        <StatCard icon={Clock} label="Snitt lukketid" value={d.snitt_dager != null ? `${d.snitt_dager} d` : "—"} />
+        <StatCard icon={Clock} label="Lengste" value={d.lengste_dager != null ? `${d.lengste_dager} d` : "—"} />
+        {/* Det ene tallet på siden som krever handling i dag, så det er rødt når det ikke er null. */}
+        <StatCard icon={AlertTriangle} label="Forfalte avvik" value={d.forfalte}
+          color={d.forfalte > 0 ? "var(--text-danger)" : undefined} />
+        <StatCard icon={AlertTriangle} label="Åpne uten frist" value={d.apne_uten_frist}
+          color={d.apne_uten_frist > 0 ? "var(--text-warning)" : undefined} />
+      </div>
+
+      {/* ── Kvalitet ── */}
+      <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>Kvalitet</h2>
+      <Card style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 10 }}>
+          {totalt} avvik i perioden, fordelt på type
+        </div>
+        {k.per_kategori.length === 0 ? (
+          <div style={{ color: "var(--text-secondary)" }}>Ingen avvik i perioden.</div>
+        ) : (
+          k.per_kategori.map((r) => (
+            <div key={r.kategori} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <span style={{ width: 150, fontSize: 13.5, flexShrink: 0 }}>
+                {KATEGORI_NAVN[r.kategori] || r.kategori}
+              </span>
+              {/* Enkel søylerad i stedet for et diagrambibliotek: fem tall trenger ikke mer,
+                  og en avhengighet til blir en avhengighet å vedlikeholde. */}
+              <span style={{ flex: 1, background: "var(--surface-0)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+                <span style={{
+                  display: "block", height: 18, width: `${Math.max(4, (r.antall / totalt) * 100)}%`,
+                  background: r.kategori === "ukategorisert" ? "var(--text-muted)" : "var(--brand)",
+                }} />
+              </span>
+              <span style={{ width: 28, textAlign: "right", fontWeight: 600, fontSize: 13.5 }}>{r.antall}</span>
+            </div>
+          ))
+        )}
+      </Card>
+
+      <Card style={{ marginBottom: 24 }}>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Gjentakende avvik</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
+          Samme oppgave i samme rom mer enn én gang i perioden
+        </div>
+        {k.gjentakende.length === 0 ? (
+          <div style={{ color: "var(--text-secondary)", fontSize: 13.5 }}>Ingen gjentakelser i perioden.</div>
+        ) : (
+          k.gjentakende.map((r, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", borderTop: i ? "1px solid var(--border)" : "none", fontSize: 13.5 }}>
+              <span>{r.lokasjon} · {r.rom} · <strong>{r.oppgave}</strong></span>
+              <span style={{ color: "var(--text-danger)", fontWeight: 600, flexShrink: 0 }}>{r.antall} ganger</span>
+            </div>
+          ))
+        )}
+      </Card>
+
+      {/* ── Kompetanse ── */}
+      <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>Kompetanse</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 24 }}>
+        <StatCard icon={AlertTriangle} label="Utløpte kurs" value={kom.utlopt}
+          color={kom.utlopt > 0 ? "var(--text-danger)" : undefined} />
+        <StatCard icon={Clock} label="Utløper innen 60 dager" value={kom.utloper_snart}
+          color={kom.utloper_snart > 0 ? "var(--text-warning)" : undefined} />
+      </div>
+
+      {/* Sagt, ikke utelatt. Se kommentaren øverst. */}
+      <Card style={{ background: "var(--surface-0)" }}>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+          <strong>HMS-tallene mangler.</strong> Styresaken ber om fire dashbord — drift, kvalitet,
+          kompetanse og HMS. De tre første står over. HMS krever risikovurderinger, vernerunder og
+          hendelsesregistrering, som ikke er bygget ennå; HMS-avvik telles foreløpig bare som en
+          avvikskategori under Kvalitet.
+        </div>
+      </Card>
     </div>
   );
 }
