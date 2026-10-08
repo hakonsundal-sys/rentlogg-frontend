@@ -49,7 +49,6 @@ export default defineConfig({
   plugins: [react(), versionManifest()],
   define: {
     __BUILD_TIME__: JSON.stringify(BUILD_TIME),
-    __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
   },
 
   // To sider, ikke én. `index.html` er en statisk landingsside uten JavaScript-bundel, og selve

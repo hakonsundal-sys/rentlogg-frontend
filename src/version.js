@@ -6,7 +6,6 @@
 // is imported by the login screen — the one screen that has to render when everything else is
 // broken.
 export const BUILD_TIME = typeof __BUILD_TIME__ === "string" ? __BUILD_TIME__ : null;
-export const BUILD_COMMIT = typeof __BUILD_COMMIT__ === "string" ? __BUILD_COMMIT__ : null;
 
 // Resolves to the currently deployed build, or to null when that can't be established — under
 // `vite dev` (the file isn't emitted), offline, or any other failure. Null means "no information",
