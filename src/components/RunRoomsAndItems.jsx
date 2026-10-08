@@ -55,6 +55,23 @@ function ItemRow({ item, variant, onToggle, onToggleApprove, onToggleOption }) {
               {t("cleaner.monthly")}
             </span>
           ) : null}
+          {/* Etterkontrollens dom på dette punktet. Vises her og ikke bare på kontrollsiden:
+              et «mangler»-funn ble ellers registrert med kommentar og navn og forsvant ut av
+              syne så snart teamlederen forlot siden — og da slutter folk å registrere det.
+              Godkjent vises ikke: det er det forventede, og en grønn merkelapp på hver linje
+              ville druknet de to som faktisk betyr noe. */}
+          {item.control_status && item.control_status !== "ok" ? (
+            <span
+              title={item.control_comment || undefined}
+              style={{
+                fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: "var(--radius-pill)",
+                whiteSpace: "nowrap", color: "#fff",
+                background: item.control_status === "kritisk" ? "var(--text-danger)" : "var(--text-warning)",
+              }}
+            >
+              {item.control_status === "kritisk" ? "KRITISK" : "MANGLER"}
+            </span>
+          ) : null}
         </div>
         {onToggleApprove && (
           <label
@@ -585,6 +602,14 @@ export default function RunRoomsAndItems({ token, runDetail, editable, editIniti
               {room.approved_at && (
                 <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-secondary)" }}>
                   {t("run.approvedBy", { name: room.approved_by_initials, date: room.approved_at.slice(0, 16) })}
+                </div>
+              )}
+              {/* Etterkontrollen på rommet. Egen linje under kundegodkjenningen, aldri slått
+                  sammen med den: de er to forskjellige vurderinger av to forskjellige parter,
+                  og en revisor som spør «hvem kontrollerte dette?» skal ikke få kundens navn. */}
+              {room.controlled_at && (
+                <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-secondary)" }}>
+                  {t("run.controlledBy", { name: room.controlled_by_name, date: room.controlled_at.slice(0, 16) })}
                 </div>
               )}
               {canEditThisRoom && !room.roomRunId && (
