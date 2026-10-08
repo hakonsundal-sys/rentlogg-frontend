@@ -1,19 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Pencil, FileText, Download, ClipboardCheck, TriangleAlert } from "lucide-react";
-import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
+import { apiFetch, downloadPdf, viewHtmlReport } from "../api";
 import { isNetworkError } from "../offlineQueue";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 import RunHistory from "./RunHistory";
 import { useT } from "../i18n";
-
-// /uploads is now an authenticated route (it used to be served with no auth at all, which let
-// anyone who knew or guessed a filename read across tenants) — a plain <img src> or <a href>
-// can't attach an Authorization header the way apiFetch's fetch() calls can, so the token rides
-// along as a query param instead, which the backend accepts as a fallback for this route only.
-function photoUrl(filePath, token) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
-}
+import { uploadUrl } from "./shared";
 
 // One day's checklist for one site, viewable and (behind a "Rediger" toggle) editable — the
 // piece a vaskeplan grid day-column button links to, wherever that grid shows up (admin
@@ -269,8 +261,8 @@ export default function RunDetailModal({ token, siteId, date, defaultInitials, u
                 <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>{t("runDetail.photos")}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   {runDetail.photos.map((p) => (
-                    <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                      <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                    <a key={p.id} href={uploadUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                      <img loading="lazy" decoding="async" src={uploadUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                     </a>
                   ))}
                 </div>

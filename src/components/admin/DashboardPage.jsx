@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Sparkles, X, ClipboardList, CheckCircle2, Clock, AlertTriangle, Download, Pencil, FileText } from "lucide-react";
-import { apiFetch, downloadZip, downloadPdf, viewHtmlReport, API_URL } from "../../api";
+import { apiFetch, downloadZip, downloadPdf, viewHtmlReport } from "../../api";
 import { isNetworkError } from "../../offlineQueue";
-import { Card } from "../shared";
+import { Card, uploadUrl } from "../shared";
 import RunRoomsAndItems from "../RunRoomsAndItems";
 import RunHistory from "../RunHistory";
 
@@ -13,13 +13,6 @@ const RUN_FILTERS = [
   { key: "in_progress", label: "Pågående" },
   { key: "completed", label: "Fullført" },
 ];
-
-// /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
-// Authorization header, so the token rides along as a query param instead.
-function photoUrl(filePath, token) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
-}
 
 export default function DashboardPage({ token, user, summary, summaryFailed, refreshSummary }) {
   const [showOnboarding, setShowOnboarding] = useState(true);
@@ -359,8 +352,8 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
                     <div style={{ marginTop: 16, fontWeight: 600, fontSize: 13 }}>Bilder</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                       {runDetail.photos.map((p) => (
-                        <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                          <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                        <a key={p.id} href={uploadUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                          <img loading="lazy" decoding="async" src={uploadUrl(p.file_path, token)} alt="" style={{ width: 70, height: 70, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                         </a>
                       ))}
                     </div>
@@ -377,8 +370,8 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
                         {d.photos?.length > 0 && (
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                             {d.photos.map((ph) => (
-                              <a key={ph.id} href={photoUrl(ph.file_path, token)} target="_blank" rel="noreferrer">
-                                <img loading="lazy" decoding="async" src={photoUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                              <a key={ph.id} href={uploadUrl(ph.file_path, token)} target="_blank" rel="noreferrer">
+                                <img loading="lazy" decoding="async" src={uploadUrl(ph.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                               </a>
                             ))}
                           </div>

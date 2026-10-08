@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle, Pencil, FileText, Download, Camera } from "lucide-react";
-import { apiFetch, downloadPdf, viewHtmlReport, API_URL } from "../api";
+import { apiFetch, downloadPdf, viewHtmlReport } from "../api";
 import { isNetworkError } from "../offlineQueue";
-import { Card, ResponsibleBadge } from "./shared";
+import { Card, ResponsibleBadge, uploadUrl } from "./shared";
 import RunRoomsAndItems from "./RunRoomsAndItems";
 import { useI18n, useT } from "../i18n";
 import { prepareImage } from "../imageResize";
-
-// /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
-// Authorization header, so the token rides along as a query param instead.
-function photoUrl(filePath, token) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
-}
 
 const REPLY_ACTIONS = ["resolve", "assign_manager", "assign_customer"];
 
@@ -268,8 +261,8 @@ function DeviationRow({ token, deviation, sharedInitials, onReplied, setError })
           {deviation.photos?.length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
               {deviation.photos.map((p) => (
-                <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                  <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                <a key={p.id} href={uploadUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                  <img loading="lazy" decoding="async" src={uploadUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                 </a>
               ))}
             </div>

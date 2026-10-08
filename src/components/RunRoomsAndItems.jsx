@@ -1,16 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Camera, CheckCircle2, Circle, PlayCircle, X } from "lucide-react";
-import { API_URL } from "../api";
 import { queueableFetch } from "../offlineQueue";
-import { ResponsibleBadge } from "./shared";
+import { ResponsibleBadge, uploadUrl } from "./shared";
 import { useI18n, useT } from "../i18n";
 import { prepareImage } from "../imageResize";
-
-// See RunDetailModal.jsx's photoUrl for why the token rides in the query string here.
-function photoUrl(filePath, token) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
-}
 
 // `onToggleApprove` renders a second, independent checkbox for the customer-approval gate
 // (see RunRoomsAndItems' own header comment) — deliberately separate from `onToggle`/`item.done`,
@@ -139,8 +132,8 @@ function PhotosRow({ photos, onDelete, token }) {
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, paddingLeft: 4 }}>
       {photos.map((p) => (
         <div key={p.id} style={{ position: "relative" }}>
-          <a href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-            <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+          <a href={uploadUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+            <img loading="lazy" decoding="async" src={uploadUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
           </a>
           {onDelete && (
             <button

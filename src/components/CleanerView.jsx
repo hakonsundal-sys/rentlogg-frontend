@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   QrCode, MapPin, Camera, AlertTriangle, CheckCircle2, Circle, ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, ExternalLink, DoorOpen, Keyboard, X, History, Clock, FileText, Save, CalendarDays, Search, GraduationCap, Languages,
 } from "lucide-react";
-import { apiFetch, API_URL } from "../api";
+import { apiFetch } from "../api";
 import { queueableFetch, subscribeQueue, useQueueStatus, isNetworkError } from "../offlineQueue";
-import { Card, StatusBadge, DocumentsList } from "./shared";
+import { Card, StatusBadge, DocumentsList, uploadUrl } from "./shared";
 import { useI18n } from "../i18n";
 import QrScanner, { preloadQrDecoder } from "./QrScanner";
 import { prepareImage } from "../imageResize";
@@ -38,13 +38,6 @@ const deviationSelectStyle = {
   padding: "7px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
   background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13,
 };
-
-// /uploads is an authenticated route now — a plain <img src>/<a href> can't attach an
-// Authorization header, so the token rides along as a query param instead.
-function photoUrl(filePath, token) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
-}
 
 // Prefers the site's own coordinates (exact) over its free-text address (geocoded by Maps at
 // open time) — falls back to address since not every site has lat/lng set.
@@ -1152,8 +1145,8 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
             {roomRun.photos.map((p) => (
               <div key={p.id} style={{ position: "relative" }}>
-                <a href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-                  <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+                <a href={uploadUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+                  <img loading="lazy" decoding="async" src={uploadUrl(p.file_path, token)} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
                 </a>
                 <button
                   onClick={() => deleteRoomPhoto(p.id)}

@@ -1,15 +1,8 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { apiFetch, API_URL } from "../api";
-import { ResponsibleBadge } from "./shared";
+import { apiFetch } from "../api";
+import { ResponsibleBadge, uploadUrl } from "./shared";
 import { useT } from "../i18n";
-
-// /uploads is an authenticated route — a plain <img src>/<a href> can't attach an Authorization
-// header, so the token rides along as a query param instead.
-function photoUrl(filePath, token) {
-  const filename = filePath.split(/[\\/]/).pop();
-  return `${API_URL}/uploads/${filename}?token=${encodeURIComponent(token)}`;
-}
 
 // Shared between CustomerView (per-site list) and SiteHistoryView (per-site timeline) — one
 // deviation's full read-only thread plus the customer's "Godkjenn utbedring" signature action.
@@ -58,8 +51,8 @@ export function DeviationItem({ token, user, deviation: d, onApproved, setError 
       {d.photos?.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: 20, marginTop: 6 }}>
           {d.photos.map((p) => (
-            <a key={p.id} href={photoUrl(p.file_path, token)} target="_blank" rel="noreferrer">
-              <img loading="lazy" decoding="async" src={photoUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
+            <a key={p.id} href={uploadUrl(p.file_path, token)} target="_blank" rel="noreferrer">
+              <img loading="lazy" decoding="async" src={uploadUrl(p.file_path, token)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-sm)" }} />
             </a>
           ))}
         </div>
