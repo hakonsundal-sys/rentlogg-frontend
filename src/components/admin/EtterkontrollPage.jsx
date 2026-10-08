@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ClipboardCheck, MapPin, Clock, CheckCircle2, AlertTriangle, CircleAlert } from "lucide-react";
 import { apiFetch } from "../../api";
-import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import { Card, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import ProvetakingPanel from "./ProvetakingPanel";
+import { hasModule, MODULE_HYGIENE } from "../../modules";
 
 // Etterkontroll: OKVs egen kontroll av eget arbeid, utført av en teamleder etter at renholderen
 // er ferdig og uavhengig av om kunden skal godkjenne. Se backendens db.js ved
@@ -23,7 +25,12 @@ const STATUSES = [
 ];
 const STATUS_BY_KEY = Object.fromEntries(STATUSES.map((s) => [s.key, s]));
 
-export default function EtterkontrollPage({ token }) {
+export default function EtterkontrollPage({ token, user }) {
+  // Prøvetakingen hører hjemme her og ikke som sin egen side: det er samme person på samme
+  // runde i bygget. Den er en del av hygiene-modulen, så fanen finnes bare for firmaer som
+  // har den — da er siden akkurat som før for alle andre.
+  const visProver = hasModule(user, MODULE_HYGIENE);
+  const [fane, setFane] = useState("rom");
   const [venter, setVenter] = useState([]);
   const [kontrollert, setKontrollert] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,11 +57,22 @@ export default function EtterkontrollPage({ token }) {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Etterkontroll</h1>
         <div style={{ color: "var(--text-secondary)" }}>
-          {venter.length === 0
-            ? "Ingen utførte rom å kontrollere akkurat nå."
-            : `${venter.length} ${venter.length === 1 ? "rom" : "rom"} klar for kontroll · ta dem du rekker`}
+          {fane === "prover"
+            ? "Mikrobiologiske prøver du tar selv — uttak og avlesning er to signaturer."
+            : venter.length === 0
+              ? "Ingen utførte rom å kontrollere akkurat nå."
+              : `${venter.length} ${venter.length === 1 ? "rom" : "rom"} klar for kontroll · ta dem du rekker`}
         </div>
       </div>
+
+      {visProver && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+          <TabButton active={fane === "rom"} onClick={() => setFane("rom")}>Rom</TabButton>
+          <TabButton active={fane === "prover"} onClick={() => setFane("prover")}>Prøvetaking</TabButton>
+        </div>
+      )}
+
+      {fane === "prover" && <ProvetakingPanel token={token} />}
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
 
