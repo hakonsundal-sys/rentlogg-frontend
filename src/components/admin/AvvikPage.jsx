@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Info, AlertTriangle, CircleAlert, MapPin, Clock } from "lucide-react";
+import { Info, AlertTriangle, CircleAlert, MapPin, Clock, UserCheck } from "lucide-react";
 import { apiFetch, API_URL } from "../../api";
 import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle, ResponsibleBadge } from "../shared";
 
@@ -38,20 +38,29 @@ export default function AvvikPage({ token, refreshSummary }) {
   const [deviations, setDeviations] = useState([]);
   const [sites, setSites] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [ansatte, setAnsatte] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ title: "", description: "", priority: "medium", category: "", due_date: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", priority: "medium", category: "", due_date: "", responsible_user_id: "" });
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   function loadAll() {
-    Promise.all([apiFetch("/deviations", { token }), apiFetch("/sites", { token }), apiFetch("/departments", { token }).catch(() => [])])
-      .then(([devData, sitesData, departmentsData]) => {
+    Promise.all([
+      apiFetch("/deviations", { token }),
+      apiFetch("/sites", { token }),
+      apiFetch("/departments", { token }).catch(() => []),
+      // Feiler denne, blir ansvarlig-velgeren bare borte — resten av redigeringen skal
+      // fortsatt virke. Samme avveining som kjemikalievelgeren i LokasjonerPage.
+      apiFetch("/auth/users", { token }).catch(() => []),
+    ])
+      .then(([devData, sitesData, departmentsData, usersData]) => {
         setDeviations(devData);
         setSites(sitesData);
         setDepartments(departmentsData);
+        setAnsatte((usersData || []).filter((u) => u.role !== "customer"));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -66,7 +75,7 @@ export default function AvvikPage({ token, refreshSummary }) {
 
   function startEdit(dev) {
     setEditingId(dev.id);
-    setEditForm({ title: dev.title || "", description: dev.description, priority: dev.priority, category: dev.category || "", due_date: dev.due_date || "" });
+    setEditForm({ title: dev.title || "", description: dev.description, priority: dev.priority, category: dev.category || "", due_date: dev.due_date || "", responsible_user_id: dev.responsible_user_id || "" });
   }
 
   async function saveEdit(id) {
@@ -179,6 +188,21 @@ export default function AvvikPage({ token, refreshSummary }) {
                       style={inputStyle}
                     />
                   </Field>
+                  {/* Ansvarlig som bruker, ikke tekst: det er det som gjør «lukketid per
+                      ansvarlig» mulig i N\u00f8kkeltall. Ikke det samme som «Sendt til
+                      driftsleder/kunde» lenger nede \u2014 det er ruting, dette er eierskap. */}
+                  {ansatte.length > 0 && (
+                    <Field label="Ansvarlig" style={{ marginBottom: 8, width: 190 }}>
+                      <select
+                        value={editForm.responsible_user_id}
+                        onChange={(e) => setEditForm({ ...editForm, responsible_user_id: e.target.value })}
+                        style={inputStyle}
+                      >
+                        <option value="">Ingen ansvarlig</option>
+                        {ansatte.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </Field>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => saveEdit(dev.id)} style={primaryBtnStyle}>Lagre</button>
@@ -207,6 +231,11 @@ export default function AvvikPage({ token, refreshSummary }) {
                       }}>
                         {dev.category ? CATEGORY_LABEL[dev.category] : "Ikke kategorisert"}
                       </span>
+                      {dev.responsible_name && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                          <UserCheck size={12} /> {dev.responsible_name}
+                        </span>
+                      )}
                       {dev.due_date && (
                         <span style={{
                           fontWeight: 600,

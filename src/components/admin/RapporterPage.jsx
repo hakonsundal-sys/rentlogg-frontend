@@ -350,6 +350,38 @@ function NoekkeltallPanel({ token }) {
           color={d.apne_uten_frist > 0 ? "var(--text-warning)" : undefined} />
       </div>
 
+      {/* ── Per ansvarlig ── */}
+      {(d.per_ansvarlig?.length > 0 || d.apne_uten_ansvarlig > 0) && (
+        <Card style={{ marginBottom: 24 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Per ansvarlig</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginBottom: 10 }}>
+            Avvik i perioden der noen er satt som ansvarlig
+          </div>
+          {d.per_ansvarlig?.length > 0 ? (
+            d.per_ansvarlig.map((r, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", borderTop: i ? "1px solid var(--border)" : "none", fontSize: 13.5, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 600 }}>{r.navn}</span>
+                <span style={{ color: "var(--text-secondary)" }}>
+                  {r.lukket}/{r.totalt} lukket
+                  {r.snitt_dager != null && <> · snitt {r.snitt_dager} d</>}
+                  {r.forfalte > 0 && <span style={{ color: "var(--text-danger)", fontWeight: 600 }}> · {r.forfalte} forfalt</span>}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div style={{ color: "var(--text-secondary)", fontSize: 13.5 }}>Ingen avvik har en ansvarlig ennå.</div>
+          )}
+          {/* Egen linje, ikke en «ukjent»-rad i tabellen over: de eierløse er ikke en persons
+              tall, de er summen av det ingen har tatt tak i. */}
+          {d.apne_uten_ansvarlig > 0 && (
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--border)", fontSize: 13 }}>
+              <strong style={{ color: "var(--text-warning)" }}>{d.apne_uten_ansvarlig}</strong>
+              <span style={{ color: "var(--text-secondary)" }}> åpne avvik har ingen ansvarlig</span>
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* ── Kvalitet ── */}
       <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>Kvalitet</h2>
       <Card style={{ marginBottom: 12 }}>
