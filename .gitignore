@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Lokal dev-server-konfigurasjon (maskinspesifikke stier) — se backend-repoet, som allerede ignorerer denne
+.claude/
