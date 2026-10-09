@@ -31,7 +31,10 @@ const Dom = ({ verdict }) => {
 
 const idag = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
 
-export default function ProvetakingPanel({ token }) {
+export default function ProvetakingPanel({ token, user }) {
+  // Å avlese er en del av jobben, å oppheve en signatur er det ikke — derfor bare admin, som
+  // backenden også krever.
+  const kanGjenapne = user?.role === "admin" || user?.role === "super_admin";
   const [sites, setSites] = useState([]);
   const [siteId, setSiteId] = useState("");
   const [rounds, setRounds] = useState([]);
@@ -116,6 +119,22 @@ export default function ProvetakingPanel({ token }) {
     try {
       const oppdatert = await apiFetch(`/samples/${runde.id}/read`, {
         token, method: "POST", body: JSON.stringify({ read_by_name: navn, read_date: idag() }),
+      });
+      setRounds((list) => list.map((r) => (r.id === oppdatert.id ? { ...r, ...oppdatert } : r)));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function gjenapne(runde) {
+    const grunn = window.prompt(
+      "Hvorfor gjenåpnes runden?\n\nResultatene slik de står nå, og begrunnelsen, skrives til kvalitetsloggen før de kan endres."
+    );
+    if (grunn === null) return;
+    setError("");
+    try {
+      const oppdatert = await apiFetch(`/samples/${runde.id}/reopen`, {
+        token, method: "POST", body: JSON.stringify({ reason: grunn }),
       });
       setRounds((list) => list.map((r) => (r.id === oppdatert.id ? { ...r, ...oppdatert } : r)));
     } catch (err) {
@@ -216,6 +235,14 @@ export default function ProvetakingPanel({ token }) {
             <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>{r.site_name}</span>
             <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{r.points.length} prøver &middot; {r.taken_by_name}</span>
             <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              {r.reopen_count > 0 && (
+                <span
+                  title="Resultatene slik de sto ved hver signatur ligger i kvalitetsloggen"
+                  style={{ fontSize: 11, color: "var(--text-warning)", border: "1px solid var(--text-warning)", borderRadius: 999, padding: "1px 7px" }}
+                >
+                  gjenåpnet {r.reopen_count > 1 ? `${r.reopen_count} ganger` : "1 gang"}
+                </span>
+              )}
               {r.status === "til_avlesning"
                 ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-warning)" }}>Til avlesning</span>
                 : <Dom verdict={r.worst} />}
@@ -276,8 +303,15 @@ export default function ProvetakingPanel({ token }) {
               </div>
 
               {r.read_date ? (
-                <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)" }}>
-                  Avlest {r.read_date} av <strong>{r.read_by_name}</strong>. Resultatene er låst.
+                <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                    Avlest {r.read_date} av <strong>{r.read_by_name}</strong>. Resultatene er låst.
+                  </span>
+                  {kanGjenapne && (
+                    <button onClick={() => gjenapne(r)} style={{ ...linkBtnStyle, marginLeft: "auto" }}>
+                      Gjenåpne
+                    </button>
+                  )}
                 </div>
               ) : (
                 <SignerAvlesning runde={r} onSigner={signerAvlesning} onSlett={slett} />

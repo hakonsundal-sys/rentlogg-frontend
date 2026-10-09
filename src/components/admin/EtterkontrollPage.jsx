@@ -72,7 +72,7 @@ export default function EtterkontrollPage({ token, user }) {
         </div>
       )}
 
-      {fane === "prover" && <ProvetakingPanel token={token} />}
+      {fane === "prover" && <ProvetakingPanel token={token} user={user} />}
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
 
