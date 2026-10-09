@@ -41,9 +41,14 @@ export default function RapporterPage({ token, user }) {
     apiFetch("/departments", { token }).then(setDepartments).catch(() => {});
   }, [token]);
 
-  const digestSiteRecipients = digestSiteId
+  // "" = nothing chosen yet (the button stays disabled), "all" = every location, otherwise one site's id.
+  // Sending to everyone used to be the default, and with several managers in the system it was one stray
+  // click on a button that e-mails every customer — so it now has to be asked for.
+  const digestOneSite = digestSiteId !== "" && digestSiteId !== "all";
+  const digestSiteRecipients = digestOneSite
     ? (sites.find((s) => s.id === Number(digestSiteId))?.report_recipients || "").split(",").map((s) => s.trim()).filter(Boolean)
     : [];
+  const sitesWithRecipients = sites.filter((s) => (s.report_recipients || "").split(",").some((e) => e.trim())).length;
 
   // Picking a location resets the checkbox list to "everyone configured for it" — matches
   // today's default behavior (send to all) unless someone actively narrows it down.
@@ -85,14 +90,16 @@ export default function RapporterPage({ token, user }) {
   }
 
   async function sendDigestNow() {
-    if (digestSiteId && digestSiteRecipients.length > 0 && digestRecipients.length === 0) {
-      setError("Velg minst én mottaker, eller fjern lokasjonsvalget for å sende til alle.");
+    if (!digestSiteId) return; // the button is disabled in this state; this guards a stray Enter key
+    if (digestOneSite && digestSiteRecipients.length > 0 && digestRecipients.length === 0) {
+      setError("Velg minst én mottaker.");
       return;
     }
-    // This sends real e-mail, with photos, to the customer's own addresses — for every site when none is
-    // chosen. It used to go on the first click.
-    const scope = digestSiteId ? "denne lokasjonen" : "alle lokasjoner";
-    if (!window.confirm(`Sende dagsrapporten for ${digestDate} til kundene på e-post (${scope})?`)) return;
+    // This sends real e-mail, with photos, to the customers' own addresses.
+    const question = digestOneSite
+      ? `Sende dagsrapporten for ${digestDate} til kundene på e-post (${sites.find((s) => s.id === Number(digestSiteId))?.name || "denne lokasjonen"})?`
+      : `Sende dagsrapporten for ${digestDate} på e-post til kundene på ALLE lokasjoner med mottakere (${sitesWithRecipients} lokasjoner)?\n\nDet kan ikke angres.`;
+    if (!window.confirm(question)) return;
     setError("");
     setDigestResult(null);
     setDigestSending(true);
@@ -101,7 +108,7 @@ export default function RapporterPage({ token, user }) {
         token, method: "POST",
         body: JSON.stringify({
           date: digestDate,
-          ...(digestSiteId ? { site_id: digestSiteId, recipients: digestRecipients } : {}),
+          ...(digestOneSite ? { site_id: digestSiteId, recipients: digestRecipients } : {}),
         }),
       });
       setDigestResult(result);
@@ -180,21 +187,26 @@ export default function RapporterPage({ token, user }) {
           <div>
             <div style={{ fontWeight: 600 }}>Send daglig rapport manuelt</div>
             <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-              Sender den vanlige 07:00-digesten for valgt dato på nytt — til alle lokasjoner med mottakere satt, eller kun én.
+              Sender den vanlige 07:00-digesten for valgt dato på nytt, til kundens e-postadresser. Velg først hvilken lokasjon.
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <select value={digestSiteId} onChange={(e) => setDigestSiteId(e.target.value)} style={inputStyle}>
-              <option value="">Alle lokasjoner</option>
+            <select value={digestSiteId} onChange={(e) => setDigestSiteId(e.target.value)} style={inputStyle} aria-label="Lokasjon for manuell rapport">
+              <option value="">Velg lokasjon…</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="all">Alle lokasjoner (sender til alle kunder)</option>
             </select>
             <input type="date" value={digestDate} onChange={(e) => setDigestDate(e.target.value)} style={inputStyle} />
-            <button onClick={sendDigestNow} disabled={digestSending} style={primaryBtnStyle}>
+            <button
+              onClick={sendDigestNow} disabled={digestSending || !digestSiteId}
+              title={digestSiteId ? undefined : "Velg en lokasjon først"}
+              style={{ ...primaryBtnStyle, ...(!digestSiteId ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}
+            >
               <Send size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> {digestSending ? "Sender..." : "Send nå"}
             </button>
           </div>
         </div>
-        {digestSiteId && digestSiteRecipients.length > 0 && (
+        {digestOneSite && digestSiteRecipients.length > 0 && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
               Mottakere for denne lokasjonen
@@ -213,7 +225,7 @@ export default function RapporterPage({ token, user }) {
             </div>
           </div>
         )}
-        {digestSiteId && digestSiteRecipients.length === 0 && (
+        {digestOneSite && digestSiteRecipients.length === 0 && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-secondary)" }}>
             Denne lokasjonen har ingen rapport-mottakere satt opp ennå.
           </div>
