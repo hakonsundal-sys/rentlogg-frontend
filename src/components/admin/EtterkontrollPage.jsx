@@ -3,7 +3,7 @@ import { ClipboardCheck, MapPin, Clock, CheckCircle2, AlertTriangle, CircleAlert
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
 import ProvetakingPanel from "./ProvetakingPanel";
-import { hasModule, MODULE_HYGIENE } from "../../modules";
+import { hasModule, MODULE_SAMPLING } from "../../modules";
 
 // Etterkontroll: OKVs egen kontroll av eget arbeid, utført av en teamleder etter at renholderen
 // er ferdig og uavhengig av om kunden skal godkjenne. Se backendens db.js ved
@@ -27,9 +27,9 @@ const STATUS_BY_KEY = Object.fromEntries(STATUSES.map((s) => [s.key, s]));
 
 export default function EtterkontrollPage({ token, user }) {
   // Prøvetakingen hører hjemme her og ikke som sin egen side: det er samme person på samme
-  // runde i bygget. Den er en del av hygiene-modulen, så fanen finnes bare for firmaer som
-  // har den — da er siden akkurat som før for alle andre.
-  const visProver = hasModule(user, MODULE_HYGIENE);
+  // runde i bygget. Den er sin egen modul, ikke en del av «Hygiene og måling» — et firma kan
+  // ville dokumentere svaberprøver uten å ha kontakttid og måleoppgaver i oppgaveeditoren.
+  const visProver = hasModule(user, MODULE_SAMPLING);
   const [fane, setFane] = useState("rom");
   const [venter, setVenter] = useState([]);
   const [kontrollert, setKontrollert] = useState([]);

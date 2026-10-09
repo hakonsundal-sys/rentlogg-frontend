@@ -7,6 +7,8 @@
 export const MODULE_TRAINING = "training";
 export const MODULE_TIMECLOCK = "timeclock";
 export const MODULE_HYGIENE = "hygiene";
+// Egen modul fra 2026-10-09: prøvetaking selges uten kontakttid og måleoppgaver.
+export const MODULE_SAMPLING = "sampling";
 
 export function hasModule(user, key) {
   return Array.isArray(user?.modules) && user.modules.includes(key);
