@@ -76,7 +76,7 @@ export default function EtterkontrollPage({ token, user }) {
 
       {error && <div style={{ color: "var(--text-danger)", marginBottom: 12 }}>{error}</div>}
 
-      {venter.map((rad) => (
+      {fane === "rom" && venter.map((rad) => (
         <Card key={rad.id} style={{ marginBottom: 12 }}>
           <RunHeader rad={rad} />
           {openRunId === rad.id ? (
@@ -95,7 +95,7 @@ export default function EtterkontrollPage({ token, user }) {
         </Card>
       ))}
 
-      {kontrollert.length > 0 && (
+      {fane === "rom" && kontrollert.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>Kontrollert</h2>
           {kontrollert.map((rad) => (
