@@ -573,19 +573,43 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     saveItemSet(roomId, itemId, "months", next);
   }
 
-  // "Annenhver uke" — due if it's been at least 14 days since this item was last checked off
-  // (see isItemDueOn's interval_days branch). Mutually exclusive with the weekly/monthly modes
-  // above — the backend clears monthly_weekday/monthly_occurrence when this is set.
-  async function setItemBiweeklyMode(roomId, itemId) {
+  // "Hver N. dag" — due if it's been at least N days since this item was last checked off (see
+  // isItemDueOn's interval_days branch). Mutually exclusive with the weekly/monthly modes above —
+  // the backend clears monthly_weekday/monthly_occurrence when this is set.
+  // The dropdown used to offer this as a fixed "Annenhver uke" that always wrote 14, so the 28
+  // production tasks that import or a script had given 365, 182, 183 or 30 days all read as "every
+  // other week" on screen — and switching the mode back into it quietly rewrote the real number.
+  // The interval is its own number field now; 14 is only what a brand-new interval starts at.
+  async function setItemIntervalMode(roomId, itemId, days) {
     try {
       await apiFetch(`/rooms/${roomId}/items/${itemId}`, {
         token, method: "PATCH",
-        body: JSON.stringify({ interval_days: 14 }),
+        body: JSON.stringify({ interval_days: days }),
       });
       refreshRoomItems(roomId);
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // An interval field is typed into, so it can't save on every keystroke ("30" would pass through
+  // 3 and store that). What's being typed lives here, keyed "item:12"/"room:5", until Enter or
+  // blur; an empty or nonsensical entry is dropped instead of written, so the saved interval
+  // survives clearing the field and clicking away — it used to land on 1.
+  const [intervalDrafts, setIntervalDrafts] = useState({});
+  function setIntervalDraft(key, value) {
+    setIntervalDrafts((prev) => ({ ...prev, [key]: value }));
+  }
+  async function commitIntervalDraft(key, current, save) {
+    const draft = intervalDrafts[key];
+    if (draft == null) return;
+    const days = Math.round(Number(draft));
+    if (Number.isFinite(days) && days >= 1 && days !== current) await save(days);
+    setIntervalDrafts((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }
 
   // Which party fills out this room's checklist — 'company' (default, OKV's own cleaner) or
@@ -612,9 +636,16 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
     }
   }
 
+  // The backend takes whole days of at least one (see the PATCH route) — a number field will hand
+  // out "2.5" or "-3" if someone types it, and that used to be stored as-is.
+  function cleanIntervalDays(days) {
+    const n = Math.round(Number(days));
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+  }
+
   async function setRoomIntervalMode(siteId, roomId, days) {
     try {
-      await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ interval_days: days }) });
+      await apiFetch(`/rooms/${roomId}`, { token, method: "PATCH", body: JSON.stringify({ interval_days: cleanIntervalDays(days) }) });
       refreshRoomsForSite(siteId);
       refreshRoomSchedule(roomId);
     } catch (err) {
@@ -742,7 +773,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
   function setImportIntervalMode(roomIdx, days) {
     setImportPreview((p) => ({
       ...p,
-      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], monthly: null, interval_days: days } } : r)),
+      rooms: p.rooms.map((r, i) => (i === roomIdx ? { ...r, schedule: { weekdays: [], monthly: null, interval_days: cleanIntervalDays(days) } } : r)),
     }));
   }
 
@@ -1631,7 +1662,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                             <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
                               <select
                                 value={
-                                  item.interval_days != null ? "biweekly"
+                                  item.interval_days != null ? "interval"
                                   : (item.weekly_days && item.weekly_days.length > 0) ? "weekly"
                                   : (item.months && item.months.length > 0) ? "periodic"
                                   : item.monthly_weekday != null ? "monthly" : "daily"
@@ -1639,7 +1670,7 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                                 onChange={(e) => {
                                   if (e.target.value === "daily") setItemDailyMode(room.id, item.id);
                                   else if (e.target.value === "weekly") setItemWeeklyMode(room.id, item.id, [todayWeekday()]);
-                                  else if (e.target.value === "biweekly") setItemBiweeklyMode(room.id, item.id);
+                                  else if (e.target.value === "interval") setItemIntervalMode(room.id, item.id, item.interval_days ?? 14);
                                   else if (e.target.value === "periodic") setItemPeriodicMode(room.id, item.id, [todayMonth()]);
                                   else setItemMonthlyMode(room.id, item.id, todayWeekday(), 1);
                                 }}
@@ -1647,10 +1678,28 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                               >
                                 <option value="daily">Hver gang</option>
                                 <option value="weekly">Ukentlig</option>
-                                <option value="biweekly">Annenhver uke</option>
+                                <option value="interval">Hver N. dag</option>
                                 <option value="monthly">Månedlig</option>
                                 <option value="periodic">Periodisk</option>
                               </select>
+                              {item.interval_days != null && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <span style={{ fontSize: 11 }}>Hver</span>
+                                  <input
+                                    type="number" min="1"
+                                    value={intervalDrafts[`item:${item.id}`] ?? String(item.interval_days)}
+                                    onChange={(e) => setIntervalDraft(`item:${item.id}`, e.target.value)}
+                                    onBlur={() => commitIntervalDraft(
+                                      `item:${item.id}`, item.interval_days,
+                                      (days) => setItemIntervalMode(room.id, item.id, days),
+                                    )}
+                                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                                    title="Antall dager mellom hver gang oppgaven forfaller"
+                                    style={{ ...inputStyle, width: 52, padding: "2px 4px", fontSize: 11 }}
+                                  />
+                                  <span style={{ fontSize: 11 }}>dag(er)</span>
+                                </div>
+                              )}
                               {item.weekly_days && item.weekly_days.length > 0 && (
                                 <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
                                   {WEEKDAYS.map((wd) => {
@@ -1946,8 +1995,14 @@ export default function LokasjonerPage({ token, user, refreshSummary }) {
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 12 }}>Hver</span>
                             <input
-                              type="number" min="1" defaultValue={room.interval_days}
-                              onBlur={(e) => setRoomIntervalMode(site.id, room.id, Number(e.target.value) || 1)}
+                              type="number" min="1"
+                              value={intervalDrafts[`room:${room.id}`] ?? String(room.interval_days)}
+                              onChange={(e) => setIntervalDraft(`room:${room.id}`, e.target.value)}
+                              onBlur={() => commitIntervalDraft(
+                                `room:${room.id}`, room.interval_days,
+                                (days) => setRoomIntervalMode(site.id, room.id, days),
+                              )}
+                              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                               style={{ ...inputStyle, width: 50, padding: "3px 5px", fontSize: 12 }}
                             />
                             <span style={{ fontSize: 12 }}>dag(er)</span>
