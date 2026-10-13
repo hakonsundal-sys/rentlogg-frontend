@@ -149,6 +149,18 @@ export function subscribeQueue(callback) {
   return () => listeners.delete(callback);
 }
 
+// A photo upload is independent of everything else a cleaner does in a room: it needs the visit to
+// exist, and nothing after it needs to wait for it. The queue's one-line-for-everything order exists
+// so a tick and an untick of the SAME task cannot swap places — it has nothing to say about a photo.
+// Kept in one line, a photo that would not go through (a timeout on a weak signal, a server error)
+// held "Fullfør rom" behind it: the screen said the room was finished, the server never heard it, and
+// nothing moved until the photo got through or was given up on. So photos form their own line, and
+// the order is kept inside each line.
+function isPhotoUpload(entry) {
+  return String(entry.method || "").toUpperCase() === "POST" && /\/photos$/.test(String(entry.url || "").split("?")[0]);
+}
+const laneOf = (entry) => (isPhotoUpload(entry) ? "photo" : "other");
+
 let flushing = false;
 // Set when the head of the queue was refused for its login token. Flushing again would only repeat
 // the same refusal every twenty seconds, so it waits until a token that works has been seen.
@@ -171,7 +183,11 @@ async function flushOnce() {
       if (entries.length === 0) break;
       let progressed = false;
       let stopped = false;
+      // A line that hit a retryable failure stays closed for the rest of this flush; the other line
+      // carries on. Nothing behind a failed entry in ITS OWN line goes first.
+      const closed = { photo: false, other: false };
       for (const entry of entries) {
+        if (closed[laneOf(entry)]) continue;
         try {
           await replayEntry(entry);
           await deleteEntry(db, entry.id);
@@ -180,10 +196,10 @@ async function flushOnce() {
         } catch (err) {
           const verdict = classifyFailure(err);
           if (verdict === "retry") {
-            // Still offline, or the server is busy or restarting — stop here and let the next
+            // Still offline, or the server is busy or restarting — close this line and let the next
             // online event / poll pick up where we left off, rather than burning through the rest of
-            // the queue against a connection that clearly isn't there. Order matters: nothing behind
-            // this entry may go first.
+            // it against a connection that clearly isn't there. Order matters: nothing behind this
+            // entry in its own line may go first.
             if (!isNetworkError(err)) {
               const attempts = (entry.attempts || 0) + 1;
               if (attempts >= MAX_SERVER_ERROR_ATTEMPTS) {
@@ -194,8 +210,8 @@ async function flushOnce() {
               }
               await putEntry(db, { ...entry, attempts });
             }
-            stopped = true;
-            break;
+            closed[laneOf(entry)] = true;
+            continue;
           }
           if (verdict === "auth") {
             if (activeUserId != null && userIdOfToken(entry.token) !== activeUserId) {
@@ -278,10 +294,21 @@ if (typeof window !== "undefined") {
   }, 20000);
 }
 
-async function hasPending() {
+// Whether anything older is waiting in this line (see isPhotoUpload). Stops at the first match rather
+// than reading everything, since the queue can hold photo files.
+async function hasPending(lane) {
   try {
     const db = await openDb();
-    return (await countEntries(db)) > 0;
+    return await new Promise((resolve, reject) => {
+      const req = db.transaction(STORE, "readonly").objectStore(STORE).openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) return resolve(false);
+        if (laneOf(cursor.value) === lane) return resolve(true);
+        cursor.continue();
+      };
+      req.onerror = () => reject(req.error);
+    });
   } catch {
     return false; // IndexedDB unavailable — nothing can be waiting
   }
@@ -293,12 +320,13 @@ async function hasPending() {
 // so the caller's existing optimistic local-state update is left standing rather than rolled
 // back. Genuine HTTP errors (bad input, 403, etc.) still throw exactly as apiFetch already does.
 //
-// While anything older is still waiting, a new request goes to the back of the same line instead of
-// being sent straight away. Sent immediately, an untick made after the signal came back overtook the
-// tick still in the queue, which then replayed after it: the screen said "not done", the server said
-// "done".
+// While anything older is still waiting in the same line (photo uploads are one line, everything else
+// the other), a new request goes to the back of it instead of being sent straight away. Sent
+// immediately, an untick made after the signal came back overtook the tick still in the queue, which
+// then replayed after it: the screen said "not done", the server said "done". A photo that is stuck
+// does not hold the other line back — see isPhotoUpload.
 export async function queueableFetch(path, options = {}) {
-  if (await hasPending()) {
+  if (await hasPending(laneOf({ url: path, method: options.method }))) {
     const tempId = await enqueue({ url: path, method: options.method, token: options.token, body: options.body });
     notify({ type: "queue-changed" });
     flushQueue();
