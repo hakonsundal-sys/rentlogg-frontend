@@ -666,6 +666,13 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       focusInitials();
       return;
     }
+    // Signing a room with tasks still open is allowed — but it used to happen without a word. On
+    // 2026-10-12 two rooms were finished straight after their photos, nothing ticked, and the day's
+    // "Huk av alle" afterwards skips a room that is already complete: the customer's report listed
+    // every task in them as open. Ask first, with the number, the same way ending a visit with rooms
+    // left does.
+    const openTasks = (roomRun.items || []).filter((i) => !i.done).length;
+    if (openTasks > 0 && !window.confirm(tn("cleaner.confirmCompleteRoomWithOpen", openTasks))) return;
     const roomId = expandedRoomId;
     const room = rooms.find((r) => r.id === roomId);
     const roomName = room?.name || t("cleaner.roomFallbackName");

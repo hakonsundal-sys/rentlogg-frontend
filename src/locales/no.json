@@ -116,6 +116,8 @@
   "cleaner.confirmCompleteChapter.other": "Fullføre alle {count} gjenstående rom i {area}?",
   "cleaner.confirmFinishWithIncomplete.one": "{count} rom er ikke fullført ennå — avslutte likevel?",
   "cleaner.confirmFinishWithIncomplete.other": "{count} rom er ikke fullført ennå — avslutte likevel?",
+  "cleaner.confirmCompleteRoomWithOpen.one": "{count} oppgave er ikke krysset av — fullføre rommet likevel?",
+  "cleaner.confirmCompleteRoomWithOpen.other": "{count} oppgaver er ikke krysset av — fullføre rommet likevel?",
   "cleaner.confirmRemovePhoto": "Fjerne bildet?",
   "cleaner.deviationGeneral": "Generelt (ikke rom-spesifikt)",
   "cleaner.deviationGeneralRoom": "Generelt for rommet",

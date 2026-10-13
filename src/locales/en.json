@@ -116,6 +116,8 @@
   "cleaner.confirmCompleteChapter.other": "Complete all {count} remaining rooms in {area}?",
   "cleaner.confirmFinishWithIncomplete.one": "{count} room is not finished yet — end the visit anyway?",
   "cleaner.confirmFinishWithIncomplete.other": "{count} rooms are not finished yet — end the visit anyway?",
+  "cleaner.confirmCompleteRoomWithOpen.one": "{count} task is not ticked off — complete the room anyway?",
+  "cleaner.confirmCompleteRoomWithOpen.other": "{count} tasks are not ticked off — complete the room anyway?",
   "cleaner.confirmRemovePhoto": "Remove the photo?",
   "cleaner.deviationGeneral": "General (not about a specific room)",
   "cleaner.deviationGeneralRoom": "General for the room",
