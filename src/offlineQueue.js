@@ -157,7 +157,7 @@ export function subscribeQueue(callback) {
 // nothing moved until the photo got through or was given up on. So photos form their own line, and
 // the order is kept inside each line.
 function isPhotoUpload(entry) {
-  return String(entry.method || "").toUpperCase() === "POST" && /\/photos$/.test(String(entry.url || "").split("?")[0]);
+  return String(entry.method || "").toUpperCase() === "POST" && /[/-]photos$/.test(String(entry.url || "").split("?")[0]);
 }
 const laneOf = (entry) => (isPhotoUpload(entry) ? "photo" : "other");
 

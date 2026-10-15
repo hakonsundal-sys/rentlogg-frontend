@@ -12,6 +12,7 @@ import CleanerHistoryView from "./CleanerHistoryView";
 import TrainingView, { isSettled as isTrainingSettled } from "./TrainingView";
 import TimeClockCard from "./TimeClockCard";
 import MyWeekView from "./MyWeekView";
+import MyPhotosView from "./MyPhotosView";
 import PreviousVisitCard from "./PreviousVisitCard";
 import { hasModule, MODULE_TRAINING, MODULE_TIMECLOCK } from "../modules";
 import RoomGrid from "./RoomGrid";
@@ -922,6 +923,9 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       <button onClick={() => setViewTab("history")} style={tabBtnStyle(viewTab === "history")}>
         <History size={13} style={{ marginRight: 4 }} /> {t("cleaner.tab.history")}
       </button>
+      <button onClick={() => setViewTab("photos")} style={tabBtnStyle(viewTab === "photos")}>
+        <Camera size={13} style={{ marginRight: 4 }} /> {t("myPhotos.tab")}
+      </button>
       {showTraining && (
         <button onClick={() => setViewTab("training")} style={tabBtnStyle(viewTab === "training")}>
           <GraduationCap size={13} style={{ marginRight: 4 }} /> {t("training.tab")}
@@ -976,6 +980,15 @@ export default function CleanerView({ token, user, pendingCheckinToken, onChecki
       <div>
         {viewTabs}
         <CleanerHistoryView token={token} user={user} initials={initials} />
+      </div>
+    );
+  }
+
+  if (viewTab === "photos") {
+    return (
+      <div>
+        {viewTabs}
+        <MyPhotosView token={token} />
       </div>
     );
   }

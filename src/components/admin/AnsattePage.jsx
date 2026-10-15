@@ -5,6 +5,7 @@ import { Card, Field, Loading, TabButton, primaryBtnStyle, linkBtnStyle, inputSt
 import { LANGUAGES, DEFAULT_LANGUAGE } from "../../i18n";
 import { hasModule, isChecklistOnly, MODULE_TRAINING } from "../../modules";
 import OpplaeringPage from "./OpplaeringPage";
+import PersonligeBilderPanel from "./PersonligeBilderPanel";
 
 const ROLE_LABEL = { admin: "Administrator", manager: "Driftsleder", cleaner: "Renholder" };
 // Et firma som bare bruker sjekklistene driver ikke renhold — der er en «renholder» bare en ansatt.
@@ -45,6 +46,9 @@ export default function AnsattePage({ token, user }) {
   // not look clickable — Håkon had to ask where the certificate was, which is the answer.
   const [openTrainingFor, setOpenTrainingFor] = useState(null);
   const showTraining = hasModule(user, MODULE_TRAINING);
+  // super_admin has no company of its own, so there are no cleaners' photos to look at.
+  const showPersonalPhotos = user.role === "admin" || user.role === "manager";
+  const showTabs = showTraining || showPersonalPhotos;
 
   function openTraining(userId) {
     setOpenTrainingFor(userId);
@@ -53,15 +57,22 @@ export default function AnsattePage({ token, user }) {
 
   return (
     <div>
-      {showTraining && (
+      {showTabs && (
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 20, overflowX: "auto" }}>
           <TabButton active={activeTab === "ansatte"} onClick={() => setActiveTab("ansatte")}>Ansatte</TabButton>
-          <TabButton active={activeTab === "opplaering"} onClick={() => { setOpenTrainingFor(null); setActiveTab("opplaering"); }}>Opplæring</TabButton>
+          {showTraining && (
+            <TabButton active={activeTab === "opplaering"} onClick={() => { setOpenTrainingFor(null); setActiveTab("opplaering"); }}>Opplæring</TabButton>
+          )}
+          {showPersonalPhotos && (
+            <TabButton active={activeTab === "bilder"} onClick={() => setActiveTab("bilder")}>Personlige bilder</TabButton>
+          )}
         </div>
       )}
       {showTraining && activeTab === "opplaering"
         ? <OpplaeringPage token={token} user={user} openUserOnMount={openTrainingFor} />
-        : <StaffList token={token} user={user} onOpenTraining={showTraining ? openTraining : null} />}
+        : showPersonalPhotos && activeTab === "bilder"
+          ? <PersonligeBilderPanel token={token} />
+          : <StaffList token={token} user={user} onOpenTraining={showTraining ? openTraining : null} />}
     </div>
   );
 }
