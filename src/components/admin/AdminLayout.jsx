@@ -16,6 +16,7 @@ import SjekklisterPage from "./SjekklisterPage";
 import ErrorBoundary from "../ErrorBoundary";
 import { isChecklistOnly } from "../../modules";
 import { apiFetch } from "../../api";
+import { readDefaultDepartment, writeDefaultDepartment } from "../../dashboardDepartment";
 
 const PAGES = {
   dashboard: DashboardPage,
@@ -38,17 +39,32 @@ export default function AdminLayout({ token, user, onLogout }) {
   const [summary, setSummary] = useState(null);
   const [summaryFailed, setSummaryFailed] = useState(false);
 
+  // Which department the dashboard is narrowed to ("" = all). Starts on the one this person saved as
+  // their default, if any; see dashboardDepartment.js.
+  const [dashboardDepartment, setDashboardDepartment] = useState(() => readDefaultDepartment(user));
+
   function refreshSummary() {
-    apiFetch("/dashboard/summary", { token })
+    const query = dashboardDepartment ? `?department_id=${dashboardDepartment}` : "";
+    apiFetch(`/dashboard/summary${query}`, { token })
       .then((data) => { setSummary(data); setSummaryFailed(false); })
-      // Remembered, so the dashboard can say so: it used to wait on "Laster..." for ever when this
-      // one request failed, with no message and nothing to press.
-      .catch(() => setSummaryFailed(true));
+      .catch((err) => {
+        // A saved default that no longer exists (the department was removed): fall back to everything
+        // and forget it, instead of showing an error on every visit from now on.
+        if (err?.code === "invalid_department") {
+          writeDefaultDepartment(user, "");
+          setDashboardDepartment("");
+          return;
+        }
+        // Remembered, so the dashboard can say so: it used to wait on "Laster..." for ever when this
+        // one request failed, with no message and nothing to press.
+        setSummaryFailed(true);
+      });
   }
 
   useEffect(() => {
     refreshSummary();
-  }, [token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, dashboardDepartment]);
 
   const PageComponent = PAGES[currentPage] || (isChecklistOnly(user) ? SjekklisterPage : DashboardPage);
 
@@ -61,7 +77,10 @@ export default function AdminLayout({ token, user, onLogout }) {
         {/* One page that cannot render must not take the sidebar with it, and switching page starts
             the boundary afresh (key), so leaving the broken page is always possible. */}
         <ErrorBoundary key={currentPage}>
-          <PageComponent token={token} user={user} summary={summary} summaryFailed={summaryFailed} refreshSummary={refreshSummary} />
+          <PageComponent
+            token={token} user={user} summary={summary} summaryFailed={summaryFailed} refreshSummary={refreshSummary}
+            departmentId={dashboardDepartment} onDepartmentChange={setDashboardDepartment}
+          />
         </ErrorBoundary>
       </div>
     </div>

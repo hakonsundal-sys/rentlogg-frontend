@@ -3,6 +3,7 @@ import { Sparkles, X, ClipboardList, CheckCircle2, Clock, AlertTriangle, Downloa
 import { apiFetch, downloadZip, downloadPdf, viewHtmlReport } from "../../api";
 import { isNetworkError } from "../../offlineQueue";
 import { Card, uploadUrl } from "../shared";
+import { readDefaultDepartment, writeDefaultDepartment } from "../../dashboardDepartment";
 import RunRoomsAndItems from "../RunRoomsAndItems";
 import RunHistory from "../RunHistory";
 
@@ -14,9 +15,12 @@ const RUN_FILTERS = [
   { key: "completed", label: "Fullført" },
 ];
 
-export default function DashboardPage({ token, user, summary, summaryFailed, refreshSummary }) {
+export default function DashboardPage({ token, user, summary, summaryFailed, refreshSummary, departmentId = "", onDepartmentChange }) {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [runs, setRuns] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [siteDepartment, setSiteDepartment] = useState({}); // site id -> department id, to narrow the visit list
+  const [savedDefault, setSavedDefault] = useState(() => readDefaultDepartment(user));
   const [deviations, setDeviations] = useState([]);
   const [runFilter, setRunFilter] = useState("all");
   const [selectedRunId, setSelectedRunId] = useState(null);
@@ -29,7 +33,23 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
   useEffect(() => {
     apiFetch("/checklists/runs", { token }).then(setRuns).catch((err) => setError(err.message));
     apiFetch("/deviations", { token }).then(setDeviations).catch(() => {});
+    apiFetch("/departments", { token }).then(setDepartments).catch(() => {});
+    apiFetch("/sites", { token })
+      .then((sites) => setSiteDepartment(Object.fromEntries(sites.map((s) => [s.id, s.department_id ?? null]))))
+      .catch(() => {});
   }, [token]);
+
+  function chooseDepartment(value) {
+    onDepartmentChange?.(value ? Number(value) : "");
+  }
+
+  // "Standard" is what the dashboard opens on next time. Pressing it on the department that already is
+  // the default clears it, so there is a way back to "all" without a separate control.
+  function toggleDefault() {
+    const next = departmentId && savedDefault !== departmentId ? departmentId : "";
+    writeDefaultDepartment(user, next);
+    setSavedDefault(next);
+  }
 
   async function openRunDetail(runId) {
     setSelectedRunId(runId);
@@ -75,6 +95,7 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
   if (!summary) return <div style={{ color: "var(--text-secondary)" }}>Laster...</div>;
 
   const filteredRuns = runs.filter((r) => {
+    if (departmentId && siteDepartment[r.site_id] !== departmentId) return false;
     if (runFilter === "completed") return !!r.completed_at;
     if (runFilter === "in_progress") return !r.completed_at;
     return true;
@@ -113,7 +134,38 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
         <Sparkles size={12} style={{ marginRight: 4 }} /> {ROLE_CHIP[user.role] || user.role}
       </div>
       <h1 style={{ fontSize: 28, margin: "0 0 4px" }}>Hei {user.name} 👋</h1>
-      <div style={{ color: "var(--text-secondary)", marginBottom: 24 }}>Oversikt over driften</div>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
+        <div style={{ color: "var(--text-secondary)" }}>Oversikt over driften</div>
+        {departments.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <select
+              value={departmentId}
+              onChange={(e) => chooseDepartment(e.target.value)}
+              aria-label="Avdeling"
+              style={{
+                padding: "6px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)",
+                background: "var(--surface-0)", color: "var(--text-primary)", fontSize: 13,
+              }}
+            >
+              <option value="">Alle avdelinger</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            {(departmentId || savedDefault) && (
+              <button
+                onClick={toggleDefault}
+                title={departmentId && savedDefault === departmentId ? "Dette er standard. Trykk for å fjerne." : "Åpne oversikten på denne avdelingen neste gang"}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--brand-dark)", fontSize: 13, padding: 0 }}
+              >
+                {departmentId && savedDefault === departmentId
+                  ? "★ Standard"
+                  : departmentId
+                    ? "☆ Sett som standard"
+                    : "Fjern standard"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {showOnboarding && (
         <Card style={{ marginBottom: 24, position: "relative" }}>
@@ -178,7 +230,9 @@ export default function DashboardPage({ token, user, summary, summaryFailed, ref
           <div style={{ fontSize: 40, fontWeight: 700, margin: "4px 0", letterSpacing: "-0.03em" }}>
             {summary.activeSites}
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Oversikt over alle dine lokasjoner.</div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+            {departmentId ? `I avdeling ${departments.find((d) => d.id === departmentId)?.name || ""}.`.replace(" .", ".") : "Oversikt over alle dine lokasjoner."}
+          </div>
         </div>
       </div>
 
