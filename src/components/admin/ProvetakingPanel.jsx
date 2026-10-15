@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { FlaskConical, Plus, Trash2, PenLine } from "lucide-react";
 import { apiFetch } from "../../api";
 import { Card, Field, Loading, primaryBtnStyle, linkBtnStyle, inputStyle } from "../shared";
+import ProveTrend from "../ProveTrend";
 
 // Mikrobiologisk prøvetaking — teamlederens egen kontroll, ved siden av etterkontrollen av
 // renholderens arbeid. Formen følger OKVs skjema BA001: Lokale, Inv./Objekt, og resultatene
@@ -30,6 +31,15 @@ const Dom = ({ verdict }) => {
 };
 
 const idag = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
+
+// Feltene som utgjør et prøvepunkts grense. Plassholderne er skjemaets standardverdier
+// (BA002), så et tomt felt leser som «bruker standarden» og ikke som «mangler». ATP har
+// ingen standard — står den tom, blir ATP lagret uten å bli vurdert.
+const GRENSEFELT = [
+  { felt: "totalkim_bra", etikett: "totalkim bra <", standard: "45" },
+  { felt: "totalkim_mindre_bra", etikett: "mindre bra \u2264", standard: "80" },
+  { felt: "atp_max", etikett: "ATP \u2264", standard: "ingen" },
+];
 
 export default function ProvetakingPanel({ token, user }) {
   // Å avlese er en del av jobben, å oppheve en signatur er det ikke — derfor bare admin, som
@@ -224,6 +234,16 @@ export default function ProvetakingPanel({ token, user }) {
         </Card>
       )}
 
+      {/* Trenden krever én valgt lokasjon: prøvepunktene heter det samme på tvers av bygg
+          («sluk», «håndtak»), så en samlet visning ville slått sammen to ulike objekter til
+          én kurve. Står filteret på «Alle lokasjoner», vises den rett og slett ikke.
+          Samme komponent som kundeflaten bruker — backend avgjør hva hver rolle ser. */}
+      {siteId && rounds.some((r) => r.read_date) && (
+        <Card style={{ marginBottom: 12 }}>
+          <ProveTrend token={token} site={{ id: Number(siteId) }} />
+        </Card>
+      )}
+
       {rounds.map((r) => (
         <Card key={r.id} style={{ marginBottom: 12 }}>
           <div
@@ -266,7 +286,8 @@ export default function ProvetakingPanel({ token, user }) {
                   </thead>
                   <tbody>
                     {r.points.map((p) => (
-                      <tr key={p.id} style={{ borderTop: "1px solid var(--border)" }}>
+                      <Fragment key={p.id}>
+                      <tr style={{ borderTop: "1px solid var(--border)" }}>
                         <td style={{ padding: "6px 8px 6px 0", color: "var(--text-secondary)" }}>{p.area || "—"}</td>
                         <td style={{ padding: "6px 8px 6px 0" }}>{p.object}</td>
                         {["totalkim", "atp"].map((felt) => (
@@ -293,13 +314,44 @@ export default function ProvetakingPanel({ token, user }) {
                         ))}
                         <td style={{ padding: "6px 0" }}><Dom verdict={p.verdict} /></td>
                       </tr>
+                      {/* Grensene punktet bedømmes mot. Egen rad i stedet for tre kolonner til:
+                          tabellen er allerede bred, og grensene settes sjelden — én gang når et
+                          punkt er nytt, deretter arves de til neste runde. Låses sammen med
+                          resultatene når runden er signert, så en avlest runde viser hva som
+                          faktisk var kravet den dagen. */}
+                      <tr>
+                        <td />
+                        <td colSpan={5} style={{ padding: "0 0 8px", color: "var(--text-muted)", fontSize: 11 }}>
+                          <span style={{ marginRight: 8 }}>Grenser:</span>
+                          {GRENSEFELT.map(({ felt, etikett, standard }) => (
+                            <span key={felt} style={{ marginRight: 10, whiteSpace: "nowrap" }}>
+                              {etikett}{" "}
+                              <input
+                                defaultValue={p[felt] ?? ""} disabled={!!r.read_date} inputMode="decimal"
+                                placeholder={standard}
+                                onBlur={(e) => e.target.value !== String(p[felt] ?? "") && lagrePunkt(r.id, p.id, felt, e.target.value)}
+                                style={{ ...inputStyle, width: 58, padding: "2px 5px", fontSize: 11, display: "inline-block" }}
+                              />
+                            </span>
+                          ))}
+                          {p.atp != null && p.limits?.atp_max == null && (
+                            <span style={{ color: "var(--text-warning)" }}>ATP måles her, men har ingen grense — den vurderes ikke.</span>
+                          )}
+                        </td>
+                      </tr>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
 
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>
-                Totalkim CFU/cm²: under 45 bra, 45&ndash;80 mindre bra, over 80 dårlig. Påvist E-coli eller listeria er aldri godkjent.
+                {/* Sto før som en påstand om hva grensene ER. Nå settes de per prøvepunkt, så
+                    dette er standarden et punkt faller tilbake på når det ikke har sin egen —
+                    uten det skillet motsier teksten tallene i raden rett over. */}
+                Standard for totalkim (CFU/cm²) når punktet ikke har egen grense: under 45 bra, 45&ndash;80 mindre
+                bra, over 80 dårlig. ATP har ingen standard &mdash; uten grense på punktet blir den lagret, men ikke
+                vurdert. Påvist E-coli eller listeria er aldri godkjent.
               </div>
 
               {r.read_date ? (

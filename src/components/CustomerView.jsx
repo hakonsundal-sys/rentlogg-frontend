@@ -7,6 +7,8 @@ import SiteHistoryView from "./SiteHistoryView";
 import RoomGrid from "./RoomGrid";
 import RunDetailModal from "./RunDetailModal";
 import { prepareImage } from "../imageResize";
+import KundeProvetaking from "./KundeProvetaking";
+import { hasModule, MODULE_SAMPLING } from "../modules";
 
 function currentMonth() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date()).slice(0, 7);
@@ -429,6 +431,14 @@ export default function CustomerView({ token, user, pendingCheckinToken, onCheck
                   <CalendarDays size={13} /> Vaskeplan
                 </button>
               </div>
+            )}
+
+            {/* Kundens egen prøvetaking — hennes uavhengige kontroll av arbeidet OKV har gjort.
+                OKVs egne runder ser hun aldri (se scopedRound i routes/samples.js). Modulen er
+                firmaets, og en kundebruker bærer company_id som alle andre, så hasModule svarer
+                riktig også for henne. */}
+            {hasModule(user, MODULE_SAMPLING) && (
+              <KundeProvetaking token={token} site={s} setError={setError} />
             )}
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
