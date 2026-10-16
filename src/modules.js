@@ -9,6 +9,10 @@ export const MODULE_TIMECLOCK = "timeclock";
 export const MODULE_HYGIENE = "hygiene";
 // Egen modul fra 2026-10-09: prøvetaking selges uten kontakttid og måleoppgaver.
 export const MODULE_SAMPLING = "sampling";
+// Egen modul fra 2026-10-15: teamlederens signerte kontroll av utført arbeid. Taglinen
+// «Dokumentert etterkontroll» står uansett — renholderen kontrollerer alltid sitt eget arbeid;
+// det modulen legger til er at en annen person går over det etterpå.
+export const MODULE_ETTERKONTROLL = "etterkontroll";
 
 export function hasModule(user, key) {
   return Array.isArray(user?.modules) && user.modules.includes(key);

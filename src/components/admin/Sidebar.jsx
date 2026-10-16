@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { LayoutGrid, MapPin, Users, Building2, UserCog, AlertTriangle, ClipboardCheck, UserPlus, FileText, CircleUser, Clock, ListChecks, LogOut, Menu, X } from "lucide-react";
 import { BrandMark, RoleBadge } from "../shared";
-import { hasModule, isChecklistOnly, MODULE_CHECKLIST, MODULE_TIMECLOCK } from "../../modules";
+import { hasModule, isChecklistOnly, MODULE_CHECKLIST, MODULE_ETTERKONTROLL, MODULE_TIMECLOCK } from "../../modules";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -10,9 +10,9 @@ const NAV_ITEMS = [
   { id: "avdelinger", label: "Avdelinger", icon: Building2 },
   { id: "ansatte", label: "Ansatte", icon: UserCog },
   { id: "avvik", label: "Avvik", icon: AlertTriangle },
-  { id: "etterkontroll", label: "Etterkontroll", icon: ClipboardCheck },
   // `module` marks an entry as belonging to an add-on: it is only listed for a company that has
   // that module turned on (see src/modules.js). Every other entry is core and always shown.
+  { id: "etterkontroll", label: "Etterkontroll", icon: ClipboardCheck, module: MODULE_ETTERKONTROLL },
   { id: "timer", label: "Timer", icon: Clock, module: MODULE_TIMECLOCK },
   { id: "sjekklister", label: "Sjekk det", icon: ListChecks, module: MODULE_CHECKLIST },
   { id: "inviter", label: "Inviter brukere", icon: UserPlus },
